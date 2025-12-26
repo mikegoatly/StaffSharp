@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/build/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/StaffSharp.Core/StaffSharp.Core.csproj" />
+  </Folder>
+</Solution>
