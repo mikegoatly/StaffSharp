@@ -1,9 +1,13 @@
 <Solution>
   <Folder Name="/build/">
+    <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/StaffSharp.Core/StaffSharp.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/StaffSharp.Core.Tests/StaffSharp.Core.Tests.csproj" Id="cfcc95b0-f1fc-4634-a82a-98445a4ee61f" />
   </Folder>
 </Solution>
