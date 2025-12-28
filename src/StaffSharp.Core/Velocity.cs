@@ -56,11 +56,14 @@ public readonly record struct Velocity(float Value) : IComparable<Velocity>, ICo
     public static bool operator >=(Velocity a, Velocity b) => a.Value >= b.Value;
     public static bool operator <=(Velocity a, Velocity b) => a.Value <= b.Value;
 
-    public static Velocity operator +(Velocity a, Velocity b) => 
-        Create(MathF.Min(a.Value + b.Value, 1.0f));
+    public static Velocity operator +(Velocity a, Velocity b) => Add(a, b);
 
-    public static Velocity operator -(Velocity a, Velocity b) =>
-        Create(MathF.Max(a.Value - b.Value, 0.0f));
+    public static Velocity operator -(Velocity a, Velocity b) => Subtract(a, b);
+
+    public static Velocity Subtract(Velocity left, Velocity right)
+    {
+        return Create(MathF.Max(left.Value - right.Value, 0.0f));
+    }
 
     public int CompareTo(Velocity other)
     {
@@ -80,5 +83,10 @@ public readonly record struct Velocity(float Value) : IComparable<Velocity>, ICo
         }
 
         throw new ArgumentException($"Object must be of type {nameof(Velocity)}");
+    }
+
+    public static Velocity Add(Velocity left, Velocity right)
+    {
+        return Create(MathF.Min(left.Value + right.Value, 1.0f));
     }
 }
