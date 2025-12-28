@@ -22,8 +22,7 @@ public class MusicalEventStream
         }
 
         // Validate unique voice IDs
-        var voiceIds = Voices.Select(v => v.Id).ToList();
-        if (voiceIds.Count != voiceIds.Distinct().Count())
+        if (Voices.Select(v => v.Id).Distinct().Count() != Voices.Count)
         {
             throw new ArgumentException("Voice IDs must be unique.", nameof(voices));
         }
