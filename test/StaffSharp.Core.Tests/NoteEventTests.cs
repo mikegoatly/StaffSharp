@@ -1,11 +1,11 @@
 namespace StaffSharp.Core.Tests;
 
-public class NoteTests
+public class NoteEventTests
 {
     [Fact]
     public void Create_ValidNote_CreatesInstance()
     {
-        var note = new Note(
+        var note = new NoteEvent(
             Pitch: MidiNote.C4,
             Onset: TimeSpan.FromSeconds(1),
             Duration: TimeSpan.FromSeconds(0.5),
@@ -21,7 +21,7 @@ public class NoteTests
     [Fact]
     public void Offset_CalculatesCorrectly()
     {
-        var note = new Note(
+        var note = new NoteEvent(
             Pitch: MidiNote.C4,
             Onset: TimeSpan.FromSeconds(2),
             Duration: TimeSpan.FromSeconds(1.5),
@@ -34,21 +34,21 @@ public class NoteTests
     [Fact]
     public void Equality_WorksCorrectly()
     {
-        var note1 = new Note(
+        var note1 = new NoteEvent(
             MidiNote.C4,
             TimeSpan.FromSeconds(1),
             TimeSpan.FromSeconds(0.5),
             Velocity.Forte
         );
 
-        var note2 = new Note(
+        var note2 = new NoteEvent(
             MidiNote.C4,
             TimeSpan.FromSeconds(1),
             TimeSpan.FromSeconds(0.5),
             Velocity.Forte
         );
 
-        var note3 = new Note(
+        var note3 = new NoteEvent(
             MidiNote.D4,
             TimeSpan.FromSeconds(1),
             TimeSpan.FromSeconds(0.5),
@@ -62,7 +62,7 @@ public class NoteTests
     [Fact]
     public void With_ModifiesProperties()
     {
-        var note = new Note(
+        var note = new NoteEvent(
             MidiNote.C4,
             TimeSpan.FromSeconds(1),
             TimeSpan.FromSeconds(0.5),
