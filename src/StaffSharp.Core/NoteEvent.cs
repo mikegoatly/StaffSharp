@@ -7,7 +7,7 @@ namespace StaffSharp.Core;
 /// <summary>
 /// Represents a musical note with timing and dynamics.
 /// </summary>
-public record Note(
+public record NoteEvent(
     MidiNote Pitch,       // MIDI note number (supports microtones)
     TimeSpan Onset,       // When the note starts
     TimeSpan Duration,    // How long the note lasts
