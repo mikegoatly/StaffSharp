@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet test:*)",
+      "Bash(dotnet build:*)",
+      "WebSearch",
+      "WebFetch(domain:abcnotation.com)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
