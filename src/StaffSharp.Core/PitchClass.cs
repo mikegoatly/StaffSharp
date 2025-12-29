@@ -1,4 +1,4 @@
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents the 12 pitch classes in Western music, each assigned an integer 

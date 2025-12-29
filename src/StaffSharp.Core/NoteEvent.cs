@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents a musical note with timing and dynamics.
