@@ -5,7 +5,13 @@ namespace StaffSharp.Notation;
 /// </summary>
 public enum Accidental
 {
+    Natural,
     Sharp,
     Flat,
-    Natural
+    DoubleSharp,
+    DoubleFlat,
+    QuarterSharp,
+    QuarterFlat,
+    ThreeQuarterSharp,
+    ThreeQuarterFlat
 }
