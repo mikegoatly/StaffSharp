@@ -1,4 +1,4 @@
-namespace StaffSharp.Core.Notation;
+namespace StaffSharp.Notation;
 
 /// <summary>
 /// Represents a musical note in notation.

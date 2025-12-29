@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents an exact fractional value for precise musical time calculations.

@@ -1,4 +1,4 @@
-namespace StaffSharp.Core.Notation;
+namespace StaffSharp.Notation;
 
 /// <summary>
 /// Represents a time signature (e.g., 4/4, 3/4).

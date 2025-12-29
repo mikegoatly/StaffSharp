@@ -1,4 +1,4 @@
-namespace StaffSharp.Core.Notation;
+namespace StaffSharp.Notation;
 
 /// <summary>
 /// Represents a measure (bar) of music.

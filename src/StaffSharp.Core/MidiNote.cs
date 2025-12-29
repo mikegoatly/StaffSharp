@@ -1,4 +1,4 @@
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents a MIDI note number with validation.

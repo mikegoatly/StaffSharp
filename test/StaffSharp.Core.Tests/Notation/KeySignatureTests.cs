@@ -1,6 +1,6 @@
 namespace StaffSharp.Core.Tests.Notation;
 
-using StaffSharp.Core.Notation;
+using StaffSharp.Notation;
 
 public class KeySignatureTests
 {

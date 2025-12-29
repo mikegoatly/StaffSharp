@@ -1,4 +1,4 @@
-namespace StaffSharp.Core.Notation;
+namespace StaffSharp.Notation;
 
 /// <summary>
 /// Top-level container for a musical score with hierarchical notation structure.

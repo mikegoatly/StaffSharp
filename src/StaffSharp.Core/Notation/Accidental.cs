@@ -1,4 +1,4 @@
-namespace StaffSharp.Core.Notation;
+namespace StaffSharp.Notation;
 
 /// <summary>
 /// Musical accidentals.

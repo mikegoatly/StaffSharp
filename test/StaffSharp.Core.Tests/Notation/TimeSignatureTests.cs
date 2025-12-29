@@ -1,6 +1,7 @@
 namespace StaffSharp.Core.Tests.Notation;
 
-using StaffSharp.Core.Notation;
+using StaffSharp;
+using StaffSharp.Notation;
 
 public class TimeSignatureTests
 {

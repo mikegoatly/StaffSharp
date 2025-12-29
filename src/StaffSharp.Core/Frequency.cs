@@ -1,4 +1,4 @@
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents a frequency in Hz with validation.

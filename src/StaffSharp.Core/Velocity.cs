@@ -1,4 +1,4 @@
-namespace StaffSharp.Core;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents a musical velocity (loudness) with validation.
