@@ -19,6 +19,10 @@ internal static class MusicXmlMeasureParser
         // Group events by voice
         var voiceEvents = new Dictionary<int, List<INotationEvent>>();
         var defaultVoice = 1;
+        var directions = new List<Direction>();
+        BarlineType? startBarline = null;
+        BarlineType? endBarline = null;
+        List<int>? repeatVariants = null;
 
         // Process measure elements in order
         foreach (var element in measureElement.Elements())
@@ -44,11 +48,34 @@ internal static class MusicXmlMeasureParser
                     break;
 
                 case "direction":
-                    // TODO: Parse directions (tempo, dynamics)
+                    // Parse directions (tempo, dynamics, text, etc.)
+                    var parsedDirections = MusicXmlDirectionParser.ParseDirection(element);
+                    directions.AddRange(parsedDirections);
                     break;
 
                 case "barline":
-                    // TODO: Parse barlines (repeats)
+                    // Parse barline (repeats, endings)
+                    var location = element.Attribute("location")?.Value;
+                    var (barlineType, variants) = MusicXmlBarlineParser.ParseBarline(element);
+
+                    if (location == "left")
+                    {
+                        // Left barline starts the measure
+                        startBarline = barlineType;
+                        if (variants != null)
+                        {
+                            repeatVariants = variants;
+                        }
+                    }
+                    else // "right" or no location (defaults to right)
+                    {
+                        // Right barline ends the measure
+                        endBarline = barlineType;
+                        if (variants != null && repeatVariants == null)
+                        {
+                            repeatVariants = variants;
+                        }
+                    }
                     break;
 
                 case "backup":
@@ -62,13 +89,25 @@ internal static class MusicXmlMeasureParser
         var measures = new Dictionary<int, Measure>();
         foreach (var (voiceNumber, events) in voiceEvents)
         {
-            measures[voiceNumber] = new Measure(measureNumber, events);
+            measures[voiceNumber] = new Measure(
+                measureNumber,
+                events,
+                repeatVariants: repeatVariants,
+                startBarline: startBarline,
+                endBarline: endBarline,
+                directions: directions.Count > 0 ? directions : null);
         }
 
         // If no voices have events, create an empty measure for voice 1
         if (measures.Count == 0)
         {
-            measures[defaultVoice] = new Measure(measureNumber, new List<INotationEvent>());
+            measures[defaultVoice] = new Measure(
+                measureNumber,
+                new List<INotationEvent>(),
+                repeatVariants: repeatVariants,
+                startBarline: startBarline,
+                endBarline: endBarline,
+                directions: directions.Count > 0 ? directions : null);
         }
 
         return measures;
