@@ -5,7 +5,10 @@
       "Bash(dotnet build:*)",
       "WebSearch",
       "WebFetch(domain:abcnotation.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:melanchall.github.io)",
+      "Bash(dotnet list:*)"
     ]
   }
 }

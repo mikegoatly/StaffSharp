@@ -7,9 +7,11 @@
   <Folder Name="/src/">
     <Project Path="src/StaffSharp.Core/StaffSharp.Core.csproj" />
     <Project Path="src/StaffSharp.Importers/StaffSharp.Importers.csproj" />
+    <Project Path="src/StaffSharp.Midi/StaffSharp.Midi.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/StaffSharp.Core.Tests/StaffSharp.Core.Tests.csproj" Id="cfcc95b0-f1fc-4634-a82a-98445a4ee61f" />
     <Project Path="test/StaffSharp.Importers.Tests/StaffSharp.Importers.Tests.csproj" />
+    <Project Path="test/StaffSharp.Midi.Tests/StaffSharp.Midi.Tests.csproj" />
   </Folder>
 </Solution>
