@@ -187,7 +187,13 @@ internal static class AbcEventParser
         // Parse duration modifier (2, /2, /, etc.)
         var duration = ParseDuration(input, ref index, defaultNoteLength);
 
-        // TODO: Parse tie (-)
+        // Parse tie (-)
+        TieType tie = TieType.None;
+        if (index < input.Length && input[index] == '-')
+        {
+            tie = TieType.Start; // Mark as start of tie
+            index++;
+        }
 
         // Convert duration to SymbolicDuration
         var symbolicDuration = duration.FromRational();
@@ -196,12 +202,16 @@ internal static class AbcEventParser
         if (pitchClass != null)
         {
             var pitch = new Pitch(pitchClass.Value, octave, accidental);
-            noteEvent = new NotationNote(pitch, symbolicDuration);
+            noteEvent = new NotationNote(
+                pitch,
+                symbolicDuration,
+                Velocity.MezzoForte,
+                tie);
             return true;
         }
         else if (upperChar == 'Z')
         {
-            // Create rest
+            // Create rest (rests cannot be tied)
             noteEvent = new Rest(symbolicDuration);
             return true;
         }
@@ -270,7 +280,19 @@ internal static class AbcEventParser
         var duration = ParseDuration(input, ref index, defaultNoteLength);
         var symbolicDuration = duration.FromRational();
 
-        noteEvent = new Chord(pitches, symbolicDuration);
+        // Parse tie (-)
+        TieType tie = TieType.None;
+        if (index < input.Length && input[index] == '-')
+        {
+            tie = TieType.Start;
+            index++;
+        }
+
+        noteEvent = new Chord(
+            pitches,
+            symbolicDuration,
+            Velocity.MezzoForte,
+            tie);
         return true;
     }
 

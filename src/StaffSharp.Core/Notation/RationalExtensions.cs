@@ -33,6 +33,7 @@ public static class RationalExtensions
                 {
                     1 => SymbolicDuration.Sixteenth,
                     3 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 1),
+                    7 => new SymbolicDuration(NoteDurationBase.Quarter, dots: 2), // Double dotted quarter
                     // Default if we can't match
                     _ => SymbolicDuration.Quarter
                 };
@@ -44,6 +45,9 @@ public static class RationalExtensions
                     3 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 1),
                     4 => SymbolicDuration.Half,
                     6 => new SymbolicDuration(NoteDurationBase.Half, dots: 1),
+                    7 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 2), // Double dotted eighth
+                    14 => new SymbolicDuration(NoteDurationBase.Half, dots: 2), // Double dotted half
+                    15 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 3), // Triple dotted eighth
                     // Default if we can't match
                     _ => SymbolicDuration.Quarter
                 };
