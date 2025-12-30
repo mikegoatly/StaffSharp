@@ -828,4 +828,347 @@ public class AbcParserTests
         Assert.Equal(3, graceNote.Pitches[0].Octave); // A, = octave 3
         Assert.Equal(5, graceNote.Pitches[1].Octave); // a = octave 5
     }
+
+    [Fact]
+    public void Parse_SimpleSlur_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Simple Slur
+            M:4/4
+            L:1/4
+            K:C
+            (ABC)D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have one slur containing first three notes
+        Assert.Single(measure.Slurs);
+        var slur = measure.Slurs[0];
+        Assert.Equal(3, slur.Events.Count);
+        Assert.False(slur.IsDotted);
+
+        // Verify slurred notes are A, B, C
+        var slurredNote1 = Assert.IsType<NotationNote>(slur.Events[0]);
+        var slurredNote2 = Assert.IsType<NotationNote>(slur.Events[1]);
+        var slurredNote3 = Assert.IsType<NotationNote>(slur.Events[2]);
+        Assert.Equal(PitchClass.A, slurredNote1.Pitch.PitchClass);
+        Assert.Equal(PitchClass.B, slurredNote2.Pitch.PitchClass);
+        Assert.Equal(PitchClass.C, slurredNote3.Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_MultipleSlurs_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Multiple Slurs
+            M:4/4
+            L:1/4
+            K:C
+            (AB)(CD)|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have two slurs
+        Assert.Equal(2, measure.Slurs.Count);
+
+        // First slur: A, B
+        Assert.Equal(2, measure.Slurs[0].Events.Count);
+        var note1 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[0]);
+        var note2 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[1]);
+        Assert.Equal(PitchClass.A, note1.Pitch.PitchClass);
+        Assert.Equal(PitchClass.B, note2.Pitch.PitchClass);
+
+        // Second slur: C, D
+        Assert.Equal(2, measure.Slurs[1].Events.Count);
+        var note3 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[0]);
+        var note4 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[1]);
+        Assert.Equal(PitchClass.C, note3.Pitch.PitchClass);
+        Assert.Equal(PitchClass.D, note4.Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_NestedSlurs_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Nested Slurs
+            M:4/4
+            L:1/4
+            K:C
+            (A(BC)D)|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have two slurs
+        Assert.Equal(2, measure.Slurs.Count);
+
+        // Inner slur: B, C (completed first)
+        Assert.Equal(2, measure.Slurs[0].Events.Count);
+        var innerNote1 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[0]);
+        var innerNote2 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[1]);
+        Assert.Equal(PitchClass.B, innerNote1.Pitch.PitchClass);
+        Assert.Equal(PitchClass.C, innerNote2.Pitch.PitchClass);
+
+        // Outer slur: A, B, C, D
+        Assert.Equal(4, measure.Slurs[1].Events.Count);
+        var outerNote1 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[0]);
+        var outerNote4 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[3]);
+        Assert.Equal(PitchClass.A, outerNote1.Pitch.PitchClass);
+        Assert.Equal(PitchClass.D, outerNote4.Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_DottedSlur_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Dotted Slur
+            M:4/4
+            L:1/4
+            K:C
+            .(ABC)D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have one dotted slur
+        Assert.Single(measure.Slurs);
+        var slur = measure.Slurs[0];
+        Assert.True(slur.IsDotted);
+        Assert.Equal(3, slur.Events.Count);
+    }
+
+    [Fact]
+    public void Parse_SlurWithChords_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Slur With Chords
+            M:4/4
+            L:1/4
+            K:C
+            (C[CEG]D)|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have one slur containing note, chord, note
+        Assert.Single(measure.Slurs);
+        var slur = measure.Slurs[0];
+        Assert.Equal(3, slur.Events.Count);
+        Assert.IsType<NotationNote>(slur.Events[0]);
+        Assert.IsType<Chord>(slur.Events[1]);
+        Assert.IsType<NotationNote>(slur.Events[2]);
+    }
+
+    [Fact]
+    public void Parse_SlurWithRest_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Slur With Rest
+            M:4/4
+            L:1/4
+            K:C
+            (CzD)|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have one slur containing note, rest, note
+        Assert.Single(measure.Slurs);
+        var slur = measure.Slurs[0];
+        Assert.Equal(3, slur.Events.Count);
+        Assert.IsType<NotationNote>(slur.Events[0]);
+        Assert.IsType<Rest>(slur.Events[1]);
+        Assert.IsType<NotationNote>(slur.Events[2]);
+    }
+
+    [Fact]
+    public void Parse_SlurWithSingleNote_IgnoresSlur()
+    {
+        var abc = """
+            X:1
+            T:Invalid Slur
+            M:4/4
+            L:1/4
+            K:C
+            (C)D E F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var measure = score.Parts[0].Voices[0].Measures[0];
+
+        // Should have no slurs (slur with single note is invalid)
+        Assert.Empty(measure.Slurs);
+    }
+
+    [Fact]
+    public void Parse_NamedDecoration_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Named Decoration
+            M:4/4
+            L:1/4
+            K:C
+            !trill!C D E F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        // First note should have trill decoration
+        Assert.Single(notes[0].Decorations);
+        Assert.Equal(Decoration.Trill, notes[0].Decorations[0]);
+
+        // Other notes should have no decorations
+        Assert.Empty(notes[1].Decorations);
+        Assert.Empty(notes[2].Decorations);
+        Assert.Empty(notes[3].Decorations);
+    }
+
+    [Fact]
+    public void Parse_ShorthandDecoration_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Shorthand Decorations
+            M:4/4
+            L:1/4
+            K:C
+            .C ~D TC MF|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        // Verify each decoration
+        Assert.Single(notes[0].Decorations);
+        Assert.Equal(Decoration.Staccato, notes[0].Decorations[0]);
+
+        Assert.Single(notes[1].Decorations);
+        Assert.Equal(Decoration.Roll, notes[1].Decorations[0]);
+
+        Assert.Single(notes[2].Decorations);
+        Assert.Equal(Decoration.Trill, notes[2].Decorations[0]);
+
+        Assert.Single(notes[3].Decorations);
+        Assert.Equal(Decoration.Mordent, notes[3].Decorations[0]);
+    }
+
+    [Fact]
+    public void Parse_MultipleDecorations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Multiple Decorations
+            M:4/4
+            L:1/4
+            K:C
+            !trill!.C D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        // First note should have two decorations
+        Assert.Equal(2, notes[0].Decorations.Count);
+        Assert.Equal(Decoration.Trill, notes[0].Decorations[0]);
+        Assert.Equal(Decoration.Staccato, notes[0].Decorations[1]);
+    }
+
+    [Fact]
+    public void Parse_DecorationOnChord_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Decoration on Chord
+            M:4/4
+            L:1/4
+            K:C
+            !fermata![CEG] D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.GetEvents();
+
+        // First event should be a chord with fermata
+        var chord = Assert.IsType<Chord>(events[0]);
+        Assert.Single(chord.Decorations);
+        Assert.Equal(Decoration.Fermata, chord.Decorations[0]);
+    }
+
+    [Fact]
+    public void Parse_DynamicDecorations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Dynamics
+            M:4/4
+            L:1/4
+            K:C
+            !pp!C !mf!D !ff!E !sfz!F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        Assert.Equal(Decoration.Pianissimo, notes[0].Decorations[0]);
+        Assert.Equal(Decoration.MezzoForte, notes[1].Decorations[0]);
+        Assert.Equal(Decoration.Fortissimo, notes[2].Decorations[0]);
+        Assert.Equal(Decoration.Sforzando, notes[3].Decorations[0]);
+    }
+
+    [Fact]
+    public void Parse_ArticulationDecorations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Articulations
+            M:4/4
+            L:1/4
+            K:C
+            HC LD|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        // H = Fermata, L = Accent
+        Assert.Equal(Decoration.Fermata, notes[0].Decorations[0]);
+        Assert.Equal(Decoration.Accent, notes[1].Decorations[0]);
+    }
+
+    [Fact]
+    public void Parse_BowingDecorations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Bowing
+            M:4/4
+            L:1/4
+            K:C
+            uC vD !upbow!E !downbow!F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var notes = score.GetNotes();
+
+        Assert.Equal(Decoration.UpBow, notes[0].Decorations[0]);
+        Assert.Equal(Decoration.DownBow, notes[1].Decorations[0]);
+        Assert.Equal(Decoration.UpBow, notes[2].Decorations[0]);
+        Assert.Equal(Decoration.DownBow, notes[3].Decorations[0]);
+    }
 }

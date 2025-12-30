@@ -97,20 +97,22 @@ public static partial class AbcParser
                 continue;
             }
 
-            var events = ParseMeasureEvents(measureString.Trim(), defaultNoteLength, keySignature);
+            var (events, slurs) = ParseMeasureEvents(measureString.Trim(), defaultNoteLength, keySignature);
 
             if (events.Count > 0)
             {
-                measures.Add(new Measure(measureNumber++, events));
+                measures.Add(new Measure(measureNumber++, events, slurs: slurs));
             }
         }
 
         return measures;
     }
 
-    private static List<INotationEvent> ParseMeasureEvents(string measureString, Rational defaultNoteLength, KeySignature keySignature)
+    private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(string measureString, Rational defaultNoteLength, KeySignature keySignature)
     {
         var events = new List<INotationEvent>();
+        var slurs = new List<Slur>();
+        var slurTracker = new SlurTracker();
         int index = 0;
         Rational? nextNoteMultiplier = null;
         Tuplet? activeTuplet = null;
@@ -129,7 +131,7 @@ public static partial class AbcParser
                 break;
             }
 
-            // Check for tuplet specifier
+            // Check for tuplet specifier (takes precedence over slur)
             if (measureString[index] == '(' && index + 1 < measureString.Length && char.IsDigit(measureString[index + 1]))
             {
                 if (AbcTupletParser.TryParseTuplet(measureString, ref index, out var tuplet, out var noteCount))
@@ -138,6 +140,19 @@ public static partial class AbcParser
                     tupletNotesRemaining = noteCount;
                     continue; // Move to next iteration to parse the tuplet notes
                 }
+            }
+
+            // Check for slur start
+            if (slurTracker.TryStartSlur(measureString, ref index))
+            {
+                continue;
+            }
+
+            // Check for slur end
+            if (slurTracker.TryEndSlur(measureString, ref index, events, out var slur) && slur != null)
+            {
+                slurs.Add(slur);
+                continue;
             }
 
             if (AbcEventParser.TryParseEvent(measureString, ref index, defaultNoteLength, keySignature, out var noteEvent))
@@ -171,6 +186,7 @@ public static partial class AbcParser
                 }
 
                 events.Add(noteEvent);
+                slurTracker.NotifyEventAdded(events.Count - 1);
             }
             else
             {
@@ -179,7 +195,7 @@ public static partial class AbcParser
             }
         }
 
-        return events;
+        return (events, slurs);
     }
 
     private static INotationEvent ApplyDurationMultiplier(INotationEvent noteEvent, Rational multiplier)
