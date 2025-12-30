@@ -6,90 +6,95 @@ public static class RationalExtensions
 {
     public static SymbolicDuration FromRational(this Rational duration)
     {
-        // Try to match common durations
-        // Quarter note = 1/1, half = 2/1, whole = 4/1, eighth = 1/2, etc.
-
-        switch (duration.Denominator)
+        // Handle some special cases that don't fit the general pattern
+        if (duration == Rational.Create(1, 16))
         {
-            case 1:
-                return duration.Numerator switch
-                {
-                    4 => SymbolicDuration.Whole,
-                    2 => SymbolicDuration.Half,
-                    3 => new SymbolicDuration(NoteDurationBase.Half, dots: 1),
-                    // Default if 1 or can't match
-                    _ => SymbolicDuration.Quarter,
-                };
-            case 2:
-                return duration.Numerator switch
-                {
-                    1 => SymbolicDuration.Eighth,
-                    3 => new SymbolicDuration(NoteDurationBase.Quarter, dots: 1),
-                    // Default if we can't match
-                    _ => SymbolicDuration.Quarter
-                };
-            case 4:
-                return duration.Numerator switch
-                {
-                    1 => SymbolicDuration.Sixteenth,
-                    3 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 1),
-                    7 => new SymbolicDuration(NoteDurationBase.Quarter, dots: 2), // Double dotted quarter
-                    // Default if we can't match
-                    _ => SymbolicDuration.Quarter
-                };
-            case 8:
-                return duration.Numerator switch
-                {
-                    1 => SymbolicDuration.Eighth,
-                    2 => SymbolicDuration.Quarter,
-                    3 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 1),
-                    4 => SymbolicDuration.Half,
-                    6 => new SymbolicDuration(NoteDurationBase.Half, dots: 1),
-                    7 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 2), // Double dotted eighth
-                    14 => new SymbolicDuration(NoteDurationBase.Half, dots: 2), // Double dotted half
-                    15 => new SymbolicDuration(NoteDurationBase.Eighth, dots: 3), // Triple dotted eighth
-                    // Default if we can't match
-                    _ => SymbolicDuration.Quarter
-                };
-            case 3:
-                // Triplets: 1/3 beat = triplet eighth, 2/3 = triplet quarter
-                return duration.Numerator switch
-                {
-                    1 => SymbolicDuration.TripletEighth,  // 1/3 beat
-                    2 => SymbolicDuration.TripletQuarter, // 2/3 beat
-                    4 => new SymbolicDuration(NoteDurationBase.Half, 0, Tuplet.Triplet), // 4/3 beat = triplet half
-                    // Default
-                    _ => SymbolicDuration.Quarter
-                };
-            case 5:
-                // Quintuplets
-                return duration.Numerator switch
-                {
-                    2 => new SymbolicDuration(NoteDurationBase.Eighth, 0, Tuplet.Quintuplet), // 2/5 beat
-                    4 => new SymbolicDuration(NoteDurationBase.Quarter, 0, Tuplet.Quintuplet), // 4/5 beat
-                    // Default
-                    _ => SymbolicDuration.Quarter
-                };
-            case 6:
-                // Could come from triplet sixteenths or dotted triplets
-                return duration.Numerator switch
-                {
-                    1 => SymbolicDuration.TripletSixteenth, // 1/6 beat
-                    // Default
-                    _ => SymbolicDuration.Quarter
-                };
-            case 16:
-                return duration.Numerator switch
-                {
-                    1 => new SymbolicDuration(NoteDurationBase.ThirtySecond), // 1/16 beat = 32nd note
-                    2 => SymbolicDuration.Sixteenth, // 2/16 = 1/8 beat
-                    3 => new SymbolicDuration(NoteDurationBase.Sixteenth, dots: 1), // 3/16 beat = dotted 16th
-                    // Default
-                    _ => SymbolicDuration.Quarter
-                };
-            default:
-                // Default if we can't match
-                return SymbolicDuration.Quarter;
+            return new SymbolicDuration(NoteDurationBase.ThirtySecond);
         }
+
+        // 1. Try standard duration (no tuplet)
+        if (TryGetStandardDuration(duration, out var baseVal, out var dots))
+        {
+            return new SymbolicDuration(baseVal, dots);
+        }
+
+        // 2. Try with tuplets
+        // We check common tuplets by multiplying the duration by the inverse of the tuplet ratio.
+        // If the result is a standard duration, then we found it.
+        var tuplets = new[] { Tuplet.Triplet, Tuplet.Quintuplet, Tuplet.Sextuplet, Tuplet.Septuplet };
+        
+        foreach (var tuplet in tuplets)
+        {
+            // Calculate unscaled duration: duration * (Actual / Normal)
+            // e.g. for Triplet (3 in 2), we multiply by 3/2 to get the "normal" duration that was compressed
+            var unscaled = duration * Rational.Create(tuplet.ActualNotes, tuplet.NormalNotes);
+            
+            if (TryGetStandardDuration(unscaled, out baseVal, out dots))
+            {
+                return new SymbolicDuration(baseVal, dots, tuplet);
+            }
+        }
+
+        // Fallback to quarter note if no exact match found
+        return SymbolicDuration.Quarter;
+    }
+
+    private static bool TryGetStandardDuration(Rational duration, out NoteDurationBase baseVal, out int dots)
+    {
+        baseVal = NoteDurationBase.Unspecified;
+        dots = 0;
+
+        int numerator = duration.Numerator;
+        int denominator = duration.Denominator;
+
+        // Denominator must be a power of 2
+        if (!IsPowerOfTwo(denominator))
+        {
+            return false;
+        }
+
+        // Calculate initial exponent from denominator: 1/Den = 2^(-log2(Den))
+        int exponent = -Log2(denominator);
+
+        // Remove factors of 2 from numerator
+        while (numerator != 0 && (numerator & 1) == 0)
+        {
+            numerator >>= 1;
+            exponent++;
+        }
+
+        // Check if M matches a dot pattern (2^(d+1) - 1)
+        switch (numerator)
+        {
+            case 1: dots = 0; break;
+            case 3: dots = 1; break;
+            case 7: dots = 2; break;
+            case 15: dots = 3; break;
+            default: return false;
+        }
+
+        // k is the base-2 exponent for the note duration base value (Whole=1=2^0, Half=2=2^1, ..., ThirtySecond=32=2^5).
+        // After we factor out all powers of 2 from the numerator into `exponent`, the remaining duration can be written
+        // in the form: duration = (2^(dots + 1) - 1) / 2^(2 - k), from which solving for k yields k = 2 - dots - exponent.
+        int k = 2 - dots - exponent;
+
+        // Check if k corresponds to a valid NoteDurationBase (Whole=1 to ThirtySecond=32)
+        // k=0 -> 1, k=5 -> 32
+        if (k >= 0 && k <= 5)
+        {
+            baseVal = (NoteDurationBase)(1 << k);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsPowerOfTwo(int n) => n > 0 && (n & (n - 1)) == 0;
+
+    private static int Log2(int n)
+    {
+        int log = 0;
+        while ((n >>= 1) > 0) log++;
+        return log;
     }
 }
