@@ -1,0 +1,12 @@
+# CLI-specific analyzer configuration
+root = false
+
+[*.cs]
+# ConfigureAwait is not necessary for console applications
+dotnet_diagnostic.CA2007.severity = none
+
+# Catching general exceptions is acceptable for CLI error handling
+dotnet_diagnostic.CA1031.severity = none
+
+# Localization is not required for CLI tools
+dotnet_diagnostic.CA1303.severity = none

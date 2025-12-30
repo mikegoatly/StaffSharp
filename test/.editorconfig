@@ -8,3 +8,6 @@ dotnet_diagnostic.CA1707.severity = none
 
 # CA1515: Consider making public types internal
 dotnet_diagnostic.CA1515.severity = none
+
+# CA1307: StringComparison not needed for test assertions
+dotnet_diagnostic.CA1307.severity = none
