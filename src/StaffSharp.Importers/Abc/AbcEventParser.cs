@@ -46,7 +46,9 @@ internal static class AbcEventParser
 
         var startIndex = index;
 
-        // TODO: Parse decorations (!trill!, ., ~, etc.)
+        // Parse decorations (!trill!, ., ~, etc.)
+        var decorations = AbcDecorationParser.ParseDecorations(input, ref index);
+
         // TODO: Parse chord symbols "Cmaj7"
         // TODO: Parse annotations "^text"
 
@@ -64,11 +66,11 @@ internal static class AbcEventParser
         // Check for chord [CEG]
         if (input[index] == '[')
         {
-            return TryParseChord(input, ref index, defaultNoteLength, keySignature, graceNote, out noteEvent);
+            return TryParseChord(input, ref index, defaultNoteLength, keySignature, graceNote, decorations, out noteEvent);
         }
 
         // Otherwise, parse single note or rest
-        return TryParseNote(input, ref index, defaultNoteLength, keySignature, graceNote, out noteEvent);
+        return TryParseNote(input, ref index, defaultNoteLength, keySignature, graceNote, decorations, out noteEvent);
     }
 
     private static bool TryParseNote(
@@ -77,6 +79,7 @@ internal static class AbcEventParser
         Rational defaultNoteLength,
         KeySignature keySignature,
         GraceNote? graceNote,
+        List<Decoration> decorations,
         [NotNullWhen(true)] out INotationEvent? noteEvent)
     {
         noteEvent = null;
@@ -218,7 +221,8 @@ internal static class AbcEventParser
                 symbolicDuration,
                 Velocity.MezzoForte,
                 tie,
-                graceNote);
+                graceNote,
+                decorations.Count > 0 ? decorations : null);
             return true;
         }
         else if (upperChar == 'Z')
@@ -237,6 +241,7 @@ internal static class AbcEventParser
         Rational defaultNoteLength,
         KeySignature keySignature,
         GraceNote? graceNote,
+        List<Decoration> decorations,
         [NotNullWhen(true)] out INotationEvent? noteEvent)
     {
         noteEvent = null;
@@ -306,7 +311,8 @@ internal static class AbcEventParser
             symbolicDuration,
             Velocity.MezzoForte,
             tie,
-            graceNote);
+            graceNote,
+            decorations.Count > 0 ? decorations : null);
         return true;
     }
 
