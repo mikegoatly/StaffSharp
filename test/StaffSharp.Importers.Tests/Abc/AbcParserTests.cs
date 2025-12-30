@@ -672,4 +672,160 @@ public class AbcParserTests
             .Note(PitchClass.E, SymbolicDuration.Eighth)
             .AndNoMore();
     }
+
+    [Fact]
+    public void Parse_SimpleGraceNote_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Grace Note Test
+            M:4/4
+            L:1/4
+            K:C
+            {A}C D E|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = score.GetNotes();
+        Assert.Equal(3, notes.Count);
+
+        // First note should have grace note
+        Assert.NotNull(notes[0].GraceNote);
+        var graceNote = notes[0].GraceNote!.Value;
+        Assert.Single(graceNote.Pitches);
+        Assert.Equal(PitchClass.A, graceNote.Pitches[0].PitchClass);
+        Assert.False(graceNote.IsAcciaccatura);
+
+        // Other notes should not have grace notes
+        Assert.Null(notes[1].GraceNote);
+        Assert.Null(notes[2].GraceNote);
+    }
+
+    [Fact]
+    public void Parse_MultipleGraceNotes_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Multiple Grace Notes
+            M:4/4
+            L:1/4
+            K:C
+            {ABC}D E F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = score.GetNotes();
+        Assert.Equal(3, notes.Count);
+
+        // First note should have three grace notes
+        Assert.NotNull(notes[0].GraceNote);
+        var graceNote = notes[0].GraceNote!.Value;
+        Assert.Equal(3, graceNote.Pitches.Count);
+        Assert.Equal(PitchClass.A, graceNote.Pitches[0].PitchClass);
+        Assert.Equal(PitchClass.B, graceNote.Pitches[1].PitchClass);
+        Assert.Equal(PitchClass.C, graceNote.Pitches[2].PitchClass);
+        Assert.False(graceNote.IsAcciaccatura);
+    }
+
+    [Fact]
+    public void Parse_Acciaccatura_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Acciaccatura Test
+            M:4/4
+            L:1/4
+            K:C
+            {/A}C D E|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = score.GetNotes();
+        Assert.Equal(3, notes.Count);
+
+        // First note should have acciaccatura
+        Assert.NotNull(notes[0].GraceNote);
+        var graceNote = notes[0].GraceNote!.Value;
+        Assert.Single(graceNote.Pitches);
+        Assert.Equal(PitchClass.A, graceNote.Pitches[0].PitchClass);
+        Assert.True(graceNote.IsAcciaccatura);
+    }
+
+    [Fact]
+    public void Parse_GraceNoteWithAccidentals_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Grace Note Accidentals
+            M:4/4
+            L:1/4
+            K:C
+            {^A_B}C D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = score.GetNotes();
+        Assert.Equal(2, notes.Count);
+
+        // First note should have two grace notes with accidentals
+        Assert.NotNull(notes[0].GraceNote);
+        var graceNote = notes[0].GraceNote!.Value;
+        Assert.Equal(2, graceNote.Pitches.Count);
+        Assert.Equal(Accidental.Sharp, graceNote.Pitches[0].Accidental);
+        Assert.Equal(Accidental.Flat, graceNote.Pitches[1].Accidental);
+    }
+
+    [Fact]
+    public void Parse_GraceNoteOnChord_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Grace Note on Chord
+            M:4/4
+            L:1/4
+            K:C
+            {A}[CEG] D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var events = score.GetEvents();
+        Assert.Equal(2, events.Count);
+
+        // First event should be a chord with grace note
+        var chord = Assert.IsType<Chord>(events[0]);
+        Assert.NotNull(chord.GraceNote);
+        var graceNote = chord.GraceNote!.Value;
+        Assert.Single(graceNote.Pitches);
+        Assert.Equal(PitchClass.A, graceNote.Pitches[0].PitchClass);
+    }
+
+    [Fact]
+    public void Parse_GraceNoteWithOctaves_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Grace Note Octaves
+            M:4/4
+            L:1/4
+            K:C
+            {A,a}C D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = score.GetNotes();
+        Assert.Equal(2, notes.Count);
+
+        // First note should have two grace notes with different octaves
+        Assert.NotNull(notes[0].GraceNote);
+        var graceNote = notes[0].GraceNote!.Value;
+        Assert.Equal(2, graceNote.Pitches.Count);
+        Assert.Equal(3, graceNote.Pitches[0].Octave); // A, = octave 3
+        Assert.Equal(5, graceNote.Pitches[1].Octave); // a = octave 5
+    }
 }

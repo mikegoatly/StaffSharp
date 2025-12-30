@@ -47,18 +47,28 @@ internal static class AbcEventParser
         var startIndex = index;
 
         // TODO: Parse decorations (!trill!, ., ~, etc.)
-        // TODO: Parse grace notes {ABC}
         // TODO: Parse chord symbols "Cmaj7"
         // TODO: Parse annotations "^text"
+
+        // Parse grace notes {ABC}
+        GraceNote? graceNote = null;
+        if (input[index] == '{')
+        {
+            if (!AbcGraceNoteParser.TryParseGraceNote(input, ref index, keySignature, out graceNote))
+            {
+                index = startIndex;
+                return false;
+            }
+        }
 
         // Check for chord [CEG]
         if (input[index] == '[')
         {
-            return TryParseChord(input, ref index, defaultNoteLength, keySignature, out noteEvent);
+            return TryParseChord(input, ref index, defaultNoteLength, keySignature, graceNote, out noteEvent);
         }
 
         // Otherwise, parse single note or rest
-        return TryParseNote(input, ref index, defaultNoteLength, keySignature, out noteEvent);
+        return TryParseNote(input, ref index, defaultNoteLength, keySignature, graceNote, out noteEvent);
     }
 
     private static bool TryParseNote(
@@ -66,6 +76,7 @@ internal static class AbcEventParser
         ref int index,
         Rational defaultNoteLength,
         KeySignature keySignature,
+        GraceNote? graceNote,
         [NotNullWhen(true)] out INotationEvent? noteEvent)
     {
         noteEvent = null;
@@ -206,12 +217,13 @@ internal static class AbcEventParser
                 pitch,
                 symbolicDuration,
                 Velocity.MezzoForte,
-                tie);
+                tie,
+                graceNote);
             return true;
         }
         else if (upperChar == 'Z')
         {
-            // Create rest (rests cannot be tied)
+            // Create rest (rests cannot be tied or have grace notes)
             noteEvent = new Rest(symbolicDuration);
             return true;
         }
@@ -224,6 +236,7 @@ internal static class AbcEventParser
         ref int index,
         Rational defaultNoteLength,
         KeySignature keySignature,
+        GraceNote? graceNote,
         [NotNullWhen(true)] out INotationEvent? noteEvent)
     {
         noteEvent = null;
@@ -292,7 +305,8 @@ internal static class AbcEventParser
             pitches,
             symbolicDuration,
             Velocity.MezzoForte,
-            tie);
+            tie,
+            graceNote);
         return true;
     }
 
