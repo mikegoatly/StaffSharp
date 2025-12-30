@@ -74,7 +74,7 @@ public static partial class AbcParser
                 // After K: header, all remaining lines are note content
                 if (!voiceData.TryGetValue(currentVoice, out var noteLines))
                 {
-                    noteLines = new List<string>();
+                    noteLines = [];
                     voiceData[currentVoice] = noteLines;
                 }
                 noteLines.Add(line);
@@ -84,7 +84,7 @@ public static partial class AbcParser
         // If no voices were explicitly declared, use voice 1
         if (voiceData.Count == 0)
         {
-            voiceData[1] = new List<string>();
+            voiceData[1] = [];
         }
 
         // Parse each voice's notes into measures
@@ -101,7 +101,7 @@ public static partial class AbcParser
         // If no voices have content, create an empty voice 1
         if (voices.Count == 0)
         {
-            voices.Add(new Voice(1, new List<Measure>()));
+            voices.Add(new Voice(1, []));
         }
 
         // Build score
@@ -118,26 +118,133 @@ public static partial class AbcParser
     {
         var measures = new List<Measure>();
         var measureNumber = 1;
+        var currentMeasureContent = new System.Text.StringBuilder();
+        int index = 0;
+        List<int>? nextMeasureVariants = null;
 
-        // Split by barlines (|, ||, |], [|, |:, :|, ::)
-        var measureStrings = BarLineRegex().Split(noteContent);
-
-        foreach (var measureString in measureStrings)
+        while (index < noteContent.Length)
         {
-            if (string.IsNullOrWhiteSpace(measureString))
+            char c = noteContent[index];
+
+            // Check for barline with potential repeat variant
+            // Note: '[' is only a barline if followed by digit ([1, [2) or pipe ([|)
+            bool isBarline = c == '|' || (c == '[' && index + 1 < noteContent.Length && (char.IsDigit(noteContent[index + 1]) || noteContent[index + 1] == '|'));
+
+            if (isBarline)
             {
-                continue;
+                // First, create measure from accumulated content (if any)
+                var measureString = currentMeasureContent.ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(measureString))
+                {
+                    var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature);
+                    if (events.Count > 0)
+                    {
+                        measures.Add(new Measure(measureNumber++, events, slurs: slurs, repeatVariants: nextMeasureVariants));
+                        nextMeasureVariants = null; // Consumed the repeat variant
+                    }
+                }
+                currentMeasureContent.Clear();
+
+                // Now handle the barline and check for repeat variant marker
+                List<int>? repeatVariants = null;
+                if (c == '[' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
+                {
+                    // Parse [1 or [2 or [1,3 etc.
+                    index++; // Skip the '['
+                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
+                }
+                else if (c == '|' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
+                {
+                    // Parse |1 or |2 etc.
+                    index++; // Skip |
+                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
+                }
+                else
+                {
+                    // Regular barline - skip it
+                    index++;
+                    // Skip additional barline characters (||, |], |:, :|, ::, [|)
+                    // But DON'T skip '[' if followed by a digit (that's a repeat variant marker)
+                    while (index < noteContent.Length)
+                    {
+                        char nextChar = noteContent[index];
+                        if (nextChar == '|' || nextChar == ']' || nextChar == ':')
+                        {
+                            index++;
+                        }
+                        else if (nextChar == '[' && index + 1 < noteContent.Length && noteContent[index + 1] == '|')
+                        {
+                            // [| is a barline
+                            index++;
+                        }
+                        else
+                        {
+                            // Stop - might be a repeat variant marker or regular content
+                            break;
+                        }
+                    }
+                }
+
+                // Store repeat variant for the NEXT measure
+                if (repeatVariants != null)
+                {
+                    nextMeasureVariants = repeatVariants;
+                }
             }
+            else
+            {
+                currentMeasureContent.Append(c);
+                index++;
+            }
+        }
 
-            var (events, slurs) = ParseMeasureEvents(measureString.Trim(), defaultNoteLength, keySignature);
-
+        // Handle final measure if any content remains
+        var finalMeasureString = currentMeasureContent.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(finalMeasureString))
+        {
+            var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature);
             if (events.Count > 0)
             {
-                measures.Add(new Measure(measureNumber++, events, slurs: slurs));
+                measures.Add(new Measure(measureNumber++, events, slurs: slurs, repeatVariants: nextMeasureVariants));
             }
         }
 
         return measures;
+    }
+
+    private static List<int> ParseRepeatVariants(string input, ref int index)
+    {
+        var variants = new List<int>();
+        var numberStart = index;
+
+        // Parse first number
+        while (index < input.Length && char.IsDigit(input[index]))
+        {
+            index++;
+        }
+
+        if (int.TryParse(input[numberStart..index], out var firstNumber))
+        {
+            variants.Add(firstNumber);
+        }
+
+        // Check for comma-separated additional numbers (e.g., [1,3)
+        while (index < input.Length && input[index] == ',')
+        {
+            index++; // Skip comma
+            numberStart = index;
+            while (index < input.Length && char.IsDigit(input[index]))
+            {
+                index++;
+            }
+
+            if (int.TryParse(input[numberStart..index], out var additionalNumber))
+            {
+                variants.Add(additionalNumber);
+            }
+        }
+
+        return variants;
     }
 
     private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(string measureString, Rational defaultNoteLength, KeySignature keySignature)
@@ -149,6 +256,8 @@ public static partial class AbcParser
         Rational? nextNoteMultiplier = null;
         Tuplet? activeTuplet = null;
         int tupletNotesRemaining = 0;
+        var currentKeySignature = keySignature; // Track key signature changes within measure
+        TimeSignature? inlineMeasureTimeSignature = null;
 
         while (index < measureString.Length)
         {
@@ -161,6 +270,19 @@ public static partial class AbcParser
             if (index >= measureString.Length)
             {
                 break;
+            }
+
+            // Check for inline header [K:G], [M:3/4], etc.
+            if (AbcInlineHeaderParser.IsInlineHeader(measureString, index))
+            {
+                if (AbcInlineHeaderParser.TryParseInlineHeader(
+                    measureString,
+                    ref index,
+                    ref currentKeySignature,
+                    ref inlineMeasureTimeSignature))
+                {
+                    continue;
+                }
             }
 
             // Check for tuplet specifier (takes precedence over slur)
@@ -187,7 +309,7 @@ public static partial class AbcParser
                 continue;
             }
 
-            if (AbcEventParser.TryParseEvent(measureString, ref index, defaultNoteLength, keySignature, out var noteEvent))
+            if (AbcEventParser.TryParseEvent(measureString, ref index, defaultNoteLength, currentKeySignature, out var noteEvent))
             {
                 // Apply broken rhythm multiplier from previous note if any
                 if (nextNoteMultiplier != null)
