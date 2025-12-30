@@ -259,31 +259,13 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(4, events.Count);
-
-        // First event should be a note
-        Assert.IsType<NotationNote>(events[0]);
-        var note1 = (NotationNote)events[0];
-        Assert.Equal(PitchClass.C, note1.Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Quarter, note1.Duration);
-
-        // Second event should be a rest
-        Assert.IsType<Rest>(events[1]);
-        var rest1 = (Rest)events[1];
-        Assert.Equal(SymbolicDuration.Quarter, rest1.Duration);
-
-        // Third event should be a note
-        Assert.IsType<NotationNote>(events[2]);
-        var note2 = (NotationNote)events[2];
-        Assert.Equal(PitchClass.D, note2.Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Quarter, note2.Duration);
-
-        // Fourth event should be a rest
-        Assert.IsType<Rest>(events[3]);
-        var rest2 = (Rest)events[3];
-        Assert.Equal(SymbolicDuration.Quarter, rest2.Duration);
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -378,28 +360,16 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(2, events.Count);
+        score.AssertSequence()
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Quarter)
+            .Chord([PitchClass.F, PitchClass.A, PitchClass.C], SymbolicDuration.Quarter)
+            .AndNoMore();
 
-        // First chord: C E G (C major)
-        Assert.IsType<Chord>(events[0]);
-        var chord1 = (Chord)events[0];
-        Assert.Equal(3, chord1.Pitches.Count);
-        Assert.Equal(PitchClass.C, chord1.Pitches[0].PitchClass);
-        Assert.Equal(PitchClass.E, chord1.Pitches[1].PitchClass);
-        Assert.Equal(PitchClass.G, chord1.Pitches[2].PitchClass);
-        Assert.Equal(SymbolicDuration.Quarter, chord1.Duration);
-
-        // Second chord: F A c (F major with high C)
-        Assert.IsType<Chord>(events[1]);
-        var chord2 = (Chord)events[1];
-        Assert.Equal(3, chord2.Pitches.Count);
-        Assert.Equal(PitchClass.F, chord2.Pitches[0].PitchClass);
-        Assert.Equal(PitchClass.A, chord2.Pitches[1].PitchClass);
-        Assert.Equal(PitchClass.C, chord2.Pitches[2].PitchClass);
-        Assert.Equal(4, chord2.Pitches[0].Octave); // F is uppercase = octave 4
-        Assert.Equal(5, chord2.Pitches[2].Octave); // c is lowercase = octave 5
+        // For octave-specific checks, use the extension methods
+        var chords = score.GetChords();
+        Assert.Equal(4, chords[1].Pitches[0].Octave); // F is uppercase = octave 4
+        Assert.Equal(5, chords[1].Pitches[2].Octave); // c is lowercase = octave 5
     }
 
     [Fact]
@@ -699,25 +669,16 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
 
-        Assert.Equal(6, events.Count);
-
-        // First three notes should be triplets
-        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
-        Assert.Equal(new Tuplet(3, 2), events[0].Duration.Tuplet);
-        Assert.Equal(NoteDurationBase.Eighth, events[0].Duration.Base);
-
-        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
-        Assert.Equal(new Tuplet(3, 2), events[1].Duration.Tuplet);
-
-        Assert.Equal(PitchClass.C, events[2].Pitch.PitchClass);
-        Assert.Equal(new Tuplet(3, 2), events[2].Duration.Tuplet);
-
-        // Last three notes should be normal eighths
-        Assert.Null(events[3].Duration.Tuplet);
-        Assert.Null(events[4].Duration.Tuplet);
-        Assert.Null(events[5].Duration.Tuplet);
+        score.AssertSequence()
+            .HasCount(6)
+            .Note(PitchClass.A, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.B, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.C, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.D, SymbolicDuration.Eighth)
+            .Note(PitchClass.E, SymbolicDuration.Eighth)
+            .Note(PitchClass.F, SymbolicDuration.Eighth)
+            .AndNoMore();
     }
 
     [Fact]
