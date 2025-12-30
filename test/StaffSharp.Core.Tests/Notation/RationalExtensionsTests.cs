@@ -68,11 +68,23 @@ public class RationalExtensionsTests
     public void FromRational_UnmatchedDuration_ReturnsQuarterDefault()
     {
         // Test various unmatched durations all default to quarter
-        var duration1 = Rational.Create(5, 1);
+        // Note: 5/1 is now matched by the improved algorithm (Triple-dotted whole in triplet)
         var duration2 = Rational.Create(5, 7); // Truly unmatched
 
-        Assert.Equal(SymbolicDuration.Quarter, duration1.FromRational());
         Assert.Equal(SymbolicDuration.Quarter, duration2.FromRational());
+    }
+
+    [Fact]
+    public void FromRational_ComplexDuration_FindsMatch()
+    {
+        // 5 beats = Triple dotted whole note (7.5 beats) in a triplet (2/3 duration)
+        // 7.5 * 2/3 = 5
+        var duration = Rational.Create(5, 1);
+        var result = duration.FromRational();
+        
+        Assert.Equal(NoteDurationBase.Whole, result.Base);
+        Assert.Equal(3, result.Dots);
+        Assert.Equal(Tuplet.Triplet, result.Tuplet);
     }
 
     [Fact]
