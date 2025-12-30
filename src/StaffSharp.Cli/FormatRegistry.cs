@@ -3,6 +3,7 @@ namespace StaffSharp.Cli;
 using StaffSharp;
 using StaffSharp.Importers.Abc;
 using StaffSharp.Midi;
+using StaffSharp.MusicXml;
 
 /// <summary>
 /// Registry for all available import and export formats.
@@ -17,6 +18,7 @@ internal static class FormatRegistry
         var importers = new IScoreImporter[]
         {
             new AbcScoreImporter(),
+            new MusicXmlScoreImporter(),
         };
 
         var dict = new Dictionary<string, IScoreImporter>(StringComparer.OrdinalIgnoreCase);
