@@ -60,9 +60,10 @@ public static partial class AbcParser
                 keySignature = AbcHeaderParser.ParseKeySignature(line[2..].Trim());
                 headerComplete = true; // K: must be last header field
             }
-            else if (headerComplete && line.AsSpan().IndexOf(':') == -1)
+            else if (headerComplete)
             {
-                // This is a note line (after K: header)
+                // After K: header, all remaining lines are note content
+                // (even if they contain ':' in tuplet specifiers like (3:2ABC)
                 noteLines.Add(line);
             }
         }
@@ -112,6 +113,8 @@ public static partial class AbcParser
         var events = new List<INotationEvent>();
         int index = 0;
         Rational? nextNoteMultiplier = null;
+        Tuplet? activeTuplet = null;
+        int tupletNotesRemaining = 0;
 
         while (index < measureString.Length)
         {
@@ -124,6 +127,17 @@ public static partial class AbcParser
             if (index >= measureString.Length)
             {
                 break;
+            }
+
+            // Check for tuplet specifier
+            if (measureString[index] == '(' && index + 1 < measureString.Length && char.IsDigit(measureString[index + 1]))
+            {
+                if (AbcTupletParser.TryParseTuplet(measureString, ref index, out var tuplet, out var noteCount))
+                {
+                    activeTuplet = tuplet;
+                    tupletNotesRemaining = noteCount;
+                    continue; // Move to next iteration to parse the tuplet notes
+                }
             }
 
             if (AbcEventParser.TryParseEvent(measureString, ref index, defaultNoteLength, keySignature, out var noteEvent))
@@ -142,6 +156,18 @@ public static partial class AbcParser
                     noteEvent = ApplyDurationMultiplier(noteEvent, firstMultiplier);
                     // Store multiplier for next note
                     nextNoteMultiplier = secondMultiplier;
+                }
+
+                // Apply tuplet if active
+                if (activeTuplet != null)
+                {
+                    noteEvent = ApplyTuplet(noteEvent, activeTuplet);
+                    tupletNotesRemaining--;
+
+                    if (tupletNotesRemaining <= 0)
+                    {
+                        activeTuplet = null;
+                    }
                 }
 
                 events.Add(noteEvent);
@@ -177,6 +203,32 @@ public static partial class AbcParser
             Rest rest => rest with
             {
                 Duration = (rest.Duration.ToBeats() * multiplier).FromRational()
+            },
+            _ => noteEvent
+        };
+    }
+
+    private static INotationEvent ApplyTuplet(INotationEvent noteEvent, Tuplet tuplet)
+    {
+        // Apply tuplet to the duration
+        return noteEvent switch
+        {
+            NotationNote note => note with
+            {
+                Duration = new SymbolicDuration(note.Duration.Base, note.Duration.Dots, tuplet)
+            },
+            Chord chord => new Chord(
+                chord.Pitches,
+                new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet),
+                chord.Velocity,
+                chord.Tie,
+                chord.GraceNote,
+                chord.Decorations,
+                chord.ChordSymbol,
+                chord.Annotation),
+            Rest rest => rest with
+            {
+                Duration = new SymbolicDuration(rest.Duration.Base, rest.Duration.Dots, tuplet)
             },
             _ => noteEvent
         };

@@ -685,4 +685,118 @@ public class AbcParserTests
         Assert.Equal(PitchClass.C, events[2].Pitch.PitchClass);
         Assert.Equal(SymbolicDuration.Half, events[2].Duration);
     }
+
+    [Fact]
+    public void Parse_Triplet_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Triplet Test
+            M:4/4
+            L:1/8
+            K:C
+            (3ABC DEF|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(6, events.Count);
+
+        // First three notes should be triplets
+        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
+        Assert.Equal(new Tuplet(3, 2), events[0].Duration.Tuplet);
+        Assert.Equal(NoteDurationBase.Eighth, events[0].Duration.Base);
+
+        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
+        Assert.Equal(new Tuplet(3, 2), events[1].Duration.Tuplet);
+
+        Assert.Equal(PitchClass.C, events[2].Pitch.PitchClass);
+        Assert.Equal(new Tuplet(3, 2), events[2].Duration.Tuplet);
+
+        // Last three notes should be normal eighths
+        Assert.Null(events[3].Duration.Tuplet);
+        Assert.Null(events[4].Duration.Tuplet);
+        Assert.Null(events[5].Duration.Tuplet);
+    }
+
+    [Fact]
+    public void Parse_Quintuplet_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Quintuplet Test
+            M:4/4
+            L:1/8
+            K:C
+            (5ABCDE F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(6, events.Count);
+
+        // First five notes should be quintuplets (5 notes in time of 4)
+        for (int i = 0; i < 5; i++)
+        {
+            Assert.Equal(new Tuplet(5, 4), events[i].Duration.Tuplet);
+            Assert.Equal(NoteDurationBase.Eighth, events[i].Duration.Base);
+        }
+
+        // Last note should be normal
+        Assert.Null(events[5].Duration.Tuplet);
+    }
+
+    [Fact]
+    public void Parse_TupletWithExplicitRatio_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Explicit Tuplet
+            M:4/4
+            L:1/8
+            K:C
+            (3:2 ABC D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(4, events.Count);
+
+        // (3:2 means 3 notes in the time of 2
+        Assert.Equal(new Tuplet(3, 2), events[0].Duration.Tuplet);
+        Assert.Equal(new Tuplet(3, 2), events[1].Duration.Tuplet);
+        Assert.Equal(new Tuplet(3, 2), events[2].Duration.Tuplet);
+
+        Assert.Null(events[3].Duration.Tuplet);
+    }
+
+    [Fact]
+    public void Parse_Duplet_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Duplet Test
+            M:6/8
+            L:1/8
+            K:C
+            (2AB CDE|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(5, events.Count);
+
+        // (2 means 2 notes in time of 3 (duplet in compound time)
+        Assert.Equal(new Tuplet(2, 3), events[0].Duration.Tuplet);
+        Assert.Equal(new Tuplet(2, 3), events[1].Duration.Tuplet);
+
+        // Last three are normal
+        Assert.Null(events[2].Duration.Tuplet);
+        Assert.Null(events[3].Duration.Tuplet);
+        Assert.Null(events[4].Duration.Tuplet);
+    }
 }
