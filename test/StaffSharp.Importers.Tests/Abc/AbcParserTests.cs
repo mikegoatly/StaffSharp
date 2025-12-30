@@ -6,22 +6,6 @@ using StaffSharp.Notation;
 
 public class AbcParserTests
 {
-    // Helper to verify notes in a measure
-    private static void VerifyNotes(Measure measure, params (PitchClass pitch, int octave, SymbolicDuration duration)[] expectedNotes)
-    {
-        var actualNotes = measure.Events.Cast<NotationNote>().ToList();
-        Assert.Equal(expectedNotes.Length, actualNotes.Count);
-
-        for (int i = 0; i < expectedNotes.Length; i++)
-        {
-            var (expectedPitch, expectedOctave, expectedDuration) = expectedNotes[i];
-            var actual = actualNotes[i];
-
-            Assert.Equal(expectedPitch, actual.Pitch.PitchClass);
-            Assert.Equal(expectedOctave, actual.Pitch.Octave);
-            Assert.Equal(expectedDuration, actual.Duration);
-        }
-    }
 
     [Fact]
     public void Parse_MinimalTune_CreatesScore()
@@ -81,25 +65,31 @@ public class AbcParserTests
 
         var score = AbcParser.Parse(abc);
 
-        var measures = score.Parts[0].Voices[0].Measures;
-        Assert.Equal(4, measures.Count);
+        Assert.Equal(4, score.Parts[0].Voices[0].Measures.Count);
 
         // First measure: C, D, E, F, (octave 3)
-        var firstMeasure = measures[0].Events.Cast<NotationNote>().ToList();
-        Assert.Equal(4, firstMeasure.Count);
-        Assert.Equal(3, firstMeasure[0].Pitch.Octave); // C,
-        Assert.Equal(PitchClass.C, firstMeasure[0].Pitch.PitchClass);
+        score.AssertSequence(measureIndex: 0)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 3)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 3)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 3)
+            .Note(PitchClass.F, SymbolicDuration.Quarter, octave: 3)
+            .AndNoMore();
 
         // Third measure: D E F G (octave 4 - uppercase default)
-        var thirdMeasure = measures[2].Events.Cast<NotationNote>().ToList();
-        Assert.Equal(4, thirdMeasure.Count);
-        Assert.Equal(4, thirdMeasure[0].Pitch.Octave); // D
+        score.AssertSequence(measureIndex: 2)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.F, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.G, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
 
         // Fourth measure: A B c d (c and d are lowercase = octave 5)
-        var fourthMeasure = measures[3].Events.Cast<NotationNote>().ToList();
-        Assert.Equal(4, fourthMeasure.Count);
-        Assert.Equal(4, fourthMeasure[0].Pitch.Octave); // A (uppercase)
-        Assert.Equal(5, fourthMeasure[2].Pitch.Octave); // c (lowercase)
+        score.AssertSequence(measureIndex: 3)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.B, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 5)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 5)
+            .AndNoMore();
     }
 
     [Fact]
@@ -116,14 +106,13 @@ public class AbcParserTests
 
         var score = AbcParser.Parse(abc);
 
-        var notes = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-        Assert.Equal(4, notes.Count);
-
         // With L:1/8, default is eighth note
-        Assert.Equal(SymbolicDuration.Eighth, notes[0].Duration); // A (default)
-        Assert.Equal(SymbolicDuration.Quarter, notes[1].Duration); // A2 (2 * 1/8 = 1/4)
-        Assert.Equal(SymbolicDuration.Half, notes[2].Duration); // A4 (4 * 1/8 = 1/2)
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Sixteenth), notes[3].Duration); // A/2 (1/8 / 2 = 1/16)
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Eighth)     // A (default)
+            .Note(PitchClass.A, SymbolicDuration.Quarter)    // A2 (2 * 1/8 = 1/4)
+            .Note(PitchClass.A, SymbolicDuration.Half)       // A4 (4 * 1/8 = 1/2)
+            .Note(PitchClass.A, SymbolicDuration.Sixteenth)  // A/2 (1/8 / 2 = 1/16)
+            .AndNoMore();
     }
 
     [Fact]
@@ -133,23 +122,18 @@ public class AbcParserTests
             X:1
             T:Accidentals
             M:C
+            L:1/4
             K:C
             ^C _D =E|
             """;
 
         var score = AbcParser.Parse(abc);
 
-        var notes = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-        Assert.Equal(3, notes.Count);
-
-        Assert.Equal(Accidental.Sharp, notes[0].Pitch.Accidental);
-        Assert.Equal(PitchClass.C, notes[0].Pitch.PitchClass);
-
-        Assert.Equal(Accidental.Flat, notes[1].Pitch.Accidental);
-        Assert.Equal(PitchClass.D, notes[1].Pitch.PitchClass);
-
-        Assert.Equal(Accidental.Natural, notes[2].Pitch.Accidental);
-        Assert.Equal(PitchClass.E, notes[2].Pitch.PitchClass);
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter, accidental: Accidental.Sharp)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, accidental: Accidental.Flat)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, accidental: Accidental.Natural)
+            .AndNoMore();
     }
 
     [Fact]
@@ -203,23 +187,22 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var measures = score.Parts[0].Voices[0].Measures;
 
         // Verify first measure: C D E F (all octave 4, quarter notes)
-        VerifyNotes(measures[0],
-            (PitchClass.C, 4, SymbolicDuration.Quarter),
-            (PitchClass.D, 4, SymbolicDuration.Quarter),
-            (PitchClass.E, 4, SymbolicDuration.Quarter),
-            (PitchClass.F, 4, SymbolicDuration.Quarter)
-        );
+        score.AssertSequence(measureIndex: 0)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.F, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
 
         // Verify second measure: G A B c (G, A, B at octave 4, c at octave 5)
-        VerifyNotes(measures[1],
-            (PitchClass.G, 4, SymbolicDuration.Quarter),
-            (PitchClass.A, 4, SymbolicDuration.Quarter),
-            (PitchClass.B, 4, SymbolicDuration.Quarter),
-            (PitchClass.C, 5, SymbolicDuration.Quarter)
-        );
+        score.AssertSequence(measureIndex: 1)
+            .Note(PitchClass.G, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.B, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 5)
+            .AndNoMore();
     }
 
     [Fact]
@@ -235,15 +218,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
 
         // C2 (quarter), D (eighth), E2 (quarter), F (eighth)
-        VerifyNotes(measure,
-            (PitchClass.C, 4, SymbolicDuration.Quarter),  // C2 with L:1/8 = 2*1/8 = 1/4
-            (PitchClass.D, 4, SymbolicDuration.Eighth),    // D with L:1/8 = 1/8
-            (PitchClass.E, 4, SymbolicDuration.Quarter),  // E2
-            (PitchClass.F, 4, SymbolicDuration.Eighth)     // F
-        );
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter)  // C2 with L:1/8 = 2*1/8 = 1/4
+            .Note(PitchClass.D, SymbolicDuration.Eighth)   // D with L:1/8 = 1/8
+            .Note(PitchClass.E, SymbolicDuration.Quarter)  // E2
+            .Note(PitchClass.F, SymbolicDuration.Eighth)   // F
+            .AndNoMore();
     }
 
     [Fact]
@@ -281,20 +263,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
-
-        Assert.Equal(4, events.Count);
-
-        // All should be rests with different durations
-        Assert.All(events, e => Assert.IsType<Rest>(e));
-
-        var rests = events.Cast<Rest>().ToList();
 
         // With L:1/8, default is eighth note
-        Assert.Equal(SymbolicDuration.Eighth, rests[0].Duration); // Z (default)
-        Assert.Equal(SymbolicDuration.Quarter, rests[1].Duration); // Z2 (2 * 1/8 = 1/4)
-        Assert.Equal(SymbolicDuration.Half, rests[2].Duration); // Z4 (4 * 1/8 = 1/2)
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Sixteenth), rests[3].Duration); // Z/2 (1/8 / 2 = 1/16)
+        score.AssertSequence()
+            .Rest(SymbolicDuration.Eighth)      // Z (default)
+            .Rest(SymbolicDuration.Quarter)     // Z2 (2 * 1/8 = 1/4)
+            .Rest(SymbolicDuration.Half)        // Z4 (4 * 1/8 = 1/2)
+            .Rest(SymbolicDuration.Sixteenth)   // Z/2 (1/8 / 2 = 1/16)
+            .AndNoMore();
     }
 
     [Fact]
@@ -310,19 +286,13 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(4, events.Count);
-
-        // Second and fourth events should be rests
-        Assert.IsType<Rest>(events[1]);
-        Assert.IsType<Rest>(events[3]);
-
-        var rest1 = (Rest)events[1];
-        var rest2 = (Rest)events[3];
-
-        Assert.Equal(SymbolicDuration.Quarter, rest1.Duration);
-        Assert.Equal(SymbolicDuration.Quarter, rest2.Duration);
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -338,13 +308,13 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(4, events.Count);
-        Assert.All(events, e => Assert.IsType<Rest>(e));
-
-        var rests = events.Cast<Rest>().ToList();
-        Assert.All(rests, r => Assert.Equal(SymbolicDuration.Quarter, r.Duration));
+        score.AssertSequence()
+            .Rest(SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .Rest(SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -385,21 +355,17 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(2, events.Count);
+        score.AssertSequence()
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Quarter)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)  // [CEG]2 = half note
+            .AndNoMore();
 
-        // First chord with accidentals
-        var chord1 = (Chord)events[0];
-        Assert.Equal(3, chord1.Pitches.Count);
-        Assert.Equal(Accidental.Sharp, chord1.Pitches[0].Accidental);
-        Assert.Equal(Accidental.Flat, chord1.Pitches[1].Accidental);
-        Assert.Equal(Accidental.Natural, chord1.Pitches[2].Accidental);
-        Assert.Equal(SymbolicDuration.Quarter, chord1.Duration);
-
-        // Second chord with duration modifier
-        var chord2 = (Chord)events[1];
-        Assert.Equal(SymbolicDuration.Half, chord2.Duration); // [CEG]2 = half note
+        // Verify accidentals on first chord
+        var chords = score.GetChords();
+        Assert.Equal(Accidental.Sharp, chords[0].Pitches[0].Accidental);
+        Assert.Equal(Accidental.Flat, chords[0].Pitches[1].Accidental);
+        Assert.Equal(Accidental.Natural, chords[0].Pitches[2].Accidental);
     }
 
     [Fact]
@@ -415,21 +381,24 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(2, events.Count);
+        score.AssertSequence()
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Quarter)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Quarter)
+            .AndNoMore();
+
+        // Verify octaves
+        var chords = score.GetChords();
 
         // First chord: C, E G (low C)
-        var chord1 = (Chord)events[0];
-        Assert.Equal(3, chord1.Pitches[0].Octave); // C, = octave 3
-        Assert.Equal(4, chord1.Pitches[1].Octave); // E = octave 4
-        Assert.Equal(4, chord1.Pitches[2].Octave); // G = octave 4
+        Assert.Equal(3, chords[0].Pitches[0].Octave); // C, = octave 3
+        Assert.Equal(4, chords[0].Pitches[1].Octave); // E = octave 4
+        Assert.Equal(4, chords[0].Pitches[2].Octave); // G = octave 4
 
         // Second chord: c' e' g' (high)
-        var chord2 = (Chord)events[1];
-        Assert.Equal(6, chord2.Pitches[0].Octave); // c' = octave 6
-        Assert.Equal(6, chord2.Pitches[1].Octave); // e' = octave 6
-        Assert.Equal(6, chord2.Pitches[2].Octave); // g' = octave 6
+        Assert.Equal(6, chords[1].Pitches[0].Octave); // c' = octave 6
+        Assert.Equal(6, chords[1].Pitches[1].Octave); // e' = octave 6
+        Assert.Equal(6, chords[1].Pitches[2].Octave); // g' = octave 6
     }
 
     [Fact]
@@ -445,21 +414,13 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
 
-        Assert.Equal(4, events.Count);
-
-        // First C should have TieType.Start
-        Assert.Equal(PitchClass.C, events[0].Pitch.PitchClass);
-        Assert.Equal(TieType.Start, events[0].Tie);
-
-        // Second C should have TieType.None (we only mark the start of ties for now)
-        Assert.Equal(PitchClass.C, events[1].Pitch.PitchClass);
-        Assert.Equal(TieType.None, events[1].Tie);
-
-        // D and E should not be tied
-        Assert.Equal(TieType.None, events[2].Tie);
-        Assert.Equal(TieType.None, events[3].Tie);
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)
+            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .Note(PitchClass.E, SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -475,20 +436,13 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
 
-        Assert.Equal(4, events.Count);
-
-        // All should be A
-        Assert.All(events, e => Assert.Equal(PitchClass.A, e.Pitch.PitchClass));
-
-        // First three should have TieType.Start
-        Assert.Equal(TieType.Start, events[0].Tie);
-        Assert.Equal(TieType.Start, events[1].Tie);
-        Assert.Equal(TieType.Start, events[2].Tie);
-
-        // Last should not be tied
-        Assert.Equal(TieType.None, events[3].Tie);
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
+            .Note(PitchClass.A, SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -504,18 +458,11 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events;
 
-        Assert.Equal(2, events.Count);
-
-        var chord1 = (Chord)events[0];
-        var chord2 = (Chord)events[1];
-
-        // First chord should be tied
-        Assert.Equal(TieType.Start, chord1.Tie);
-
-        // Second chord should not be tied
-        Assert.Equal(TieType.None, chord2.Tie);
+        score.AssertSequence()
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieType.Start)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)
+            .AndNoMore();
     }
 
     [Fact]
@@ -531,21 +478,12 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
 
-        Assert.Equal(3, events.Count);
-
-        // First C (quarter note, tied)
-        Assert.Equal(SymbolicDuration.Quarter, events[0].Duration);
-        Assert.Equal(TieType.Start, events[0].Tie);
-
-        // Second C (quarter note, not tied)
-        Assert.Equal(SymbolicDuration.Quarter, events[1].Duration);
-        Assert.Equal(TieType.None, events[1].Tie);
-
-        // D (half note, not tied)
-        Assert.Equal(SymbolicDuration.Half, events[2].Duration);
-        Assert.Equal(TieType.None, events[2].Tie);
+        score.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)  // C2 (quarter note, tied)
+            .Note(PitchClass.C, SymbolicDuration.Quarter)                      // C2 (quarter note, not tied)
+            .Note(PitchClass.D, SymbolicDuration.Half)                         // D4 (half note, not tied)
+            .AndNoMore();
     }
 
     [Fact]
@@ -561,20 +499,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(4, events.Count);
 
         // A>B: A is dotted (3/2 of quarter = dotted quarter), B is halved (1/2 of quarter = eighth)
-        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[0].Duration);
-
-        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Eighth, events[1].Duration);
-
-        // C and D should be normal quarters
-        Assert.Equal(SymbolicDuration.Quarter, events[2].Duration);
-        Assert.Equal(SymbolicDuration.Quarter, events[3].Duration);
+        score.AssertSequence()
+            .Note(PitchClass.A, new SymbolicDuration(NoteDurationBase.Quarter, dots: 1))
+            .Note(PitchClass.B, SymbolicDuration.Eighth)
+            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -590,16 +522,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(4, events.Count);
 
         // A<B: A is halved (1/2 of quarter = eighth), B is dotted (3/2 of quarter = dotted quarter)
-        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Eighth, events[0].Duration);
-
-        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[1].Duration);
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Eighth)
+            .Note(PitchClass.B, new SymbolicDuration(NoteDurationBase.Quarter, dots: 1))
+            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -615,16 +545,12 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(2, events.Count);
 
         // A>>B: A is double dotted (7/4 of quarter), B is quartered (1/4 of quarter = sixteenth)
-        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 2), events[0].Duration);
-
-        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Sixteenth, events[1].Duration);
+        score.AssertSequence()
+            .Note(PitchClass.A, new SymbolicDuration(NoteDurationBase.Quarter, dots: 2))
+            .Note(PitchClass.B, SymbolicDuration.Sixteenth)
+            .AndNoMore();
     }
 
     [Fact]
@@ -640,20 +566,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(3, events.Count);
 
         // A2>B2: Base durations are quarters (L:1/8, multiplied by 2)
         // After broken rhythm: A = quarter * 3/2 = dotted quarter, B = quarter * 1/2 = eighth
-        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
-        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[0].Duration);
-
-        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Eighth, events[1].Duration);
-
-        Assert.Equal(PitchClass.C, events[2].Pitch.PitchClass);
-        Assert.Equal(SymbolicDuration.Half, events[2].Duration);
+        score.AssertSequence()
+            .Note(PitchClass.A, new SymbolicDuration(NoteDurationBase.Quarter, dots: 1))
+            .Note(PitchClass.B, SymbolicDuration.Eighth)
+            .Note(PitchClass.C, SymbolicDuration.Half)
+            .AndNoMore();
     }
 
     [Fact]
@@ -694,19 +614,16 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(6, events.Count);
 
         // First five notes should be quintuplets (5 notes in time of 4)
-        for (int i = 0; i < 5; i++)
-        {
-            Assert.Equal(new Tuplet(5, 4), events[i].Duration.Tuplet);
-            Assert.Equal(NoteDurationBase.Eighth, events[i].Duration.Base);
-        }
-
-        // Last note should be normal
-        Assert.Null(events[5].Duration.Tuplet);
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Eighth, tuplet: new Tuplet(5, 4))
+            .Note(PitchClass.B, SymbolicDuration.Eighth, tuplet: new Tuplet(5, 4))
+            .Note(PitchClass.C, SymbolicDuration.Eighth, tuplet: new Tuplet(5, 4))
+            .Note(PitchClass.D, SymbolicDuration.Eighth, tuplet: new Tuplet(5, 4))
+            .Note(PitchClass.E, SymbolicDuration.Eighth, tuplet: new Tuplet(5, 4))
+            .Note(PitchClass.F, SymbolicDuration.Eighth)  // Normal
+            .AndNoMore();
     }
 
     [Fact]
@@ -722,16 +639,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(4, events.Count);
 
         // (3:2 means 3 notes in the time of 2
-        Assert.Equal(new Tuplet(3, 2), events[0].Duration.Tuplet);
-        Assert.Equal(new Tuplet(3, 2), events[1].Duration.Tuplet);
-        Assert.Equal(new Tuplet(3, 2), events[2].Duration.Tuplet);
-
-        Assert.Null(events[3].Duration.Tuplet);
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.B, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.C, SymbolicDuration.Eighth, tuplet: new Tuplet(3, 2))
+            .Note(PitchClass.D, SymbolicDuration.Eighth)
+            .AndNoMore();
     }
 
     [Fact]
@@ -747,17 +662,14 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
-
-        Assert.Equal(5, events.Count);
 
         // (2 means 2 notes in time of 3 (duplet in compound time)
-        Assert.Equal(new Tuplet(2, 3), events[0].Duration.Tuplet);
-        Assert.Equal(new Tuplet(2, 3), events[1].Duration.Tuplet);
-
-        // Last three are normal
-        Assert.Null(events[2].Duration.Tuplet);
-        Assert.Null(events[3].Duration.Tuplet);
-        Assert.Null(events[4].Duration.Tuplet);
+        score.AssertSequence()
+            .Note(PitchClass.A, SymbolicDuration.Eighth, tuplet: new Tuplet(2, 3))
+            .Note(PitchClass.B, SymbolicDuration.Eighth, tuplet: new Tuplet(2, 3))
+            .Note(PitchClass.C, SymbolicDuration.Eighth)
+            .Note(PitchClass.D, SymbolicDuration.Eighth)
+            .Note(PitchClass.E, SymbolicDuration.Eighth)
+            .AndNoMore();
     }
 }
