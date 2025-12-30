@@ -11,7 +11,10 @@ public class Measure
         TimeSignature? timeSignature = null,
         IReadOnlyList<int>? repeatVariants = null,
         IReadOnlyList<Slur>? slurs = null,
-        IReadOnlyList<Lyric>? lyrics = null)
+        IReadOnlyList<Lyric>? lyrics = null,
+        BarlineType? startBarline = null,
+        BarlineType? endBarline = null,
+        IReadOnlyList<Direction>? directions = null)
     {
         Number = number;
         Events = events;
@@ -19,6 +22,9 @@ public class Measure
         RepeatVariants = repeatVariants ?? Array.Empty<int>();
         Slurs = slurs ?? Array.Empty<Slur>();
         Lyrics = lyrics ?? Array.Empty<Lyric>();
+        StartBarline = startBarline;
+        EndBarline = endBarline;
+        Directions = directions ?? Array.Empty<Direction>();
     }
 
     public int Number { get; }
@@ -42,4 +48,20 @@ public class Measure
     /// Multiple lyric lines represent different verses.
     /// </summary>
     public IReadOnlyList<Lyric> Lyrics { get; }
+
+    /// <summary>
+    /// The type of barline at the start of this measure (e.g., repeat start).
+    /// </summary>
+    public BarlineType? StartBarline { get; }
+
+    /// <summary>
+    /// The type of barline at the end of this measure (e.g., repeat end, double, final).
+    /// </summary>
+    public BarlineType? EndBarline { get; }
+
+    /// <summary>
+    /// Musical directions or expression markings for this measure
+    /// (e.g., tempo, dynamics, rehearsal marks, text directions).
+    /// </summary>
+    public IReadOnlyList<Direction> Directions { get; }
 }
