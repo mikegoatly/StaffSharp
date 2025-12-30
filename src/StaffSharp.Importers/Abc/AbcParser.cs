@@ -26,7 +26,8 @@ public static partial class AbcParser
         var keySignature = KeySignature.C;
         int tempo = 120;
         var defaultNoteLength = Rational.Create(1, 8); // Default to eighth note
-        var noteLines = new List<string>();
+        var voiceData = new Dictionary<int, List<string>>(); // voiceNumber -> note lines
+        int currentVoice = 1; // Default voice
         bool headerComplete = false;
 
         foreach (var line in lines)
@@ -60,21 +61,52 @@ public static partial class AbcParser
                 keySignature = AbcHeaderParser.ParseKeySignature(line[2..].Trim());
                 headerComplete = true; // K: must be last header field
             }
+            else if (line.StartsWith("V:", StringComparison.Ordinal) && headerComplete)
+            {
+                // Voice directive - switch to a different voice
+                if (int.TryParse(line[2..].Trim(), out var voiceNumber))
+                {
+                    currentVoice = voiceNumber;
+                }
+            }
             else if (headerComplete)
             {
                 // After K: header, all remaining lines are note content
-                // (even if they contain ':' in tuplet specifiers like (3:2ABC)
+                if (!voiceData.TryGetValue(currentVoice, out var noteLines))
+                {
+                    noteLines = new List<string>();
+                    voiceData[currentVoice] = noteLines;
+                }
                 noteLines.Add(line);
             }
         }
 
-        // Parse notes into measures
-        var measures = ParseNotes(string.Join(" ", noteLines), defaultNoteLength, keySignature);
+        // If no voices were explicitly declared, use voice 1
+        if (voiceData.Count == 0)
+        {
+            voiceData[1] = new List<string>();
+        }
+
+        // Parse each voice's notes into measures
+        var voices = new List<Voice>();
+        foreach (var (voiceNumber, noteLines) in voiceData.OrderBy(kvp => kvp.Key))
+        {
+            var measures = ParseNotes(string.Join(" ", noteLines), defaultNoteLength, keySignature);
+            if (measures.Count > 0)
+            {
+                voices.Add(new Voice(voiceNumber, measures));
+            }
+        }
+
+        // If no voices have content, create an empty voice 1
+        if (voices.Count == 0)
+        {
+            voices.Add(new Voice(1, new List<Measure>()));
+        }
 
         // Build score
         var metadata = new ScoreMetadata(title, composer, keySignature, timeSignature, tempo);
-        var voice = new Voice(1, measures);
-        var part = new Part("Melody", Clef.Treble, [voice]);
+        var part = new Part("Melody", Clef.Treble, voices);
 
         return new NotationScore(metadata, [part]);
     }
