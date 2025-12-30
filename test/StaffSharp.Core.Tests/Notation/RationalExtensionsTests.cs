@@ -69,7 +69,7 @@ public class RationalExtensionsTests
     {
         // Test various unmatched durations all default to quarter
         var duration1 = Rational.Create(5, 1);
-        var duration2 = Rational.Create(7, 8);
+        var duration2 = Rational.Create(5, 7); // Truly unmatched
 
         Assert.Equal(SymbolicDuration.Quarter, duration1.FromRational());
         Assert.Equal(SymbolicDuration.Quarter, duration2.FromRational());

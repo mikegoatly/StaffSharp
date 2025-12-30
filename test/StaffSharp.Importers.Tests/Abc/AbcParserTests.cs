@@ -364,4 +364,325 @@ public class AbcParserTests
         var rests = events.Cast<Rest>().ToList();
         Assert.All(rests, r => Assert.Equal(SymbolicDuration.Quarter, r.Duration));
     }
+
+    [Fact]
+    public void Parse_SimpleChord_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Chord Test
+            M:4/4
+            L:1/4
+            K:C
+            [CEG] [FAc]|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events;
+
+        Assert.Equal(2, events.Count);
+
+        // First chord: C E G (C major)
+        Assert.IsType<Chord>(events[0]);
+        var chord1 = (Chord)events[0];
+        Assert.Equal(3, chord1.Pitches.Count);
+        Assert.Equal(PitchClass.C, chord1.Pitches[0].PitchClass);
+        Assert.Equal(PitchClass.E, chord1.Pitches[1].PitchClass);
+        Assert.Equal(PitchClass.G, chord1.Pitches[2].PitchClass);
+        Assert.Equal(SymbolicDuration.Quarter, chord1.Duration);
+
+        // Second chord: F A c (F major with high C)
+        Assert.IsType<Chord>(events[1]);
+        var chord2 = (Chord)events[1];
+        Assert.Equal(3, chord2.Pitches.Count);
+        Assert.Equal(PitchClass.F, chord2.Pitches[0].PitchClass);
+        Assert.Equal(PitchClass.A, chord2.Pitches[1].PitchClass);
+        Assert.Equal(PitchClass.C, chord2.Pitches[2].PitchClass);
+        Assert.Equal(4, chord2.Pitches[0].Octave); // F is uppercase = octave 4
+        Assert.Equal(5, chord2.Pitches[2].Octave); // c is lowercase = octave 5
+    }
+
+    [Fact]
+    public void Parse_ChordWithAccidentals_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Chord Accidentals
+            M:4/4
+            L:1/4
+            K:C
+            [^C_E=G] [CEG]2|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events;
+
+        Assert.Equal(2, events.Count);
+
+        // First chord with accidentals
+        var chord1 = (Chord)events[0];
+        Assert.Equal(3, chord1.Pitches.Count);
+        Assert.Equal(Accidental.Sharp, chord1.Pitches[0].Accidental);
+        Assert.Equal(Accidental.Flat, chord1.Pitches[1].Accidental);
+        Assert.Equal(Accidental.Natural, chord1.Pitches[2].Accidental);
+        Assert.Equal(SymbolicDuration.Quarter, chord1.Duration);
+
+        // Second chord with duration modifier
+        var chord2 = (Chord)events[1];
+        Assert.Equal(SymbolicDuration.Half, chord2.Duration); // [CEG]2 = half note
+    }
+
+    [Fact]
+    public void Parse_ChordWithOctaveModifiers_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Chord Octaves
+            M:4/4
+            L:1/4
+            K:C
+            [C,EG] [c'e'g']|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events;
+
+        Assert.Equal(2, events.Count);
+
+        // First chord: C, E G (low C)
+        var chord1 = (Chord)events[0];
+        Assert.Equal(3, chord1.Pitches[0].Octave); // C, = octave 3
+        Assert.Equal(4, chord1.Pitches[1].Octave); // E = octave 4
+        Assert.Equal(4, chord1.Pitches[2].Octave); // G = octave 4
+
+        // Second chord: c' e' g' (high)
+        var chord2 = (Chord)events[1];
+        Assert.Equal(6, chord2.Pitches[0].Octave); // c' = octave 6
+        Assert.Equal(6, chord2.Pitches[1].Octave); // e' = octave 6
+        Assert.Equal(6, chord2.Pitches[2].Octave); // g' = octave 6
+    }
+
+    [Fact]
+    public void Parse_SimpleTie_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Tie Test
+            M:4/4
+            L:1/4
+            K:C
+            C-C D E|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(4, events.Count);
+
+        // First C should have TieType.Start
+        Assert.Equal(PitchClass.C, events[0].Pitch.PitchClass);
+        Assert.Equal(TieType.Start, events[0].Tie);
+
+        // Second C should have TieType.None (we only mark the start of ties for now)
+        Assert.Equal(PitchClass.C, events[1].Pitch.PitchClass);
+        Assert.Equal(TieType.None, events[1].Tie);
+
+        // D and E should not be tied
+        Assert.Equal(TieType.None, events[2].Tie);
+        Assert.Equal(TieType.None, events[3].Tie);
+    }
+
+    [Fact]
+    public void Parse_TieChain_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Tie Chain
+            M:4/4
+            L:1/4
+            K:C
+            A-A-A-A|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(4, events.Count);
+
+        // All should be A
+        Assert.All(events, e => Assert.Equal(PitchClass.A, e.Pitch.PitchClass));
+
+        // First three should have TieType.Start
+        Assert.Equal(TieType.Start, events[0].Tie);
+        Assert.Equal(TieType.Start, events[1].Tie);
+        Assert.Equal(TieType.Start, events[2].Tie);
+
+        // Last should not be tied
+        Assert.Equal(TieType.None, events[3].Tie);
+    }
+
+    [Fact]
+    public void Parse_TiedChord_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Tied Chord
+            M:4/4
+            L:1/2
+            K:C
+            [CEG]-[CEG]|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events;
+
+        Assert.Equal(2, events.Count);
+
+        var chord1 = (Chord)events[0];
+        var chord2 = (Chord)events[1];
+
+        // First chord should be tied
+        Assert.Equal(TieType.Start, chord1.Tie);
+
+        // Second chord should not be tied
+        Assert.Equal(TieType.None, chord2.Tie);
+    }
+
+    [Fact]
+    public void Parse_TiedNotesWithDurations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Tied Durations
+            M:4/4
+            L:1/8
+            K:C
+            C2-C2 D4|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(3, events.Count);
+
+        // First C (quarter note, tied)
+        Assert.Equal(SymbolicDuration.Quarter, events[0].Duration);
+        Assert.Equal(TieType.Start, events[0].Tie);
+
+        // Second C (quarter note, not tied)
+        Assert.Equal(SymbolicDuration.Quarter, events[1].Duration);
+        Assert.Equal(TieType.None, events[1].Tie);
+
+        // D (half note, not tied)
+        Assert.Equal(SymbolicDuration.Half, events[2].Duration);
+        Assert.Equal(TieType.None, events[2].Tie);
+    }
+
+    [Fact]
+    public void Parse_BrokenRhythm_Greater_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Broken Rhythm Test
+            M:4/4
+            L:1/4
+            K:C
+            A>B C D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(4, events.Count);
+
+        // A>B: A is dotted (3/2 of quarter = dotted quarter), B is halved (1/2 of quarter = eighth)
+        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
+        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[0].Duration);
+
+        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
+        Assert.Equal(SymbolicDuration.Eighth, events[1].Duration);
+
+        // C and D should be normal quarters
+        Assert.Equal(SymbolicDuration.Quarter, events[2].Duration);
+        Assert.Equal(SymbolicDuration.Quarter, events[3].Duration);
+    }
+
+    [Fact]
+    public void Parse_BrokenRhythm_Less_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Broken Rhythm Less
+            M:4/4
+            L:1/4
+            K:C
+            A<B C D|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(4, events.Count);
+
+        // A<B: A is halved (1/2 of quarter = eighth), B is dotted (3/2 of quarter = dotted quarter)
+        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
+        Assert.Equal(SymbolicDuration.Eighth, events[0].Duration);
+
+        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
+        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[1].Duration);
+    }
+
+    [Fact]
+    public void Parse_DoubleBrokenRhythm_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Double Broken
+            M:4/4
+            L:1/4
+            K:C
+            A>>B|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(2, events.Count);
+
+        // A>>B: A is double dotted (7/4 of quarter), B is quartered (1/4 of quarter = sixteenth)
+        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
+        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 2), events[0].Duration);
+
+        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
+        Assert.Equal(SymbolicDuration.Sixteenth, events[1].Duration);
+    }
+
+    [Fact]
+    public void Parse_BrokenRhythmWithDurations_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Broken with Durations
+            M:4/4
+            L:1/8
+            K:C
+            A2>B2 C4|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var events = score.Parts[0].Voices[0].Measures[0].Events.Cast<NotationNote>().ToList();
+
+        Assert.Equal(3, events.Count);
+
+        // A2>B2: Base durations are quarters (L:1/8, multiplied by 2)
+        // After broken rhythm: A = quarter * 3/2 = dotted quarter, B = quarter * 1/2 = eighth
+        Assert.Equal(PitchClass.A, events[0].Pitch.PitchClass);
+        Assert.Equal(new SymbolicDuration(NoteDurationBase.Quarter, dots: 1), events[0].Duration);
+
+        Assert.Equal(PitchClass.B, events[1].Pitch.PitchClass);
+        Assert.Equal(SymbolicDuration.Eighth, events[1].Duration);
+
+        Assert.Equal(PitchClass.C, events[2].Pitch.PitchClass);
+        Assert.Equal(SymbolicDuration.Half, events[2].Duration);
+    }
 }

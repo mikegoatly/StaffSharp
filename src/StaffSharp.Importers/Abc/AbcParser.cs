@@ -111,6 +111,7 @@ public static partial class AbcParser
     {
         var events = new List<INotationEvent>();
         int index = 0;
+        Rational? nextNoteMultiplier = null;
 
         while (index < measureString.Length)
         {
@@ -127,6 +128,22 @@ public static partial class AbcParser
 
             if (AbcEventParser.TryParseEvent(measureString, ref index, defaultNoteLength, keySignature, out var noteEvent))
             {
+                // Apply broken rhythm multiplier from previous note if any
+                if (nextNoteMultiplier != null)
+                {
+                    noteEvent = ApplyDurationMultiplier(noteEvent, nextNoteMultiplier.Value);
+                    nextNoteMultiplier = null;
+                }
+
+                // Check for broken rhythm operator after this note
+                if (AbcBrokenRhythmParser.TryParseBrokenRhythm(measureString, ref index, out var firstMultiplier, out var secondMultiplier))
+                {
+                    // Apply multiplier to current note
+                    noteEvent = ApplyDurationMultiplier(noteEvent, firstMultiplier);
+                    // Store multiplier for next note
+                    nextNoteMultiplier = secondMultiplier;
+                }
+
                 events.Add(noteEvent);
             }
             else
@@ -137,6 +154,32 @@ public static partial class AbcParser
         }
 
         return events;
+    }
+
+    private static INotationEvent ApplyDurationMultiplier(INotationEvent noteEvent, Rational multiplier)
+    {
+        // Apply duration multiplier to note or chord
+        return noteEvent switch
+        {
+            NotationNote note => note with
+            {
+                Duration = (note.Duration.ToBeats() * multiplier).FromRational()
+            },
+            Chord chord => new Chord(
+                chord.Pitches,
+                (chord.Duration.ToBeats() * multiplier).FromRational(),
+                chord.Velocity,
+                chord.Tie,
+                chord.GraceNote,
+                chord.Decorations,
+                chord.ChordSymbol,
+                chord.Annotation),
+            Rest rest => rest with
+            {
+                Duration = (rest.Duration.ToBeats() * multiplier).FromRational()
+            },
+            _ => noteEvent
+        };
     }
 
     [System.Text.RegularExpressions.GeneratedRegex(@"\|+\]?|\[\|")]
