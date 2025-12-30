@@ -4,7 +4,7 @@ using StaffSharp;
 using StaffSharp.Importers.Abc;
 using StaffSharp.Notation;
 
-public class AbcParserTests
+public class AbcParserTests : ScoreTestBase
 {
 
     [Fact]
@@ -842,11 +842,11 @@ public class AbcParserTests
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var slurs = GetSlurs(score);
 
         // Should have one slur containing first three notes
-        Assert.Single(measure.Slurs);
-        var slur = measure.Slurs[0];
+        Assert.Single(slurs);
+        var slur = slurs[0];
         Assert.Equal(3, slur.Events.Count);
         Assert.False(slur.IsDotted);
 
@@ -1030,13 +1030,12 @@ public class AbcParserTests
         var notes = score.GetNotes();
 
         // First note should have trill decoration
-        Assert.Single(notes[0].Decorations);
-        Assert.Equal(Decoration.Trill, notes[0].Decorations[0]);
+        AssertDecorations(notes[0], Decoration.Trill);
 
         // Other notes should have no decorations
-        Assert.Empty(notes[1].Decorations);
-        Assert.Empty(notes[2].Decorations);
-        Assert.Empty(notes[3].Decorations);
+        AssertNoDecorations(notes[1]);
+        AssertNoDecorations(notes[2]);
+        AssertNoDecorations(notes[3]);
     }
 
     [Fact]
@@ -1055,17 +1054,10 @@ public class AbcParserTests
         var notes = score.GetNotes();
 
         // Verify each decoration
-        Assert.Single(notes[0].Decorations);
-        Assert.Equal(Decoration.Staccato, notes[0].Decorations[0]);
-
-        Assert.Single(notes[1].Decorations);
-        Assert.Equal(Decoration.Roll, notes[1].Decorations[0]);
-
-        Assert.Single(notes[2].Decorations);
-        Assert.Equal(Decoration.Trill, notes[2].Decorations[0]);
-
-        Assert.Single(notes[3].Decorations);
-        Assert.Equal(Decoration.Mordent, notes[3].Decorations[0]);
+        AssertDecorations(notes[0], Decoration.Staccato);
+        AssertDecorations(notes[1], Decoration.Roll);
+        AssertDecorations(notes[2], Decoration.Trill);
+        AssertDecorations(notes[3], Decoration.Mordent);
     }
 
     [Fact]
@@ -1084,9 +1076,7 @@ public class AbcParserTests
         var notes = score.GetNotes();
 
         // First note should have two decorations
-        Assert.Equal(2, notes[0].Decorations.Count);
-        Assert.Equal(Decoration.Trill, notes[0].Decorations[0]);
-        Assert.Equal(Decoration.Staccato, notes[0].Decorations[1]);
+        AssertDecorations(notes[0], Decoration.Trill, Decoration.Staccato);
     }
 
     [Fact]
@@ -1170,5 +1160,183 @@ public class AbcParserTests
         Assert.Equal(Decoration.DownBow, notes[1].Decorations[0]);
         Assert.Equal(Decoration.UpBow, notes[2].Decorations[0]);
         Assert.Equal(Decoration.DownBow, notes[3].Decorations[0]);
+    }
+
+    [Fact]
+    public void Parse_TwoVoices_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Two Voice Test
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            C D E F|
+            V:2
+            G, A, B, C|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // Should have two voices
+        AssertVoiceCount(score, 2);
+
+        // Verify voice 1
+        AssertVoice(score, voiceIndex: 0, expectedNumber: 1, expectedMeasureCount: 1);
+        var voice1Notes = GetNotes(score, measureIndex: 0, voiceIndex: 0);
+        Assert.Equal(4, voice1Notes.Count);
+        Assert.Equal(PitchClass.C, voice1Notes[0].Pitch.PitchClass);
+        Assert.Equal(4, voice1Notes[0].Pitch.Octave); // C = octave 4
+
+        // Verify voice 2
+        AssertVoice(score, voiceIndex: 1, expectedNumber: 2, expectedMeasureCount: 1);
+        var voice2Notes = GetNotes(score, measureIndex: 0, voiceIndex: 1);
+        Assert.Equal(4, voice2Notes.Count);
+        Assert.Equal(PitchClass.G, voice2Notes[0].Pitch.PitchClass);
+        Assert.Equal(3, voice2Notes[0].Pitch.Octave); // G, = octave 3
+    }
+
+    [Fact]
+    public void Parse_ThreeVoices_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Three Voice Test
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            C D E F|
+            V:2
+            E F G A|
+            V:3
+            C, D, E, F,|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // Should have three voices
+        AssertVoiceCount(score, 3);
+
+        AssertVoice(score, 0, expectedNumber: 1, expectedMeasureCount: 1);
+        AssertVoice(score, 1, expectedNumber: 2, expectedMeasureCount: 1);
+        AssertVoice(score, 2, expectedNumber: 3, expectedMeasureCount: 1);
+    }
+
+    [Fact]
+    public void Parse_VoiceWithMultipleMeasures_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Voice Multiple Measures
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            C D E F | G A B c |
+            V:2
+            C, D, E, F, | G, A, B, C |
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        // Each voice should have 2 measures
+        Assert.Equal(2, part.Voices.Count);
+        Assert.Equal(2, part.Voices[0].Measures.Count);
+        Assert.Equal(2, part.Voices[1].Measures.Count);
+
+        // Verify voice 1, measure 2
+        var v1m2Notes = part.Voices[0].Measures[1].Events.OfType<NotationNote>().ToList();
+        Assert.Equal(4, v1m2Notes.Count);
+        Assert.Equal(PitchClass.G, v1m2Notes[0].Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_InterleavedVoices_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Interleaved Voices
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            C D E F |
+            V:2
+            C, D, E, F, |
+            V:1
+            G A B c |
+            V:2
+            G, A, B, C |
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        // Each voice should have 2 measures
+        Assert.Equal(2, part.Voices.Count);
+        Assert.Equal(2, part.Voices[0].Measures.Count);
+        Assert.Equal(2, part.Voices[1].Measures.Count);
+
+        // Verify voice 1 has both its measures
+        var v1m1 = part.Voices[0].Measures[0].Events.OfType<NotationNote>().ToList();
+        var v1m2 = part.Voices[0].Measures[1].Events.OfType<NotationNote>().ToList();
+        Assert.Equal(PitchClass.C, v1m1[0].Pitch.PitchClass);
+        Assert.Equal(PitchClass.G, v1m2[0].Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_SingleVoiceWithoutV_DefaultsToVoice1()
+    {
+        var abc = """
+            X:1
+            T:Default Voice
+            M:4/4
+            L:1/4
+            K:C
+            C D E F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        // Should have one voice with number 1
+        Assert.Single(part.Voices);
+        Assert.Equal(1, part.Voices[0].Number);
+        Assert.Single(part.Voices[0].Measures);
+    }
+
+    [Fact]
+    public void Parse_VoiceWithComplexNotation_ParsesCorrectly()
+    {
+        var abc = """
+            X:1
+            T:Complex Voice
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            (3ABC !trill!D | [CEG]2 z2 |
+            V:2
+            C,2 D,2 | E,4 |
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        Assert.Equal(2, part.Voices.Count);
+
+        // Voice 1 should have tuplet, decoration, chord, rest
+        var v1m1 = part.Voices[0].Measures[0].Events;
+        Assert.Equal(4, v1m1.Count); // ABC (3 notes) + D = 4 events
+        Assert.NotNull(v1m1[0] as NotationNote);
+        Assert.Equal(Tuplet.Triplet, ((NotationNote)v1m1[0]).Duration.Tuplet);
+
+        var v1m2 = part.Voices[0].Measures[1].Events;
+        Assert.Equal(2, v1m2.Count); // Chord + rest
+        Assert.IsType<Chord>(v1m2[0]);
+        Assert.IsType<Rest>(v1m2[1]);
     }
 }
