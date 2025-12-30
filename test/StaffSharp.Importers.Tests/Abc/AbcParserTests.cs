@@ -1506,4 +1506,179 @@ public class AbcParserTests : ScoreTestBase
         // Note: This test currently won't pass because we don't return the updated time signature
         // We'll need to update ParseMeasureEvents to return the time signature change
     }
+
+    [Fact]
+    public void Parse_RepeatStart_SetsCorrectBarlineTypes()
+    {
+        var abc = """
+            X:1
+            T:Repeat Start
+            M:4/4
+            K:C
+            C D E F |: G A B c :|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // First measure: normal end barline
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.Normal);
+
+        // Second measure: repeat start at beginning, repeat end at end
+        score.GetMeasure(measureIndex: 1)
+            .AssertBarlines(
+                expectedStartBarline: BarlineType.RepeatStart,
+                expectedEndBarline: BarlineType.RepeatEnd);
+    }
+
+    [Fact]
+    public void Parse_RepeatEnd_SetsCorrectBarlineTypes()
+    {
+        var abc = """
+            X:1
+            T:Repeat End
+            M:4/4
+            K:C
+            C D E F :| G A B c |
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // First measure: repeat end barline
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.RepeatEnd);
+
+        // Second measure: normal barline
+        score.GetMeasure(measureIndex: 1)
+            .AssertBarlines(expectedEndBarline: BarlineType.Normal);
+    }
+
+    [Fact]
+    public void Parse_RepeatBoth_SetsCorrectBarlineTypes()
+    {
+        var abc = """
+            X:1
+            T:Repeat Both
+            M:4/4
+            K:C
+            C D E F :: G A B c |
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // First measure: repeat end barline
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.RepeatEnd);
+
+        // Second measure: repeat start at beginning, normal at end
+        score.GetMeasure(measureIndex: 1)
+            .AssertBarlines(
+                expectedStartBarline: BarlineType.RepeatStart,
+                expectedEndBarline: BarlineType.Normal);
+    }
+
+    [Fact]
+    public void Parse_DoubleBarline_SetsCorrectBarlineType()
+    {
+        var abc = """
+            X:1
+            T:Double Barline
+            M:4/4
+            K:C
+            C D E F || G A B c |
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // First measure: double barline
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.DoubleBar);
+
+        // Second measure: normal barline
+        score.GetMeasure(measureIndex: 1)
+            .AssertBarlines(expectedEndBarline: BarlineType.Normal);
+    }
+
+    [Fact]
+    public void Parse_FinalBarline_SetsCorrectBarlineType()
+    {
+        var abc = """
+            X:1
+            T:Final Barline
+            M:4/4
+            K:C
+            C D E F |]
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // Final barline at end
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.Final);
+    }
+
+    [Fact]
+    public void Parse_ComplexRepeatsWithEndings_SetsBarlineTypesAndVariants()
+    {
+        var abc = """
+            X:1
+            T:Complex Repeats
+            M:4/4
+            K:C
+            |: A B c d |1 e f g a :|2 e2 d2 ||
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // First measure: repeat start
+        var measure0 = score.GetMeasure(measureIndex: 0);
+        measure0.AssertBarlines(
+            expectedStartBarline: BarlineType.RepeatStart,
+            expectedEndBarline: BarlineType.Normal);
+        Assert.Empty(measure0.RepeatVariants);
+
+        // Second measure: ending 1 with repeat end
+        var measure1 = score.GetMeasure(measureIndex: 1);
+        measure1.AssertBarlines(expectedEndBarline: BarlineType.RepeatEnd);
+        Assert.Single(measure1.RepeatVariants);
+        Assert.Equal(1, measure1.RepeatVariants[0]);
+
+        // Third measure: ending 2 with double barline
+        var measure2 = score.GetMeasure(measureIndex: 2);
+        measure2.AssertBarlines(expectedEndBarline: BarlineType.DoubleBar);
+        Assert.Single(measure2.RepeatVariants);
+        Assert.Equal(2, measure2.RepeatVariants[0]);
+    }
+
+    [Fact]
+    public void Parse_MultipleBarlineTypes_InSameScore()
+    {
+        var abc = """
+            X:1
+            T:Mixed Barlines
+            M:4/4
+            K:C
+            C D E F || G A B c |: d e f g :| a b c' d' |]
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // Measure 1: double barline
+        score.GetMeasure(measureIndex: 0)
+            .AssertBarlines(expectedEndBarline: BarlineType.DoubleBar);
+
+        // Measure 2: normal end
+        score.GetMeasure(measureIndex: 1)
+            .AssertBarlines(expectedEndBarline: BarlineType.Normal);
+
+        // Measure 3: repeat start at beginning, repeat end at end
+        score.GetMeasure(measureIndex: 2)
+            .AssertBarlines(
+                expectedStartBarline: BarlineType.RepeatStart,
+                expectedEndBarline: BarlineType.RepeatEnd);
+
+        // Measure 4: final barline
+        score.GetMeasure(measureIndex: 3)
+            .AssertBarlines(expectedEndBarline: BarlineType.Final);
+    }
 }

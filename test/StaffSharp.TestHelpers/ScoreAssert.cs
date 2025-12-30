@@ -163,6 +163,111 @@ public static class ScoreAssert
     }
 
     /// <summary>
+    /// Gets a specific measure from the score.
+    /// </summary>
+    public static Measure GetMeasure(
+        this NotationScore score,
+        int measureIndex = 0,
+        int voiceIndex = 0,
+        int partIndex = 0)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        return score.Parts[partIndex].Voices[voiceIndex].Measures[measureIndex];
+    }
+
+    /// <summary>
+    /// Asserts that a measure has the expected barline types.
+    /// </summary>
+    public static Measure AssertBarlines(
+        this Measure measure,
+        BarlineType? expectedStartBarline = null,
+        BarlineType? expectedEndBarline = null)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+
+        if (expectedStartBarline.HasValue)
+        {
+            Assert.Equal(expectedStartBarline.Value, measure.StartBarline);
+        }
+        else
+        {
+            Assert.Null(measure.StartBarline);
+        }
+
+        if (expectedEndBarline.HasValue)
+        {
+            Assert.Equal(expectedEndBarline.Value, measure.EndBarline);
+        }
+        else
+        {
+            Assert.Null(measure.EndBarline);
+        }
+
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts that a measure has no barlines (both start and end are null).
+    /// </summary>
+    public static Measure AssertNoBarlines(this Measure measure)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+        Assert.Null(measure.StartBarline);
+        Assert.Null(measure.EndBarline);
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts that a measure has the expected number of directions.
+    /// </summary>
+    public static Measure AssertDirectionCount(this Measure measure, int expectedCount)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+        Assert.Equal(expectedCount, measure.Directions.Count);
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts that a measure has no directions.
+    /// </summary>
+    public static Measure AssertNoDirections(this Measure measure)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+        Assert.Empty(measure.Directions);
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts that a measure contains a direction with the specified properties.
+    /// </summary>
+    public static Measure AssertHasDirection(
+        this Measure measure,
+        DirectionType expectedType,
+        string expectedContent,
+        Placement? expectedPlacement = null,
+        int? expectedBpm = null)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+
+        var direction = measure.Directions.FirstOrDefault(d =>
+            d.Type == expectedType && d.Content == expectedContent);
+
+        Assert.NotNull(direction);
+
+        if (expectedPlacement.HasValue)
+        {
+            Assert.Equal(expectedPlacement.Value, direction.Placement);
+        }
+
+        if (expectedBpm.HasValue)
+        {
+            Assert.Equal(expectedBpm.Value, direction.Bpm);
+        }
+
+        return measure;
+    }
+
+    /// <summary>
     /// Starts a fluent assertion chain for a sequence of events.
     /// </summary>
     public static EventSequenceAssertion AssertSequence(

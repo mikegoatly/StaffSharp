@@ -121,6 +121,7 @@ public static partial class AbcParser
         var currentMeasureContent = new System.Text.StringBuilder();
         int index = 0;
         List<int>? nextMeasureVariants = null;
+        BarlineType? nextMeasureStartBarline = null;
 
         while (index < noteContent.Length)
         {
@@ -128,68 +129,66 @@ public static partial class AbcParser
 
             // Check for barline with potential repeat variant
             // Note: '[' is only a barline if followed by digit ([1, [2) or pipe ([|)
-            bool isBarline = c == '|' || (c == '[' && index + 1 < noteContent.Length && (char.IsDigit(noteContent[index + 1]) || noteContent[index + 1] == '|'));
+            // Also check for ':' which can start barlines like ':|' or '::' (but not '[K:' or '[M:' inline headers)
+            bool isBarline = c == '|' ||
+                (c == ':' && index + 1 < noteContent.Length && (noteContent[index + 1] == '|' || noteContent[index + 1] == ':')) ||
+                (c == '[' && index + 1 < noteContent.Length && (char.IsDigit(noteContent[index + 1]) || noteContent[index + 1] == '|'));
 
             if (isBarline)
             {
-                // First, create measure from accumulated content (if any)
+                BarlineType? endBarline = null;
+                BarlineType? nextStartBarline = null;
+                List<int>? repeatVariants = null;
+
+                // Handle barline and determine its type
+                if (c == '[' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
+                {
+                    // [1, [2, etc. - just a repeat variant marker, not an actual barline
+                    index++; // Skip '['
+                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
+                    // No barline type set
+                }
+                else if (c == '|' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
+                {
+                    // |1, |2, etc. - normal barline followed by repeat variant
+                    endBarline = BarlineType.Normal;
+                    index++; // Skip |
+                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
+                }
+                else
+                {
+                    // Actual barline - collect and parse it
+                    var barlineStr = CollectBarlineString(noteContent, ref index);
+                    (endBarline, nextStartBarline) = ParseBarlineTypes(barlineStr);
+
+                    // Check if there's a repeat variant after the barline
+                    if (index < noteContent.Length && char.IsDigit(noteContent[index]))
+                    {
+                        repeatVariants = ParseRepeatVariants(noteContent, ref index);
+                    }
+                }
+
+                // Create measure from accumulated content
                 var measureString = currentMeasureContent.ToString().Trim();
                 if (!string.IsNullOrWhiteSpace(measureString))
                 {
                     var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature);
                     if (events.Count > 0)
                     {
-                        measures.Add(new Measure(measureNumber++, events, slurs: slurs, repeatVariants: nextMeasureVariants));
-                        nextMeasureVariants = null; // Consumed the repeat variant
+                        measures.Add(new Measure(
+                            measureNumber++,
+                            events,
+                            slurs: slurs,
+                            repeatVariants: nextMeasureVariants,
+                            startBarline: nextMeasureStartBarline,
+                            endBarline: endBarline));
                     }
                 }
                 currentMeasureContent.Clear();
 
-                // Now handle the barline and check for repeat variant marker
-                List<int>? repeatVariants = null;
-                if (c == '[' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
-                {
-                    // Parse [1 or [2 or [1,3 etc.
-                    index++; // Skip the '['
-                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
-                }
-                else if (c == '|' && index + 1 < noteContent.Length && char.IsDigit(noteContent[index + 1]))
-                {
-                    // Parse |1 or |2 etc.
-                    index++; // Skip |
-                    repeatVariants = ParseRepeatVariants(noteContent, ref index);
-                }
-                else
-                {
-                    // Regular barline - skip it
-                    index++;
-                    // Skip additional barline characters (||, |], |:, :|, ::, [|)
-                    // But DON'T skip '[' if followed by a digit (that's a repeat variant marker)
-                    while (index < noteContent.Length)
-                    {
-                        char nextChar = noteContent[index];
-                        if (nextChar == '|' || nextChar == ']' || nextChar == ':')
-                        {
-                            index++;
-                        }
-                        else if (nextChar == '[' && index + 1 < noteContent.Length && noteContent[index + 1] == '|')
-                        {
-                            // [| is a barline
-                            index++;
-                        }
-                        else
-                        {
-                            // Stop - might be a repeat variant marker or regular content
-                            break;
-                        }
-                    }
-                }
-
-                // Store repeat variant for the NEXT measure
-                if (repeatVariants != null)
-                {
-                    nextMeasureVariants = repeatVariants;
-                }
+                // Store for next measure
+                nextMeasureVariants = repeatVariants;
+                nextMeasureStartBarline = nextStartBarline;
             }
             else
             {
@@ -205,11 +204,102 @@ public static partial class AbcParser
             var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature);
             if (events.Count > 0)
             {
-                measures.Add(new Measure(measureNumber++, events, slurs: slurs, repeatVariants: nextMeasureVariants));
+                measures.Add(new Measure(
+                    measureNumber++,
+                    events,
+                    slurs: slurs,
+                    repeatVariants: nextMeasureVariants,
+                    startBarline: nextMeasureStartBarline));
             }
         }
 
         return measures;
+    }
+
+    private static string CollectBarlineString(string content, ref int index)
+    {
+        var sb = new System.Text.StringBuilder();
+        char c = content[index];
+
+        // Start with |, [, or :
+        sb.Append(c);
+        index++;
+
+        // Collect following barline characters (|, :, ], and [| pattern)
+        while (index < content.Length)
+        {
+            char next = content[index];
+            if (next == '|' || next == ':' || next == ']')
+            {
+                sb.Append(next);
+                index++;
+            }
+            else if (next == '[' && index + 1 < content.Length && content[index + 1] == '|')
+            {
+                sb.Append(next);
+                index++;
+            }
+            else
+            {
+                break; // Not a barline character
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static (BarlineType? End, BarlineType? NextStart) ParseBarlineTypes(string barline)
+    {
+        // ABC barline patterns (can start with |, [, or :):
+        // |   - normal barline
+        // ||  - double barline
+        // |]  - final barline
+        // |:  - repeat start
+        // :|  - repeat end
+        // :: or :|: - repeat both
+        // [|  - also a barline variant (treat as normal)
+
+        BarlineType? end = null;
+        BarlineType? nextStart = null;
+
+        // Check for repeat end first (patterns with : before last char)
+        bool hasRepeatEnd = barline.Contains(":|", StringComparison.Ordinal) || barline.StartsWith("::", StringComparison.Ordinal);
+        // Check for repeat start (patterns with : after initial |)
+        bool hasRepeatStart = barline.Contains("|:", StringComparison.Ordinal) || barline.StartsWith("::", StringComparison.Ordinal);
+
+        if (hasRepeatEnd && hasRepeatStart)
+        {
+            // :: or :|: - both
+            end = BarlineType.RepeatEnd;
+            nextStart = BarlineType.RepeatStart;
+        }
+        else if (hasRepeatEnd)
+        {
+            // :| - repeat end
+            end = BarlineType.RepeatEnd;
+        }
+        else if (hasRepeatStart)
+        {
+            // |: - repeat start
+            // Previous measure ends normally, next starts repeat
+            end = BarlineType.Normal;
+            nextStart = BarlineType.RepeatStart;
+        }
+        else if (barline == "|]")
+        {
+            end = BarlineType.Final;
+        }
+        else if (barline == "||")
+        {
+            end = BarlineType.DoubleBar;
+        }
+        else
+        {
+            // |, [|, or other variants - treat as normal
+            end = BarlineType.Normal;
+        }
+
+        return (end, nextStart);
     }
 
     private static List<int> ParseRepeatVariants(string input, ref int index)
