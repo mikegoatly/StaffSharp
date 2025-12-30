@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
-	
+
 	<ItemGroup>
 		<PackageReference Include="coverlet.collector" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -12,8 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\StaffSharp.Importers\StaffSharp.Importers.csproj" />
-		<ProjectReference Include="..\StaffSharp.TestHelpers\StaffSharp.TestHelpers.csproj" />
+		<ProjectReference Include="..\..\src\StaffSharp.Core\StaffSharp.Core.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

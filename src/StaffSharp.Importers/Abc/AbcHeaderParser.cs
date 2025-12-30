@@ -79,8 +79,16 @@ internal static class AbcHeaderParser
 
     public static int ParseTempo(string value)
     {
-        // Simple: just look for a number
-        var match = System.Text.RegularExpressions.Regex.Match(value, @"\d+");
-        return match.Success && int.TryParse(match.Value, out var tempo) ? tempo : 120;
+        // ABC tempo format: "1/4=120" or just "120"
+        // Extract the number after the '=' if present, otherwise use the last number
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"=\s*(\d+)");
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var tempo))
+        {
+            return tempo;
+        }
+
+        // Fallback: try to find any number
+        match = System.Text.RegularExpressions.Regex.Match(value, @"\d+");
+        return match.Success && int.TryParse(match.Value, out tempo) ? tempo : 120;
     }
 }

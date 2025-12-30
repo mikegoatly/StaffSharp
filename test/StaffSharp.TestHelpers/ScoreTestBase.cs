@@ -1,4 +1,4 @@
-namespace StaffSharp.Importers.Tests;
+namespace StaffSharp.TestHelpers;
 
 using StaffSharp.Notation;
 using Xunit;

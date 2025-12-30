@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\StaffSharp.Core\StaffSharp.Core.csproj" />
+    <ProjectReference Include="..\StaffSharp.TestHelpers\StaffSharp.TestHelpers.csproj" />
   </ItemGroup>
 
   <ItemGroup>

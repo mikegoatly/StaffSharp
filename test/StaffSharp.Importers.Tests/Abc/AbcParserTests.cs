@@ -3,6 +3,7 @@ namespace StaffSharp.Importers.Tests.Abc;
 using StaffSharp;
 using StaffSharp.Importers.Abc;
 using StaffSharp.Notation;
+using StaffSharp.TestHelpers;
 
 public class AbcParserTests : ScoreTestBase
 {

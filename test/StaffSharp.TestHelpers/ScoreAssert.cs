@@ -1,12 +1,15 @@
-namespace StaffSharp.Importers.Tests;
+namespace StaffSharp.TestHelpers;
+
+using StaffSharp;
 
 using StaffSharp.Notation;
+
 using Xunit;
 
 /// <summary>
 /// Helper methods for asserting on NotationScore structures in tests.
 /// </summary>
-internal static class ScoreAssert
+public static class ScoreAssert
 {
     /// <summary>
     /// Gets events from a specific measure (defaults to first part, first voice, first measure).
@@ -176,7 +179,7 @@ internal static class ScoreAssert
 /// <summary>
 /// Fluent API for asserting a sequence of events in order.
 /// </summary>
-internal sealed class EventSequenceAssertion
+public sealed class EventSequenceAssertion
 {
     private readonly IReadOnlyList<INotationEvent> _events;
     private int _index;

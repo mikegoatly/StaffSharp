@@ -4,10 +4,11 @@ using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 using StaffSharp;
 using StaffSharp.Notation;
-using StaffSharp.Midi.Tests.Builders;
 using MidiTimeSignature = Melanchall.DryWetMidi.Interaction.TimeSignature;
+using StaffSharp.TestHelpers.Builders;
+using StaffSharp.TestHelpers;
 
-public class MidiExporterTests
+public class MidiExporterTests : ScoreTestBase
 {
     [Fact]
     public async Task ExportAsync_SimpleCMajorScale_CreatesValidMidiFile()
@@ -107,13 +108,7 @@ public class MidiExporterTests
     public async Task ExportAsync_CustomTempo_SetsCorrectTempoEvent()
     {
         // Arrange
-        var events = NotationEventBuilder.Create().C().Build();
-        var metadata = new ScoreMetadata("Test", "Composer", KeySignature.C, Notation.TimeSignature.CommonTime, Tempo: 90);
-        var score = new NotationScore(metadata, [
-            new Part("Test", Clef.Treble, [
-                new Voice(1, [new Measure(1, events)])
-            ])
-        ]);
+        var score = BuildScoreWithTempo(90);
 
         // Act
         var midiBytes = await ExportToBytes(score);
@@ -131,13 +126,7 @@ public class MidiExporterTests
     public async Task ExportAsync_TimeSignature_SetsCorrectTimeSignatureEvent()
     {
         // Arrange
-        var events = NotationEventBuilder.Create().C().Build();
-        var metadata = new ScoreMetadata("Test", "Composer", KeySignature.C, new Notation.TimeSignature(3, 4), Tempo: 120);
-        var score = new NotationScore(metadata, [
-            new Part("Test", Clef.Treble, [
-                new Voice(1, [new Measure(1, events)])
-            ])
-        ]);
+        var score = BuildScoreWithTimeSignature(new Notation.TimeSignature(3, 4));
 
         // Act
         var midiBytes = await ExportToBytes(score);
@@ -155,13 +144,7 @@ public class MidiExporterTests
     public async Task ExportAsync_KeySignature_SetsCorrectKeySignatureEvent()
     {
         // Arrange
-        var events = NotationEventBuilder.Create().C().Build();
-        var metadata = new ScoreMetadata("Test", "Composer", KeySignature.G, Notation.TimeSignature.CommonTime, Tempo: 120);
-        var score = new NotationScore(metadata, [
-            new Part("Test", Clef.Treble, [
-                new Voice(1, [new Measure(1, events)])
-            ])
-        ]);
+        var score = BuildScoreWithKeySignature(KeySignature.G);
 
         // Act
         var midiBytes = await ExportToBytes(score);
@@ -255,6 +238,39 @@ public class MidiExporterTests
             .Build();
 
         var metadata = new ScoreMetadata("Rest Test", "Test", KeySignature.C, Notation.TimeSignature.CommonTime, 120);
+        var measure = new Measure(1, events);
+        var voice = new Voice(1, [measure]);
+        var part = new Part("Melody", Clef.Treble, [voice]);
+
+        return new NotationScore(metadata, [part]);
+    }
+
+    private static NotationScore BuildScoreWithTempo(int tempo)
+    {
+        var events = NotationEventBuilder.Create().C().Build();
+        var metadata = new ScoreMetadata("Tempo Test", "Test", KeySignature.C, Notation.TimeSignature.CommonTime, tempo);
+        var measure = new Measure(1, events);
+        var voice = new Voice(1, [measure]);
+        var part = new Part("Melody", Clef.Treble, [voice]);
+
+        return new NotationScore(metadata, [part]);
+    }
+
+    private static NotationScore BuildScoreWithTimeSignature(Notation.TimeSignature timeSignature)
+    {
+        var events = NotationEventBuilder.Create().C().Build();
+        var metadata = new ScoreMetadata("Time Signature Test", "Test", KeySignature.C, timeSignature, 120);
+        var measure = new Measure(1, events);
+        var voice = new Voice(1, [measure]);
+        var part = new Part("Melody", Clef.Treble, [voice]);
+
+        return new NotationScore(metadata, [part]);
+    }
+
+    private static NotationScore BuildScoreWithKeySignature(KeySignature keySignature)
+    {
+        var events = NotationEventBuilder.Create().C().Build();
+        var metadata = new ScoreMetadata("Key Signature Test", "Test", keySignature, Notation.TimeSignature.CommonTime, 120);
         var measure = new Measure(1, events);
         var voice = new Voice(1, [measure]);
         var part = new Part("Melody", Clef.Treble, [voice]);

@@ -1,4 +1,4 @@
-namespace StaffSharp.Midi.Tests.Builders;
+namespace StaffSharp.TestHelpers.Builders;
 
 using StaffSharp;
 using StaffSharp.Notation;
