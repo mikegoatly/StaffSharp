@@ -4,6 +4,7 @@
     <ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
     <ProjectReference Include="..\StaffSharp.Importers\StaffSharp.Importers.csproj" />
     <ProjectReference Include="..\StaffSharp.Midi\StaffSharp.Midi.csproj" />
+    <ProjectReference Include="..\StaffSharp.MusicXml\StaffSharp.MusicXml.csproj" />
   </ItemGroup>
 
   <ItemGroup>
