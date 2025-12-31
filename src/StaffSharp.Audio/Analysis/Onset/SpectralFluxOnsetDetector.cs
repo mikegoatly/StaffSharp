@@ -18,25 +18,15 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
     private readonly float _threshold;
     private readonly float _minOnsetIntervalSeconds;
 
-    public SpectralFluxOnsetDetector(
-        int frameSize = 2048,
-        int hopSize = 512,
-        float threshold = 0.3f,
-        float minOnsetIntervalSeconds = 0.05f)
+    public SpectralFluxOnsetDetector(OnsetDetectionOptions? options = null)
     {
-        if (frameSize <= 0 || (frameSize & (frameSize - 1)) != 0)
-            throw new ArgumentException("Frame size must be a power of 2", nameof(frameSize));
-        if (hopSize <= 0 || hopSize > frameSize)
-            throw new ArgumentOutOfRangeException(nameof(hopSize), "Hop size must be positive and <= frame size");
-        if (threshold <= 0)
-            throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold must be positive");
-        if (minOnsetIntervalSeconds < 0)
-            throw new ArgumentOutOfRangeException(nameof(minOnsetIntervalSeconds), "Minimum interval must be non-negative");
+        options ??= new OnsetDetectionOptions();
+        options.Validate();
 
-        _frameSize = frameSize;
-        _hopSize = hopSize;
-        _threshold = threshold;
-        _minOnsetIntervalSeconds = minOnsetIntervalSeconds;
+        _frameSize = options.FrameSize;
+        _hopSize = options.HopSize;
+        _threshold = options.Threshold;
+        _minOnsetIntervalSeconds = options.MinOnsetIntervalSeconds;
     }
 
     public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, double startTimeOffset = 0.0)

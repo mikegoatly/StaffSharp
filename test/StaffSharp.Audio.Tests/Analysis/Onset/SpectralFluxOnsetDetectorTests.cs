@@ -10,24 +10,24 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void Constructor_InvalidFrameSize_ThrowsException()
     {
-        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(frameSize: 0));
-        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(frameSize: -1));
-        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(frameSize: 1000)); // Not power of 2
+        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = 0 }));
+        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = -1 }));
+        Assert.Throws<ArgumentException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = 1000 })); // Not power of 2
     }
 
     [Fact]
     public void Constructor_InvalidHopSize_ThrowsException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(hopSize: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(hopSize: -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(frameSize: 2048, hopSize: 3000));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { HopSize = 0 }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { HopSize = -1 }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = 2048, HopSize = 3000 }));
     }
 
     [Fact]
     public void Constructor_InvalidThreshold_ThrowsException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(threshold: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(threshold: -0.1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0 }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = -0.1f }));
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_TooSmallBuffer_ReturnsEmpty()
     {
-        var detector = new SpectralFluxOnsetDetector(frameSize: 2048);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = 2048 });
         var buffer = new float[1000]; // Smaller than frame size
         var onsets = detector.DetectOnsets(buffer, SampleRate);
 
@@ -52,7 +52,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_SilenceThenSound_DetectsOnsetAtBoundary()
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.2f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.2f });
 
         // Pure silence followed by sound creates a clear onset
         var buffer = AudioSignalBuilder.Create()
@@ -71,7 +71,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_SingleNoteWithOnset_DetectsOnset()
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.2f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.2f });
 
         // Silence, then note with attack
         var buffer = AudioSignalBuilder.Create()
@@ -89,7 +89,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_MultipleNotes_DetectsMultipleOnsets()
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.2f, minOnsetIntervalSeconds: 0.05f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.2f, MinOnsetIntervalSeconds = 0.05f });
 
         // Create buffer with multiple distinct note onsets
         var noteOnsetTimes = new[] { 0.1, 0.3, 0.5, 0.7 };
@@ -115,9 +115,11 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     public void DetectOnsets_MinIntervalFilter_EnforcesMinimumGap()
     {
         var minInterval = 0.1f;
-        var detector = new SpectralFluxOnsetDetector(
-            threshold: 0.1f,
-            minOnsetIntervalSeconds: minInterval);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions
+        {
+            Threshold = 0.1f,
+            MinOnsetIntervalSeconds = minInterval
+        });
 
         // Try to create very close onsets
         var onsetTimes = new[] { 0.1, 0.12, 0.14, 0.3 };
@@ -146,11 +148,11 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .Build();
 
         // Low threshold = more sensitive
-        var sensitiveDetector = new SpectralFluxOnsetDetector(threshold: 0.1f);
+        var sensitiveDetector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.1f });
         var sensitiveOnsets = sensitiveDetector.DetectOnsets(buffer, SampleRate);
 
         // High threshold = less sensitive
-        var strictDetector = new SpectralFluxOnsetDetector(threshold: 1.0f);
+        var strictDetector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 1.0f });
         var strictOnsets = strictDetector.DetectOnsets(buffer, SampleRate);
 
         // Sensitive detector should find more or equal onsets
@@ -161,7 +163,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_ClickTrack_DetectsAllClicks()
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.15f, minOnsetIntervalSeconds: 0.05f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.15f, MinOnsetIntervalSeconds = 0.05f });
 
         // Generate click track: brief impulses every 0.2s
         var clickTimes = new[] { 0.1, 0.3, 0.5, 0.7, 0.9 };
@@ -187,7 +189,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [InlineData(0.3)]   // Moderate: SNR ~3.3:1
     public void DetectOnsets_NoteWithVaryingNoise_StillDetects(double noiseAmplitude)
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.2f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.2f });
         var onsetTime = 0.1;
 
         var buffer = AudioSignalBuilder.Create()
@@ -210,7 +212,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [InlineData(0.3)]   // Moderate
     public void DetectOnsets_MultipleNotesWithNoise_DetectsMostOnsets(double noiseAmplitude)
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.25f, minOnsetIntervalSeconds: 0.05f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.25f, MinOnsetIntervalSeconds = 0.05f });
         var noteOnsetTimes = new[] { 0.1, 0.3, 0.5 };
 
         var builder = AudioSignalBuilder.Create()
@@ -234,7 +236,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     [Fact]
     public void DetectOnsets_HighNoise_MayMissOnsets()
     {
-        var detector = new SpectralFluxOnsetDetector(threshold: 0.2f);
+        var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.2f });
 
         // Very high noise (SNR ~1:1) may cause missed detections
         var buffer = AudioSignalBuilder.Create()

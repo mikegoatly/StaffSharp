@@ -7,9 +7,9 @@ public class InterOnsetIntervalTempoDetectorTests
     [Fact]
     public void Constructor_InvalidBpmRange_ThrowsException()
     {
-        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(minBpm: 240, maxBpm: 40));
-        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(minBpm: 0, maxBpm: 120));
-        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(minBpm: -60, maxBpm: 180));
+        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 240, MaxBpm = 40 }));
+        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 0, MaxBpm = 120 }));
+        Assert.Throws<ArgumentException>(() => new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = -60, MaxBpm = 180 }));
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class InterOnsetIntervalTempoDetectorTests
     [Fact]
     public void EstimateTempo_OutOfRange_ReturnsNull()
     {
-        var detector = new InterOnsetIntervalTempoDetector(minBpm: 100, maxBpm: 140);
+        var detector = new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 100, MaxBpm = 140 });
 
         // 60 BPM - below minimum
         var slowOnsets = new[] { 0.0, 1.0, 2.0, 3.0, 4.0 };
@@ -196,7 +196,7 @@ public class InterOnsetIntervalTempoDetectorTests
     public void EstimateTempo_Triplets_HandlesNonBinarySubdivisions()
     {
         // Use detector with extended range to capture triplet subdivisions
-        var detector = new InterOnsetIntervalTempoDetector(minBpm: 40, maxBpm: 400);
+        var detector = new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 40, MaxBpm = 400 });
 
         // 90 BPM with triplet feel: 3 notes per beat
         // Beat interval = 0.667s, triplet interval = 0.222s
@@ -265,7 +265,7 @@ public class InterOnsetIntervalTempoDetectorTests
     public void EstimateTempo_CustomRange_RespectsLimits()
     {
         // Narrow range detector for dance music
-        var detector = new InterOnsetIntervalTempoDetector(minBpm: 120, maxBpm: 130);
+        var detector = new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 120, MaxBpm = 130 });
 
         // 125 BPM - within range
         var validOnsets = Enumerable.Range(0, 10)

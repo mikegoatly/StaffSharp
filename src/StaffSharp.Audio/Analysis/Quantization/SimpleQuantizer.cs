@@ -15,27 +15,14 @@ public sealed class SimpleQuantizer : IQuantizer
     private readonly Rational _defaultLastNoteDuration;
     private readonly Rational _minNoteDuration;
 
-    /// <summary>
-    /// Creates a new simple quantizer.
-    /// </summary>
-    /// <param name="quantizationGrid">Quantization grid in beats (e.g., 1/4 for 16th notes in 4/4). Default: 1/4 (16th notes).</param>
-    /// <param name="defaultLastNoteDuration">Default duration for the last note in beats. Default: 1 (quarter note).</param>
-    /// <param name="minNoteDuration">Minimum note duration in beats. Notes shorter than this are extended. Default: 1/8 (32nd note).</param>
-    public SimpleQuantizer(
-        Rational? quantizationGrid = null,
-        Rational? defaultLastNoteDuration = null,
-        Rational? minNoteDuration = null)
+    public SimpleQuantizer(QuantizationOptions? options = null)
     {
-        _quantizationGrid = quantizationGrid ?? Rational.Create(1, 4); // 16th notes
-        _defaultLastNoteDuration = defaultLastNoteDuration ?? Rational.Create(1, 1); // Quarter note
-        _minNoteDuration = minNoteDuration ?? Rational.Create(1, 8); // 32nd note
+        options ??= new QuantizationOptions();
+        options.Validate();
 
-        if (_quantizationGrid <= Rational.Zero)
-            throw new ArgumentException("Quantization grid must be positive", nameof(quantizationGrid));
-        if (_defaultLastNoteDuration <= Rational.Zero)
-            throw new ArgumentException("Default last note duration must be positive", nameof(defaultLastNoteDuration));
-        if (_minNoteDuration <= Rational.Zero)
-            throw new ArgumentException("Minimum note duration must be positive", nameof(minNoteDuration));
+        _quantizationGrid = options.QuantizationGrid;
+        _defaultLastNoteDuration = options.DefaultLastNoteDuration;
+        _minNoteDuration = options.MinNoteDuration;
     }
 
     public IReadOnlyList<QuantizedNoteEvent>? Quantize(

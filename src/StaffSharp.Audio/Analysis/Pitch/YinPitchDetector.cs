@@ -13,16 +13,14 @@ public sealed class YinPitchDetector : IPitchDetector
     private readonly double _minFrequency;
     private readonly double _maxFrequency;
 
-    public YinPitchDetector(double minFrequency = 80.0, double maxFrequency = 1000.0, float threshold = 0.15f)
+    public YinPitchDetector(PitchDetectionOptions? options = null)
     {
-        if (minFrequency <= 0 || maxFrequency <= minFrequency)
-            throw new ArgumentException("Invalid frequency range");
-        if (threshold <= 0 || threshold >= 1)
-            throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold must be in (0, 1)");
+        options ??= new PitchDetectionOptions();
+        options.Validate();
 
-        _minFrequency = minFrequency;
-        _maxFrequency = maxFrequency;
-        _threshold = threshold;
+        _minFrequency = options.MinFrequency;
+        _maxFrequency = options.MaxFrequency;
+        _threshold = options.Threshold;
     }
 
     public PitchDetectionResult DetectPitch(ReadOnlySpan<float> buffer, int sampleRate)

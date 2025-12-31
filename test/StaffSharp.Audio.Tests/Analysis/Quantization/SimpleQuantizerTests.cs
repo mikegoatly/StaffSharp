@@ -11,27 +11,27 @@ public class SimpleQuantizerTests
     public void Constructor_InvalidQuantizationGrid_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(quantizationGrid: Rational.Zero));
+            new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(quantizationGrid: Rational.Create(-1, 4)));
+            new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(-1, 4) }));
     }
 
     [Fact]
     public void Constructor_InvalidDefaultDuration_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(defaultLastNoteDuration: Rational.Zero));
+            new SimpleQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(defaultLastNoteDuration: Rational.Create(-1, 1)));
+            new SimpleQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Create(-1, 1) }));
     }
 
     [Fact]
     public void Constructor_InvalidMinDuration_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(minNoteDuration: Rational.Zero));
+            new SimpleQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleQuantizer(minNoteDuration: Rational.Create(-1, 8)));
+            new SimpleQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Create(-1, 8) }));
     }
 
     [Fact]
@@ -63,9 +63,11 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_SingleNote_CreatesNoteWithDefaultDuration()
     {
-        var quantizer = new SimpleQuantizer(
-            quantizationGrid: Rational.Create(1, 4), // 16th notes
-            defaultLastNoteDuration: Rational.Create(1, 1)); // Quarter note
+        var quantizer = new SimpleQuantizer(new QuantizationOptions
+        {
+            QuantizationGrid = Rational.Create(1, 4), // 16th notes
+            DefaultLastNoteDuration = Rational.Create(1, 1) // Quarter note
+        });
 
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
         var onsets = new[] { 0.0 }; // At beat 0
@@ -90,7 +92,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_PerfectQuarterNotes_QuantizesCorrectly()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 4));
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds
@@ -127,7 +129,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_SixteenthNotes_QuantizesCorrectly()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 4)); // 16th note grid
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) }); // 16th note grid
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds, 16th note = 0.125 seconds
@@ -156,7 +158,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_SlightlyOffGrid_SnapsToGrid()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 2)); // 8th note grid
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 2) }); // 8th note grid
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds
@@ -178,9 +180,11 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_VeryShortNote_EnforcesMinimumDuration()
     {
-        var quantizer = new SimpleQuantizer(
-            quantizationGrid: Rational.Create(1, 4),
-            minNoteDuration: Rational.Create(1, 8)); // Min duration: 1/8 beat
+        var quantizer = new SimpleQuantizer(new QuantizationOptions
+        {
+            QuantizationGrid = Rational.Create(1, 4),
+            MinNoteDuration = Rational.Create(1, 8) // Min duration: 1/8 beat
+        });
 
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
@@ -200,7 +204,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_DifferentTempo_ConvertsCorrectly()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 4));
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(60.0, TimeSignature.CommonTime); // Slower: 60 BPM
 
         // At 60 BPM: 1 beat = 1.0 second
@@ -224,7 +228,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_EighthNoteGrid_QuantizesCorrectly()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 2)); // 8th note grid
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 2) }); // 8th note grid
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 8th note = 0.25 seconds
@@ -252,7 +256,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_MixedRhythm_HandlesCorrectly()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 4));
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // Mixed rhythm: quarter, 2 eighths, quarter
@@ -284,9 +288,11 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_CustomDefaultLastNoteDuration_AppliesCorrectly()
     {
-        var quantizer = new SimpleQuantizer(
-            quantizationGrid: Rational.Create(1, 4),
-            defaultLastNoteDuration: Rational.Create(2, 1)); // Half note for last note
+        var quantizer = new SimpleQuantizer(new QuantizationOptions
+        {
+            QuantizationGrid = Rational.Create(1, 4),
+            DefaultLastNoteDuration = Rational.Create(2, 1) // Half note for last note
+        });
 
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
         var onsets = new[] { 0.0, 0.5 };
@@ -304,7 +310,7 @@ public class SimpleQuantizerTests
     [Fact]
     public void Quantize_PreservesRawEventTiming()
     {
-        var quantizer = new SimpleQuantizer(quantizationGrid: Rational.Create(1, 4));
+        var quantizer = new SimpleQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // Slightly off-grid note
