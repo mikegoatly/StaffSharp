@@ -9,9 +9,9 @@ using System.Xml.Linq;
 internal static class MusicXmlNoteParser
 {
     /// <summary>
-    /// Parses a note element and returns the event and voice number.
+    /// Parses a note element and returns the event, voice number, slur information, and lyric syllables.
     /// </summary>
-    public static (INotationEvent Event, int? VoiceNumber) ParseNote(XElement noteElement, MusicXmlContext context)
+    public static (INotationEvent Event, int? VoiceNumber, List<SlurInfo>? SlurInfos, Dictionary<int, LyricSyllable>? LyricSyllables) ParseNote(XElement noteElement, MusicXmlContext context)
     {
         ArgumentNullException.ThrowIfNull(noteElement);
         ArgumentNullException.ThrowIfNull(context);
@@ -23,11 +23,15 @@ internal static class MusicXmlNoteParser
         var voiceElement = noteElement.Element("voice");
         int? voiceNumber = voiceElement != null && int.TryParse(voiceElement.Value, out var v) ? v : null;
 
+        // Parse lyrics
+        var lyricSyllables = ParseLyrics(noteElement);
+
         // Check if it's a rest
         var restElement = noteElement.Element("rest");
         if (restElement != null)
         {
-            return (ParseRest(noteElement, context), voiceNumber);
+            var slurInfosForRest = ParseSlurs(noteElement);
+            return (ParseRest(noteElement, context), voiceNumber, slurInfosForRest, lyricSyllables);
         }
 
         // Parse pitch
@@ -59,7 +63,10 @@ internal static class MusicXmlNoteParser
         // Create note
         var note = new NotationNote(pitch, duration);
 
-        return (note, voiceNumber);
+        // Parse slurs
+        var slurInfos = ParseSlurs(noteElement);
+
+        return (note, voiceNumber, slurInfos, lyricSyllables);
     }
 
     private static Pitch ParsePitch(XElement pitchElement)
@@ -133,4 +140,103 @@ internal static class MusicXmlNoteParser
 
         return Tuplet.Triplet; // Default fallback
     }
+
+    private static List<SlurInfo>? ParseSlurs(XElement noteElement)
+    {
+        var notationsElement = noteElement.Element("notations");
+        if (notationsElement == null)
+        {
+            return null;
+        }
+
+        var slurInfos = new List<SlurInfo>();
+        foreach (var slurElement in notationsElement.Elements("slur"))
+        {
+            var typeAttr = slurElement.Attribute("type");
+            var numberAttr = slurElement.Attribute("number");
+
+            if (typeAttr != null && numberAttr != null && int.TryParse(numberAttr.Value, out var number))
+            {
+                var type = typeAttr.Value switch
+                {
+                    "start" => SlurType.Start,
+                    "stop" => SlurType.Stop,
+                    _ => (SlurType?)null
+                };
+
+                if (type.HasValue)
+                {
+                    slurInfos.Add(new SlurInfo(number, type.Value));
+                }
+            }
+        }
+
+        return slurInfos.Count > 0 ? slurInfos : null;
+    }
+
+    private static Dictionary<int, LyricSyllable>? ParseLyrics(XElement noteElement)
+    {
+        var lyricElements = noteElement.Elements("lyric").ToList();
+        if (lyricElements.Count == 0)
+        {
+            return null;
+        }
+
+        var syllables = new Dictionary<int, LyricSyllable>();
+
+        foreach (var lyricElement in lyricElements)
+        {
+            var numberAttr = lyricElement.Attribute("number");
+            var lyricNumber = numberAttr != null && int.TryParse(numberAttr.Value, out var num) ? num : 1;
+
+            var textElement = lyricElement.Element("text");
+            if (textElement == null)
+            {
+                continue;
+            }
+
+            var text = textElement.Value;
+
+            // Determine syllable type
+            var syllabicElement = lyricElement.Element("syllabic");
+            var syllableType = LyricSyllableType.Standalone;
+
+            if (syllabicElement != null)
+            {
+                syllableType = syllabicElement.Value switch
+                {
+                    "single" => LyricSyllableType.Standalone,
+                    "begin" => LyricSyllableType.Start,
+                    "middle" => LyricSyllableType.Middle,
+                    "end" => LyricSyllableType.End,
+                    _ => LyricSyllableType.Standalone
+                };
+            }
+
+            // Check for extend (melisma/hold)
+            var extendElement = lyricElement.Element("extend");
+            if (extendElement != null)
+            {
+                syllableType = LyricSyllableType.Hold;
+            }
+
+            syllables[lyricNumber] = new LyricSyllable(text, syllableType);
+        }
+
+        return syllables.Count > 0 ? syllables : null;
+    }
+}
+
+/// <summary>
+/// Information about a slur start or stop.
+/// </summary>
+internal record SlurInfo(int Number, SlurType Type);
+
+/// <summary>
+/// Type of slur marking.
+/// </summary>
+internal enum SlurType
+{
+    Start,
+    Stop
 }

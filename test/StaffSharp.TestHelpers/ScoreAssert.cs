@@ -268,6 +268,56 @@ public static class ScoreAssert
     }
 
     /// <summary>
+    /// Asserts the number of lyric lines in a measure.
+    /// </summary>
+    public static Measure AssertLyricCount(this Measure measure, int expectedCount)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+        Assert.Equal(expectedCount, measure.Lyrics.Count);
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts that a measure has no lyrics.
+    /// </summary>
+    public static Measure AssertNoLyrics(this Measure measure)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+        Assert.Empty(measure.Lyrics);
+        return measure;
+    }
+
+    /// <summary>
+    /// Asserts a specific syllable in a lyric line.
+    /// </summary>
+    public static Measure AssertLyricSyllable(
+        this Measure measure,
+        int lyricLineIndex,
+        int syllableIndex,
+        string expectedText,
+        LyricSyllableType? expectedType = null)
+    {
+        ArgumentNullException.ThrowIfNull(measure);
+
+        Assert.True(lyricLineIndex < measure.Lyrics.Count,
+            $"Expected lyric line at index {lyricLineIndex}, but only {measure.Lyrics.Count} lyric lines exist");
+
+        var lyricLine = measure.Lyrics[lyricLineIndex];
+        Assert.True(syllableIndex < lyricLine.Syllables.Count,
+            $"Expected syllable at index {syllableIndex}, but only {lyricLine.Syllables.Count} syllables exist");
+
+        var syllable = lyricLine.Syllables[syllableIndex];
+        Assert.Equal(expectedText, syllable.Text);
+
+        if (expectedType.HasValue)
+        {
+            Assert.Equal(expectedType.Value, syllable.Type);
+        }
+
+        return measure;
+    }
+
+    /// <summary>
     /// Starts a fluent assertion chain for a sequence of events.
     /// </summary>
     public static EventSequenceAssertion AssertSequence(
