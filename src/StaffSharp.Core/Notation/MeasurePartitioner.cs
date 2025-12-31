@@ -151,7 +151,7 @@ public sealed class MeasurePartitioner
                 Velocity.Create(velocity),
                 tieType,
                 GraceNote: null,
-                Decorations: null // TODO: Copy articulation from event if available
+                Decorations: null // IPerformanceEvent base interface doesn't include articulation data
             );
 
             if (!measures.TryGetValue(measureNumber, out var measureEvents))
@@ -168,27 +168,49 @@ public sealed class MeasurePartitioner
         }
     }
 
-    private Rational GetMeasureEndBeat(int measureNumber, TimeSignature timeSignature)
+    /// <summary>
+    /// Gets the starting beat of a given measure number.
+    /// </summary>
+    /// <param name="measureNumber">The 1-based measure number.</param>
+    /// <returns>The beat position at the start of the measure.</returns>
+    private Rational GetMeasureStartBeat(int measureNumber)
     {
-        // Calculate the start beat of the measure
-        var measureStartBeat = Rational.Zero;
-        foreach (var tsChange in _tempoMap.TimeSignatures.OrderBy(ts => ts.TimeInBeats))
+        // Find the beat where this measure starts by iterating forward
+        Rational beat = Rational.Zero;
+        int currentMeasure = 1;
+
+        // Iterate until we reach the target measure
+        while (currentMeasure < measureNumber)
         {
-            var beatsPerMeasure = timeSignature.BeatsPerMeasure;
-            var measureEndApprox = measureStartBeat + Rational.Create(beatsPerMeasure.Numerator * measureNumber, beatsPerMeasure.Denominator);
-            if (tsChange.TimeInBeats >= measureEndApprox)
-            {
-                break;
-            }
-            // This is a simplification - proper implementation needs to accumulate measure beats
+            var currentTimeSig = _tempoMap.GetTimeSignatureAt(beat);
+            beat += currentTimeSig.BeatsPerMeasure;
+            currentMeasure++;
         }
 
-        return measureStartBeat + timeSignature.BeatsPerMeasure;
+        return beat;
+    }
+
+    /// <summary>
+    /// Gets the ending beat of a given measure number.
+    /// </summary>
+    /// <param name="measureNumber">The 1-based measure number.</param>
+    /// <param name="timeSignature">Unused parameter (kept for compatibility).</param>
+    /// <returns>The beat position at the end of the measure.</returns>
+    private Rational GetMeasureEndBeat(int measureNumber, TimeSignature timeSignature)
+    {
+        // Find where the measure starts
+        var measureStartBeat = GetMeasureStartBeat(measureNumber);
+
+        // Get the time signature for this measure and return the end beat
+        var measureTimeSig = _tempoMap.GetTimeSignatureAt(measureStartBeat);
+        return measureStartBeat + measureTimeSig.BeatsPerMeasure;
     }
 
     private Measure CreateMeasure(int measureNumber, List<INotationEvent> events)
     {
-        var timeSignature = _tempoMap.GetTimeSignatureAt(Rational.Zero); // TODO: Get correct time signature for measure
+        // Calculate the start beat of this measure to get the correct time signature
+        var measureStartBeat = GetMeasureStartBeat(measureNumber);
+        var timeSignature = _tempoMap.GetTimeSignatureAt(measureStartBeat);
 
         return new Measure(
             number: measureNumber,

@@ -26,23 +26,23 @@ public interface IScoreImporter
     string FormatName { get; }
 
     /// <summary>
-    /// Imports a notation score from the specified stream.
-    /// </summary>
-    /// <param name="stream">The stream to read from.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The imported notation score.</returns>
-    Task<NotationScore> ImportAsync(Stream stream, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Imports a notation score from the specified stream with progress reporting.
     /// </summary>
     /// <param name="stream">The stream to read from.</param>
     /// <param name="progress">Optional progress reporter for tracking import steps.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The imported notation score.</returns>
-    Task<NotationScore> ImportAsync(Stream stream, IProgress<ImportProgress>? progress, CancellationToken cancellationToken = default)
+    Task<NotationScore> ImportAsync(Stream stream, IProgress<ImportProgress>? progress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Imports a notation score from the specified stream.
+    /// Convenience wrapper that calls the progress version with null progress.
+    /// </summary>
+    /// <param name="stream">The stream to read from.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The imported notation score.</returns>
+    Task<NotationScore> ImportAsync(Stream stream, CancellationToken cancellationToken = default)
     {
-        // Default implementation ignores progress and calls the base method
-        return ImportAsync(stream, cancellationToken);
+        return ImportAsync(stream, progress: null, cancellationToken);
     }
 }

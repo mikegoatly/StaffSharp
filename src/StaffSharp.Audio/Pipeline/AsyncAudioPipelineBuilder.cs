@@ -29,12 +29,7 @@ public sealed class AsyncAudioPipelineBuilder<TCurrent>
         return new AsyncAudioPipelineBuilder<TNext>(async context =>
         {
             // Report progress before executing this stage
-            var stageNumber = _stageCount + 1;
-            context.Progress?.Report(new PipelineProgress(
-                stageNumber,
-                _stageCount + 1, // Will be updated when pipeline is built
-                stage.StageName
-            ));
+            context.Progress?.Report(new PipelineProgress(stage.StageName));
 
             var input = await _pipelineFunc(context).ConfigureAwait(false);
             return await stage.ProcessAsync(input, context).ConfigureAwait(false);

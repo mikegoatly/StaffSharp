@@ -8,10 +8,8 @@ namespace StaffSharp.Audio.Pipeline;
 /// <summary>
 /// Represents progress through the audio pipeline stages.
 /// </summary>
-/// <param name="CurrentStage">The current stage number (1-based).</param>
-/// <param name="TotalStages">The total number of stages in the pipeline.</param>
 /// <param name="StageName">A descriptive name for the current stage.</param>
-public record PipelineProgress(int CurrentStage, int TotalStages, string StageName);
+public record PipelineProgress(string StageName);
 
 /// <summary>
 /// Strongly typed context for audio pipeline execution, containing all intermediate results.

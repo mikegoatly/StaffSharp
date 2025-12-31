@@ -85,8 +85,6 @@ internal sealed class DetectPitchesStage : IAsyncPipelineStage<double[], int[]>
                     // Use sentinel value to let downstream stages decide how to handle
                     pitches[i] = UnpitchedSentinel;
                 }
-
-                await Task.Yield(); // Allow cancellation checks
             }).ConfigureAwait(false);
 
         context.EmitDiagnostics(StageName, "PitchCount", pitches.Length);

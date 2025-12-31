@@ -52,11 +52,25 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
     {
         if (frequencyHz <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(frequencyHz), "Frequency must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(frequencyHz),
+                frequencyHz,
+                "Frequency must be positive.");
         }
 
         var midiNote = 12.0 * Math.Log2(frequencyHz / 440.0) + 69.0;
-        return Create((float)Math.Round(midiNote));
+        var rounded = (float)Math.Round(midiNote);
+
+        // Validate MIDI range before creating
+        if (rounded < 0 || rounded > 127)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(frequencyHz),
+                frequencyHz,
+                $"Frequency {frequencyHz:F2} Hz corresponds to MIDI note {rounded:F2}, which is outside the valid range [0, 127].");
+        }
+
+        return new MidiNote(rounded); // Bypass Create() since we already validated
     }
 
     /// <summary>

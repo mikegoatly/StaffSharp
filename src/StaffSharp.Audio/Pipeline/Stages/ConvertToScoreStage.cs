@@ -1,11 +1,3 @@
-// TODO (Phase 2): Implement IR1 → IR2 conversion
-// This stage requires:
-// - INotationEngine interface
-// - NotationOptions class
-// - NotationScore type
-// Uncomment and implement when Phase 2 (IR2 notation layer) is ready.
-
-/*
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 using StaffSharp.Core.Notation;
@@ -47,4 +39,3 @@ internal sealed class ConvertToScoreStage : IAsyncPipelineStage<PerformanceTimel
         return Task.FromResult(score);
     }
 }
-*/
