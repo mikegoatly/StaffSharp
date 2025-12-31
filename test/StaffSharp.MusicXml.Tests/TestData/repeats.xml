@@ -48,8 +48,8 @@
         <type>whole</type>
       </note>
       <barline location="right">
-        <ending number="1" type="start"/>
         <bar-style>light-heavy</bar-style>
+        <ending number="1" type="start"/>
       </barline>
     </measure>
     <measure number="3">
@@ -82,8 +82,8 @@
         <type>whole</type>
       </note>
       <barline location="right">
-        <ending number="2" type="stop"/>
         <bar-style>light-heavy</bar-style>
+        <ending number="2" type="stop"/>
       </barline>
     </measure>
   </part>

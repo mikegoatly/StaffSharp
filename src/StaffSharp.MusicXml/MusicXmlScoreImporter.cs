@@ -1,6 +1,7 @@
 namespace StaffSharp.MusicXml;
 
 using StaffSharp;
+using StaffSharp.MusicXml.Validation;
 using StaffSharp.Notation;
 using System.Xml.Linq;
 
@@ -32,13 +33,13 @@ public sealed class MusicXmlScoreImporter : IScoreImporter
         ArgumentNullException.ThrowIfNull(stream);
 
         // Load XML document
-        var document = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken).ConfigureAwait(false);
+        var document = await XDocument.LoadAsync(stream, LoadOptions.SetLineInfo, cancellationToken).ConfigureAwait(false);
 
-        // TODO: Schema validation if enabled
-        // if (_enableValidation)
-        // {
-        //     MusicXmlSchemaValidator.Validate(document);
-        // }
+        // Validate against schema if enabled
+        if (_enableValidation)
+        {
+            MusicXmlSchemaValidator.Validate(document);
+        }
 
         // Parse synchronously (XML parsing is fast)
         return MusicXmlParser.Parse(document);
