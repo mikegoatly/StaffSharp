@@ -5,6 +5,7 @@
 	<ItemGroup>
 	</ItemGroup>
 	<ItemGroup>
+		<PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageVersion Include="Melanchall.DryWetMidi" Version="7.2.0" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
