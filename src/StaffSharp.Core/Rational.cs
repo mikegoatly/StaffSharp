@@ -55,6 +55,16 @@ public readonly record struct Rational : IComparable<Rational>, IComparable
         return Multiply(a, b);
     }
 
+    public static Rational operator -(Rational a, Rational b)
+    {
+        return Subtract(a, b);
+    }
+
+    public static Rational operator /(Rational a, Rational b)
+    {
+        return Divide(a, b);
+    }
+
     // Comparison
     public int CompareTo(Rational other)
     {
@@ -84,6 +94,82 @@ public readonly record struct Rational : IComparable<Rational>, IComparable
         var numerator = (left.Numerator * right.Denominator) + (right.Numerator * left.Denominator);
         var denominator = left.Denominator * right.Denominator;
         return Create(numerator, denominator);
+    }
+
+    public static Rational Subtract(Rational left, Rational right)
+    {
+        var numerator = (left.Numerator * right.Denominator) - (right.Numerator * left.Denominator);
+        var denominator = left.Denominator * right.Denominator;
+        return Create(numerator, denominator);
+    }
+
+    public static Rational Divide(Rational left, Rational right)
+    {
+        if (right.Numerator == 0)
+        {
+            throw new DivideByZeroException("Cannot divide by zero rational.");
+        }
+        return Create(left.Numerator * right.Denominator, left.Denominator * right.Numerator);
+    }
+
+    /// <summary>
+    /// Creates a rational approximation of a double value.
+    /// Uses continued fractions with a maximum denominator to avoid overflow.
+    /// </summary>
+    public static Rational FromDouble(double value, int maxDenominator = 10000)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            throw new ArgumentException("Cannot convert NaN or Infinity to Rational.", nameof(value));
+        }
+
+        var sign = value >= 0 ? 1 : -1;
+        value = Math.Abs(value);
+
+        // Handle near-zero values
+        if (value < 1e-10)
+        {
+            return Zero;
+        }
+
+        // Simple continued fractions implementation
+        long p0 = 0, p1 = 1, q0 = 1, q1 = 0;
+        double r = value;
+
+        while (q1 <= maxDenominator)
+        {
+            long a = (long)Math.Floor(r);
+
+            long p2 = a * p1 + p0;
+            long q2 = a * q1 + q0;
+
+            if (q2 > maxDenominator)
+            {
+                break;
+            }
+
+            // Check if we've found exact or close enough match
+            if (Math.Abs((double)p2 / q2 - value) < 1e-10)
+            {
+                return Create(sign * (int)p2, (int)q2);
+            }
+
+            double nextR = r - a;
+            if (Math.Abs(nextR) < 1e-10)
+            {
+                return Create(sign * (int)p2, (int)q2);
+            }
+
+            r = 1.0 / nextR;
+
+            p0 = p1;
+            p1 = p2;
+            q0 = q1;
+            q1 = q2;
+        }
+
+        // Return best approximation found
+        return Create(sign * (int)p1, (int)q1);
     }
 
     public int CompareTo(object? obj)
