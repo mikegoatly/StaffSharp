@@ -20,3 +20,7 @@ dotnet_diagnostic.CA5394.severity = none
 
 # CA1861: Array allocations in test code are acceptable
 dotnet_diagnostic.CA1861.severity = none
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+# Suppressed for test projects since synchronization context doesn't matter in tests
+dotnet_diagnostic.CA2007.severity = none

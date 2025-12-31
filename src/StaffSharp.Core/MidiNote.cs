@@ -42,6 +42,24 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
     public Frequency ToFrequency() => Frequency.Create(MathF.Pow(2, (Value - 69) / 12) * 440);
 
     /// <summary>
+    /// Creates a MIDI note from a frequency in Hz using A4 = 440Hz.
+    /// Uses the formula: MIDI = 12 * log2(freq / 440) + 69
+    /// </summary>
+    /// <param name="frequencyHz">The frequency in Hz.</param>
+    /// <returns>The nearest MIDI note.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when frequency results in invalid MIDI note.</exception>
+    public static MidiNote FromFrequency(double frequencyHz)
+    {
+        if (frequencyHz <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frequencyHz), "Frequency must be positive.");
+        }
+
+        var midiNote = 12.0 * Math.Log2(frequencyHz / 440.0) + 69.0;
+        return Create((float)Math.Round(midiNote));
+    }
+
+    /// <summary>
     /// Creates a MIDI note from a pitch class and octave.
     /// </summary>
     public static MidiNote FromPitchClass(PitchClass pitchClass, int octave)

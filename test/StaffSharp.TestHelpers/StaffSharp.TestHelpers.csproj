@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\StaffSharp.Core\StaffSharp.Core.csproj" />
+		<ProjectReference Include="..\..\src\StaffSharp.Audio\StaffSharp.Audio.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
