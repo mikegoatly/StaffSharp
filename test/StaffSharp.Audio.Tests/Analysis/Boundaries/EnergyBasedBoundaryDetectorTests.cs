@@ -10,27 +10,27 @@ public class EnergyBasedBoundaryDetectorTests
     public void Constructor_InvalidThreshold_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(thresholdDb: 0.0f));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { ThresholdDb = 0.0f }));
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(thresholdDb: 10.0f));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { ThresholdDb = 10.0f }));
     }
 
     [Fact]
     public void Constructor_InvalidWindowSize_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(windowSize: 0));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { WindowSize = 0 }));
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(windowSize: -100));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { WindowSize = -100 }));
     }
 
     [Fact]
     public void Constructor_InvalidMinContentSamples_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(minContentSamples: 0));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { MinContentSamples = 0 }));
         Assert.Throws<ArgumentException>(() =>
-            new EnergyBasedBoundaryDetector(minContentSamples: -100));
+            new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { MinContentSamples = -100 }));
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class EnergyBasedBoundaryDetectorTests
     [Fact]
     public void DetectBoundaries_TooShort_ReturnsNull()
     {
-        var detector = new EnergyBasedBoundaryDetector(minContentSamples: 10000);
+        var detector = new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { MinContentSamples = 10000 });
         // Create audio shorter than minimum
         var audio = CreateAudioWithContent(
             leadingSilenceSamples: 1000,
@@ -191,8 +191,8 @@ public class EnergyBasedBoundaryDetectorTests
     public void DetectBoundaries_SensitiveThreshold_DetectsQuieterContent()
     {
         // More sensitive threshold (-60dB instead of -40dB)
-        var sensitiveDetector = new EnergyBasedBoundaryDetector(thresholdDb: -60.0f);
-        var normalDetector = new EnergyBasedBoundaryDetector(thresholdDb: -40.0f);
+        var sensitiveDetector = new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { ThresholdDb = -60.0f });
+        var normalDetector = new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { ThresholdDb = -40.0f });
 
         // Create very quiet tone
         // -60dB threshold = 10^(-60/20) = 0.001 linear amplitude
@@ -237,8 +237,8 @@ public class EnergyBasedBoundaryDetectorTests
     [Fact]
     public void DetectBoundaries_SmallWindowSize_MorePreciseBoundaries()
     {
-        var smallWindow = new EnergyBasedBoundaryDetector(windowSize: 512);
-        var largeWindow = new EnergyBasedBoundaryDetector(windowSize: 4096);
+        var smallWindow = new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { WindowSize = 512 });
+        var largeWindow = new EnergyBasedBoundaryDetector(new BoundaryDetectionOptions { WindowSize = 4096 });
 
         var leadingSamples = SampleRate / 2; // 0.5 seconds
         var audio = CreateAudioWithContent(

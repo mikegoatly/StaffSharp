@@ -14,17 +14,14 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
     private readonly double _maxBpm;
     private readonly Notation.TimeSignature _defaultTimeSignature;
 
-    public InterOnsetIntervalTempoDetector(
-        double minBpm = 40.0,
-        double maxBpm = 240.0,
-        Notation.TimeSignature? defaultTimeSignature = null)
+    public InterOnsetIntervalTempoDetector(TempoDetectionOptions? options = null)
     {
-        if (minBpm <= 0 || maxBpm <= minBpm)
-            throw new ArgumentException("Invalid BPM range");
+        options ??= new TempoDetectionOptions();
+        options.Validate();
 
-        _minBpm = minBpm;
-        _maxBpm = maxBpm;
-        _defaultTimeSignature = defaultTimeSignature ?? TimeSignature.CommonTime; // 4/4
+        _minBpm = options.MinBpm;
+        _maxBpm = options.MaxBpm;
+        _defaultTimeSignature = options.DefaultTimeSignature ?? TimeSignature.CommonTime; // 4/4
     }
 
     public TempoMap? DetectTempo(ReadOnlySpan<double> onsetTimes)

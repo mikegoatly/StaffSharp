@@ -10,17 +10,17 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     [Fact]
     public void Constructor_InvalidFrequencyRange_ThrowsException()
     {
-        Assert.Throws<ArgumentException>(() => new YinPitchDetector(minFrequency: 1000, maxFrequency: 100));
-        Assert.Throws<ArgumentException>(() => new YinPitchDetector(minFrequency: 0, maxFrequency: 1000));
-        Assert.Throws<ArgumentException>(() => new YinPitchDetector(minFrequency: -100, maxFrequency: 1000));
+        Assert.Throws<ArgumentException>(() => new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 1000, MaxFrequency = 100 }));
+        Assert.Throws<ArgumentException>(() => new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 0, MaxFrequency = 1000 }));
+        Assert.Throws<ArgumentException>(() => new YinPitchDetector(new PitchDetectionOptions { MinFrequency = -100, MaxFrequency = 1000 }));
     }
 
     [Fact]
     public void Constructor_InvalidThreshold_ThrowsException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(threshold: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(threshold: 1.0f));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(threshold: -0.1f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(new PitchDetectionOptions { Threshold = 0 }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(new PitchDetectionOptions { Threshold = 1.0f }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new YinPitchDetector(new PitchDetectionOptions { Threshold = -0.1f }));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_OutOfRangeFrequency_LowerConfidence()
     {
         // Detector configured for 200-500 Hz
-        var detector = new YinPitchDetector(minFrequency: 200, maxFrequency: 500);
+        var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 200, MaxFrequency = 500 });
 
         // In-range frequency should have high confidence
         var bufferInRange = AudioSignalBuilder.Sine(350.0, 0.1, SampleRate);
@@ -125,11 +125,11 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, SampleRate);
 
         // Lower threshold = more sensitive
-        var detectorSensitive = new YinPitchDetector(threshold: 0.1f);
+        var detectorSensitive = new YinPitchDetector(new PitchDetectionOptions { Threshold = 0.1f });
         var resultSensitive = detectorSensitive.DetectPitch(buffer, SampleRate);
 
         // Higher threshold = less sensitive
-        var detectorStrict = new YinPitchDetector(threshold: 0.3f);
+        var detectorStrict = new YinPitchDetector(new PitchDetectionOptions { Threshold = 0.3f });
         var resultStrict = detectorStrict.DetectPitch(buffer, SampleRate);
 
         // Both should detect pure sine, but sensitive might have lower confidence requirement
@@ -143,7 +143,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_MinPeriodGreaterThanMaxPeriod_ReturnsNoPitch()
     {
         // Use extreme frequency range that causes minPeriod >= maxPeriod
-        var detector = new YinPitchDetector(minFrequency: 10000, maxFrequency: 20000);
+        var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 10000, MaxFrequency = 20000 });
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, SampleRate);
 
         var result = detector.DetectPitch(buffer, SampleRate);
@@ -156,7 +156,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_NoMinimumBelowThreshold_ReturnsNoPitch()
     {
         // Very strict threshold with noisy signal should fail to find pitch
-        var detector = new YinPitchDetector(threshold: 0.01f);
+        var detector = new YinPitchDetector(new PitchDetectionOptions { Threshold = 0.01f });
         var buffer = AudioSignalBuilder.Create()
             .WithSampleRate(SampleRate)
             .WithDuration(0.1)
@@ -189,7 +189,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     {
         var minFreq = 150.0;
         var testFreq = 160.0; // Slightly above min for stable detection
-        var detector = new YinPitchDetector(minFrequency: minFreq, maxFrequency: 1000);
+        var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = minFreq, MaxFrequency = 1000 });
         var buffer = AudioSignalBuilder.Sine(testFreq, 0.3, SampleRate); // Longer buffer for low frequency
 
         var result = detector.DetectPitch(buffer, SampleRate);
@@ -201,7 +201,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_FrequencyAtMaxBoundary_DetectsAccurately()
     {
         var maxFreq = 1000.0;
-        var detector = new YinPitchDetector(minFrequency: 80, maxFrequency: maxFreq);
+        var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 80, MaxFrequency = maxFreq });
         var buffer = AudioSignalBuilder.Sine(maxFreq, 0.1, SampleRate);
 
         var result = detector.DetectPitch(buffer, SampleRate);

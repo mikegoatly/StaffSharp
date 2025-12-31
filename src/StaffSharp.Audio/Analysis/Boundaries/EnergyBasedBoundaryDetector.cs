@@ -12,27 +12,14 @@ public sealed class EnergyBasedBoundaryDetector : IAudioBoundaryDetector
     private readonly int _windowSize;
     private readonly int _minContentSamples;
 
-    /// <summary>
-    /// Creates a new energy-based boundary detector.
-    /// </summary>
-    /// <param name="thresholdDb">Energy threshold in dB (e.g., -40 dB). Levels below this are considered silence.</param>
-    /// <param name="windowSize">Window size in samples for energy calculation. Default: 2048 (~46ms at 44.1kHz).</param>
-    /// <param name="minContentSamples">Minimum number of samples for valid content. Default: 4410 (~100ms at 44.1kHz).</param>
-    public EnergyBasedBoundaryDetector(
-        float thresholdDb = -40.0f,
-        int windowSize = 2048,
-        int minContentSamples = 4410)
+    public EnergyBasedBoundaryDetector(BoundaryDetectionOptions? options = null)
     {
-        if (thresholdDb >= 0)
-            throw new ArgumentException("Threshold must be negative (dB)", nameof(thresholdDb));
-        if (windowSize <= 0)
-            throw new ArgumentException("Window size must be positive", nameof(windowSize));
-        if (minContentSamples <= 0)
-            throw new ArgumentException("Minimum content samples must be positive", nameof(minContentSamples));
+        options ??= new BoundaryDetectionOptions();
+        options.Validate();
 
-        _thresholdDb = thresholdDb;
-        _windowSize = windowSize;
-        _minContentSamples = minContentSamples;
+        _thresholdDb = options.ThresholdDb;
+        _windowSize = options.WindowSize;
+        _minContentSamples = options.MinContentSamples;
     }
 
     public AudioBoundaries? DetectBoundaries(AudioBuffer audio)

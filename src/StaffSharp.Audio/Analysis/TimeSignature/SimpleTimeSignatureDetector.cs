@@ -11,8 +11,10 @@ namespace StaffSharp.Audio.Analysis.Meter;
 /// </summary>
 public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
 {
-    public SimpleTimeSignatureDetector()
+    public SimpleTimeSignatureDetector(TimeSignatureDetectionOptions? options = null)
     {
+        options ??= new TimeSignatureDetectionOptions();
+        options.Validate();
     }
 
     public IReadOnlyList<TimeSignatureChange>? DetectTimeSignatures(
