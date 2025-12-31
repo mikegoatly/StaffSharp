@@ -224,4 +224,69 @@ public class MusicXmlParserTests : ScoreTestBase
         celloNotes[0].AssertNote(PitchClass.G, SymbolicDuration.Half, expectedOctave: 2);
         celloNotes[1].AssertNote(PitchClass.D, SymbolicDuration.Quarter, expectedOctave: 3);
     }
+
+    [Fact]
+    public async Task Parse_Slurs_CreatesCorrectSlurs()
+    {
+        // Arrange
+        var testFilePath = Path.Combine("TestData", "slurs.xml");
+        using var stream = File.OpenRead(testFilePath);
+        var importer = new MusicXmlScoreImporter(enableValidation: false);
+
+        // Act
+        var score = await importer.ImportAsync(stream);
+
+        // Assert
+        Assert.Equal("Slurs Test", score.Metadata.Title);
+
+        var measure = GetMeasure(score);
+        var slurs = GetSlurs(score);
+
+        // Should have one slur covering first three notes (C, D, E)
+        Assert.Single(slurs);
+
+        var slur = slurs[0];
+        Assert.Equal(3, slur.Events.Count);
+
+        // Verify the notes in the slur
+        var slurNotes = slur.Events.OfType<NotationNote>().ToList();
+        Assert.Equal(3, slurNotes.Count);
+        slurNotes[0].AssertNote(PitchClass.C, SymbolicDuration.Quarter, expectedOctave: 4);
+        slurNotes[1].AssertNote(PitchClass.D, SymbolicDuration.Quarter, expectedOctave: 4);
+        slurNotes[2].AssertNote(PitchClass.E, SymbolicDuration.Quarter, expectedOctave: 4);
+
+        // Verify all 4 notes in measure
+        var allNotes = GetNotes(score);
+        Assert.Equal(4, allNotes.Count);
+    }
+
+    [Fact]
+    public async Task Parse_Lyrics_CreatesCorrectLyrics()
+    {
+        // Arrange
+        var testFilePath = Path.Combine("TestData", "lyrics.xml");
+        using var stream = File.OpenRead(testFilePath);
+        var importer = new MusicXmlScoreImporter(enableValidation: false);
+
+        // Act
+        var score = await importer.ImportAsync(stream);
+
+        // Assert
+        Assert.Equal("Lyrics Test", score.Metadata.Title);
+
+        // Measure 1: "Twin-kle twin-kle"
+        score.GetMeasure(measureIndex: 0)
+            .AssertLyricCount(1)
+            .AssertLyricSyllable(0, 0, "Twin-", LyricSyllableType.Start)
+            .AssertLyricSyllable(0, 1, "kle", LyricSyllableType.Middle)
+            .AssertLyricSyllable(0, 2, "twin-", LyricSyllableType.Middle)
+            .AssertLyricSyllable(0, 3, "kle", LyricSyllableType.End);
+
+        // Measure 2: "star so bright"
+        score.GetMeasure(measureIndex: 1)
+            .AssertLyricCount(1)
+            .AssertLyricSyllable(0, 0, "star", LyricSyllableType.Standalone)
+            .AssertLyricSyllable(0, 1, "so", LyricSyllableType.Standalone)
+            .AssertLyricSyllable(0, 2, "bright", LyricSyllableType.Hold); // has extend element
+    }
 }
