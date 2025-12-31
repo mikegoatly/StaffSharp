@@ -2,6 +2,7 @@ using MathNet.Numerics;
 using MathNet.Numerics.IntegralTransforms;
 using StaffSharp.Audio.Numerics;
 using System.Numerics;
+using System.Numerics.Tensors;
 
 namespace StaffSharp.Audio.Analysis.Onset;
 
@@ -38,7 +39,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         _minOnsetIntervalSeconds = minOnsetIntervalSeconds;
     }
 
-    public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate)
+    public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, double startTimeOffset = 0.0)
     {
         if (buffer.Length < _frameSize)
             return Array.Empty<double>();
@@ -52,6 +53,12 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         // Step 3: Convert frame indices to time (seconds)
         var minOnsetIntervalFrames = (int)(_minOnsetIntervalSeconds * sampleRate / _hopSize);
         var onsets = ConvertFramesToTime(onsetFrames, _hopSize, sampleRate, minOnsetIntervalFrames);
+
+        // Step 4: Apply start time offset to preserve absolute timing
+        if (startTimeOffset != 0.0)
+        {
+            TensorPrimitives.Add(onsets, startTimeOffset, onsets);
+        }
 
         return onsets;
     }
