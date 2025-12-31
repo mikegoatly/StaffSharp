@@ -257,4 +257,61 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
                 "With high noise, either no onset or rough detection is expected");
         }
     }
+
+    [Fact]
+    public void DetectOnsets_WithStartTimeOffset_AppliesOffsetCorrectly()
+    {
+        // CRITICAL TEST: Verify that start time offset preserves absolute timing
+        // This is used when processing audio slices to maintain timing relative to original recording
+        var detector = new SpectralFluxOnsetDetector();
+
+        // Create audio with onset at 0.1s
+        var buffer = AudioSignalBuilder.Create()
+            .WithSampleRate(SampleRate)
+            .WithDuration(0.5)
+            .AtTime(0.1).WithAttack(0.01).AddSine(440.0, amplitude: 0.8, durationSeconds: 0.3)
+            .Build();
+
+        // Simulate processing a slice that starts at 2.5 seconds into the original recording
+        var startTimeOffset = 2.5;
+
+        var onsetsWithOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset);
+        var onsetsWithoutOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: 0.0);
+
+        // Should detect same number of onsets
+        Assert.Equal(onsetsWithoutOffset.Length, onsetsWithOffset.Length);
+        Assert.True(onsetsWithOffset.Length > 0, "Should detect at least one onset");
+
+        // Each onset time should be offset by exactly startTimeOffset
+        for (int i = 0; i < onsetsWithOffset.Length; i++)
+        {
+            var expectedTime = onsetsWithoutOffset[i] + startTimeOffset;
+            Assert.Equal(expectedTime, onsetsWithOffset[i], precision: 6);
+        }
+
+        // First onset should be at ~2.6s (0.1s onset + 2.5s offset)
+        Assert.InRange(onsetsWithOffset[0], 2.55, 2.65);
+    }
+
+    [Fact]
+    public void DetectOnsets_WithZeroOffset_BehavesNormally()
+    {
+        var detector = new SpectralFluxOnsetDetector();
+
+        var buffer = AudioSignalBuilder.Create()
+            .WithSampleRate(SampleRate)
+            .WithDuration(0.5)
+            .AtTime(0.1).WithAttack(0.01).AddSine(440.0, amplitude: 0.8, durationSeconds: 0.3)
+            .Build();
+
+        // Explicit zero offset should be identical to omitting the parameter
+        var onsetsExplicitZero = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: 0.0);
+        var onsetsDefault = detector.DetectOnsets(buffer, SampleRate);
+
+        Assert.Equal(onsetsDefault.Length, onsetsExplicitZero.Length);
+        for (int i = 0; i < onsetsDefault.Length; i++)
+        {
+            Assert.Equal(onsetsDefault[i], onsetsExplicitZero[i], precision: 10);
+        }
+    }
 }
