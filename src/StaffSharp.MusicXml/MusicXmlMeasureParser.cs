@@ -16,20 +16,14 @@ internal static class MusicXmlMeasureParser
         ArgumentNullException.ThrowIfNull(measureElement);
         ArgumentNullException.ThrowIfNull(context);
 
-        // Group events by voice
-        var voiceEvents = new Dictionary<int, List<INotationEvent>>();
-        var defaultVoice = 1;
+        const int defaultVoice = 1;
         var directions = new List<Direction>();
         BarlineType? startBarline = null;
         BarlineType? endBarline = null;
         List<int>? repeatVariants = null;
 
-        // Track slurs per voice: voice -> (slur number -> start event index)
-        var activeSlurs = new Dictionary<int, Dictionary<int, int>>();
-        // Completed slurs per voice
-        var voiceSlurs = new Dictionary<int, List<Slur>>();
-        // Track lyrics per voice: voice -> (lyric number -> syllables)
-        var voiceLyrics = new Dictionary<int, Dictionary<int, List<LyricSyllable>>>();
+        // Track state per voice
+        var voiceStates = new Dictionary<int, VoiceState>();
 
         // Process measure elements in order
         foreach (var element in measureElement.Elements())
@@ -46,52 +40,41 @@ internal static class MusicXmlMeasureParser
                     var (noteEvent, voiceNumber, slurInfos, lyricSyllables) = MusicXmlNoteParser.ParseNote(element, context);
                     var voice = voiceNumber ?? defaultVoice;
 
-                    if (!voiceEvents.TryGetValue(voice, out var events))
+                    if (!voiceStates.TryGetValue(voice, out var voiceState))
                     {
-                        events = new List<INotationEvent>();
-                        voiceEvents[voice] = events;
+                        voiceState = new VoiceState();
+                        voiceStates[voice] = voiceState;
                     }
-                    events.Add(noteEvent);
+
+                    voiceState.Events.Add(noteEvent);
 
                     // Process slur information
                     if (slurInfos != null)
                     {
-                        if (!activeSlurs.TryGetValue(voice, out var slurStarts))
-                        {
-                            slurStarts = new Dictionary<int, int>();
-                            activeSlurs[voice] = slurStarts;
-                        }
-
-                        if (!voiceSlurs.TryGetValue(voice, out var slurs))
-                        {
-                            slurs = new List<Slur>();
-                            voiceSlurs[voice] = slurs;
-                        }
-
                         foreach (var slurInfo in slurInfos)
                         {
                             if (slurInfo.Type == SlurType.Start)
                             {
                                 // Record the start index (current event)
-                                slurStarts[slurInfo.Number] = events.Count - 1;
+                                voiceState.ActiveSlurs[slurInfo.Number] = voiceState.Events.Count - 1;
                             }
                             else if (slurInfo.Type == SlurType.Stop)
                             {
                                 // Find the start index and create a slur
-                                if (slurStarts.TryGetValue(slurInfo.Number, out var startIndex))
+                                if (voiceState.ActiveSlurs.TryGetValue(slurInfo.Number, out var startIndex))
                                 {
                                     var slurEvents = new List<INotationEvent>();
-                                    for (int i = startIndex; i < events.Count; i++)
+                                    for (int i = startIndex; i < voiceState.Events.Count; i++)
                                     {
-                                        slurEvents.Add(events[i]);
+                                        slurEvents.Add(voiceState.Events[i]);
                                     }
 
                                     if (slurEvents.Count >= 2)
                                     {
-                                        slurs.Add(new Slur(slurEvents));
+                                        voiceState.Slurs.Add(new Slur(slurEvents));
                                     }
 
-                                    slurStarts.Remove(slurInfo.Number);
+                                    voiceState.ActiveSlurs.Remove(slurInfo.Number);
                                 }
                             }
                         }
@@ -100,18 +83,12 @@ internal static class MusicXmlMeasureParser
                     // Process lyric syllables
                     if (lyricSyllables != null)
                     {
-                        if (!voiceLyrics.TryGetValue(voice, out var lyricLines))
-                        {
-                            lyricLines = new Dictionary<int, List<LyricSyllable>>();
-                            voiceLyrics[voice] = lyricLines;
-                        }
-
                         foreach (var (lyricNumber, syllable) in lyricSyllables)
                         {
-                            if (!lyricLines.TryGetValue(lyricNumber, out var syllables))
+                            if (!voiceState.Lyrics.TryGetValue(lyricNumber, out var syllables))
                             {
-                                syllables = new List<LyricSyllable>();
-                                lyricLines[lyricNumber] = syllables;
+                                syllables = [];
+                                voiceState.Lyrics[lyricNumber] = syllables;
                             }
                             syllables.Add(syllable);
                         }
@@ -156,40 +133,22 @@ internal static class MusicXmlMeasureParser
             }
         }
 
-        // Create measures for each voice
+        // Create measures from voice states
         var measures = new Dictionary<int, Measure>();
-        foreach (var (voiceNumber, events) in voiceEvents)
-        {
-            voiceSlurs.TryGetValue(voiceNumber, out var slurs);
 
-            // Create lyrics list from lyric lines
-            List<Lyric>? lyrics = null;
-            if (voiceLyrics.TryGetValue(voiceNumber, out var lyricLines))
+        if (voiceStates.Count > 0)
+        {
+            foreach (var (voiceNumber, state) in voiceStates)
             {
-                lyrics = new List<Lyric>();
-                foreach (var syllables in lyricLines.Values)
-                {
-                    lyrics.Add(new Lyric(syllables));
-                }
+                measures[voiceNumber] = CreateMeasure(state, measureNumber, repeatVariants, startBarline, endBarline, directions);
             }
-
-            measures[voiceNumber] = new Measure(
-                measureNumber,
-                events,
-                repeatVariants: repeatVariants,
-                slurs: slurs,
-                lyrics: lyrics,
-                startBarline: startBarline,
-                endBarline: endBarline,
-                directions: directions.Count > 0 ? directions : null);
         }
-
-        // If no voices have events, create an empty measure for voice 1
-        if (measures.Count == 0)
+        else
         {
+            // No voices have events, create an empty measure for voice 1
             measures[defaultVoice] = new Measure(
                 measureNumber,
-                new List<INotationEvent>(),
+                [],
                 repeatVariants: repeatVariants,
                 startBarline: startBarline,
                 endBarline: endBarline,
@@ -197,5 +156,46 @@ internal static class MusicXmlMeasureParser
         }
 
         return measures;
+    }
+
+    private static Measure CreateMeasure(
+        VoiceState state,
+        int measureNumber,
+        List<int>? repeatVariants,
+        BarlineType? startBarline,
+        BarlineType? endBarline,
+        List<Direction> directions)
+    {
+        // Create lyrics list from lyric lines
+        List<Lyric>? lyrics = null;
+        if (state.Lyrics.Count > 0)
+        {
+            lyrics = new List<Lyric>(state.Lyrics.Count);
+            foreach (var syllables in state.Lyrics.Values)
+            {
+                lyrics.Add(new Lyric(syllables));
+            }
+        }
+
+        return new Measure(
+            measureNumber,
+            state.Events,
+            repeatVariants: repeatVariants,
+            slurs: state.Slurs.Count > 0 ? state.Slurs : null,
+            lyrics: lyrics,
+            startBarline: startBarline,
+            endBarline: endBarline,
+            directions: directions.Count > 0 ? directions : null);
+    }
+
+    /// <summary>
+    /// Holds all parsing state for a single voice within a measure.
+    /// </summary>
+    private sealed class VoiceState
+    {
+        public List<INotationEvent> Events { get; } = [];
+        public Dictionary<int, int> ActiveSlurs { get; } = []; // slur number -> start event index
+        public List<Slur> Slurs { get; } = [];
+        public Dictionary<int, List<LyricSyllable>> Lyrics { get; } = []; // lyric number -> syllables
     }
 }
