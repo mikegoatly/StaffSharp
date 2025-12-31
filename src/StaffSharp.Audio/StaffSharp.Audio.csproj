@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" />
+    <PackageReference Include="System.Numerics.Tensors" />
   </ItemGroup>
 
 </Project>
