@@ -6,8 +6,17 @@ root = false
 # CA1707: Identifiers should not contain underscores
 dotnet_diagnostic.CA1707.severity = none
 
+# CA1062: Validate arguments of public methods - test helpers don't need null validation
+dotnet_diagnostic.CA1062.severity = none
+
 # CA1515: Consider making public types internal
 dotnet_diagnostic.CA1515.severity = none
 
 # CA1307: StringComparison not needed for test assertions
 dotnet_diagnostic.CA1307.severity = none
+
+# CA5394: Random is acceptable in test code (not security-sensitive)
+dotnet_diagnostic.CA5394.severity = none
+
+# CA1861: Array allocations in test code are acceptable
+dotnet_diagnostic.CA1861.severity = none
