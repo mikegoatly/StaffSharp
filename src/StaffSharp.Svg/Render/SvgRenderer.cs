@@ -450,19 +450,18 @@ public static class SvgRenderer
 
     private static void RenderLedgerLines(XElement group, LayoutSymbol symbol, SvgContext context)
     {
-        var lineWidth = context.StaffSpace * 1.5;
         var lineSpacing = context.StaffSpace;
 
         for (int i = 0; i < symbol.LedgerLineCount; i++)
         {
             var lineY = symbol.LedgerLinesAbove
-                ? -(i + 1) * lineSpacing
-                : (i + 1) * lineSpacing;
+                ? -i * lineSpacing
+                : i * lineSpacing;
 
             group.Add(new XElement(SvgNamespace + "line",
-                new XAttribute("x1", (-lineWidth / 2).ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("x1", (-context.StaffSpace * 0.4).ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("y1", lineY.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("x2", (lineWidth / 2).ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("x2", (context.StaffSpace * 1.4).ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("y2", lineY.ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("stroke", "black"),
                 new XAttribute("stroke-width", "1")
