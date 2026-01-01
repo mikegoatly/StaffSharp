@@ -14,25 +14,25 @@ public sealed class SimpleVoiceAssigner : IVoiceAssigner
 
         if (events.Count == 0)
         {
-            return Array.Empty<VoiceAssignment>();
+            return [];
         }
 
         // Track voice number for each event (mutable so renumbering works)
         var eventVoiceNumbers = new Dictionary<IPerformanceEvent, int>(events.Count);
         var activeVoices = new List<VoiceState>();
 
-        foreach (var @event in events)
+        foreach (var evt in events)
         {
             // Remove voices that have finished before this event's onset
-            activeVoices.RemoveAll(v => v.EndBeats <= @event.OnsetBeats);
+            activeVoices.RemoveAll(v => v.EndBeats <= evt.OnsetBeats);
 
             int voiceNumber;
 
             // Check if event has a voice hint
-            var voiceHint = GetVoiceHint(@event);
-            if (voiceHint.HasValue)
+
+            if (evt.VoiceHint is not null)
             {
-                voiceNumber = voiceHint.Value;
+                voiceNumber = evt.VoiceHint.GetValueOrDefault();
             }
             else if (activeVoices.Count == 0)
             {
@@ -42,19 +42,19 @@ public sealed class SimpleVoiceAssigner : IVoiceAssigner
             else
             {
                 // Find best voice based on pitch similarity
-                voiceNumber = FindBestVoice(@event, activeVoices, eventVoiceNumbers);
+                voiceNumber = FindBestVoice(evt, activeVoices, eventVoiceNumbers);
             }
 
             // Store the voice assignment for this event
-            eventVoiceNumbers[@event] = voiceNumber;
+            eventVoiceNumbers[evt] = voiceNumber;
 
             // Track this event's end time for the voice
-            var endBeats = GetEventEndBeats(@event);
+            var endBeats = evt.OffsetBeats;
             var existingVoice = activeVoices.FirstOrDefault(v => v.VoiceNumber == voiceNumber);
             if (existingVoice != null)
             {
                 existingVoice.EndBeats = existingVoice.EndBeats > endBeats ? existingVoice.EndBeats : endBeats;
-                existingVoice.LastPitch = GetEventPitch(@event);
+                existingVoice.LastPitch = evt.Pitch;
             }
             else
             {
@@ -62,66 +62,31 @@ public sealed class SimpleVoiceAssigner : IVoiceAssigner
                 {
                     VoiceNumber = voiceNumber,
                     EndBeats = endBeats,
-                    LastPitch = GetEventPitch(@event),
-                    Event = @event
+                    LastPitch = evt.Pitch,
+                    Event = evt
                 });
             }
         }
 
         // Convert dictionary to assignment list
-        return events.Select(@event => new VoiceAssignment(@event, eventVoiceNumbers[@event])).ToList();
-    }
-
-    private static int? GetVoiceHint(IPerformanceEvent @event)
-    {
-        return @event switch
-        {
-            QuantizedNoteEvent qne => qne.VoiceHint,
-            SymbolicNoteEvent sne => sne.VoiceHint,
-            _ => null
-        };
-    }
-
-    private static Rational GetEventEndBeats(IPerformanceEvent @event)
-    {
-        return @event switch
-        {
-            QuantizedNoteEvent qne => qne.OffsetBeats,
-            SymbolicNoteEvent sne => sne.OnsetBeats + sne.DurationBeats,
-            _ => @event.OnsetBeats
-        };
-    }
-
-    private static MidiNote? GetEventPitch(IPerformanceEvent @event)
-    {
-        return @event switch
-        {
-            QuantizedNoteEvent qne => qne.RawEvent.Pitch,
-            SymbolicNoteEvent sne => sne.Pitch,
-            _ => null
-        };
+        return events.Select(evt => new VoiceAssignment(evt, eventVoiceNumbers[evt])).ToList();
     }
 
     private static int FindBestVoice(
-        IPerformanceEvent @event,
+        IPerformanceEvent evt,
         List<VoiceState> activeVoices,
         Dictionary<IPerformanceEvent, int> eventVoiceNumbers)
     {
         // activeVoices contains voices that overlap with this event (haven't finished yet)
         // We should NEVER reuse an active voice - always create a new one for overlapping notes
 
-        var pitch = GetEventPitch(@event);
-        if (!pitch.HasValue)
-        {
-            // Non-note event, assign to next available voice
-            return activeVoices.Max(v => v.VoiceNumber) + 1;
-        }
+        var pitch = evt.Pitch;
 
         // Create new voice with correct numbering based on pitch
         // Higher pitches get lower voice numbers (soprano, alto, tenor, bass convention)
         var higherVoiceCount = activeVoices.Count(v =>
             v.LastPitch.HasValue &&
-            v.LastPitch.Value.MidiNumber > pitch.Value.MidiNumber);
+            v.LastPitch.Value.MidiNumber > pitch.MidiNumber);
 
         // New voice number = number of voices above it + 1
         var newVoiceNumber = higherVoiceCount + 1;

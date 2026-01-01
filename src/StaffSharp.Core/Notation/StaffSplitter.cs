@@ -19,7 +19,7 @@ internal static class StaffSplitter
             return false;
         }
 
-        var pitches = ExtractPitches(events.OfType<INoteEvent>());
+        var pitches = ExtractPitches(events);
         if (pitches.Count == 0)
         {
             return false;
@@ -42,13 +42,7 @@ internal static class StaffSplitter
 
         foreach (var assignment in assignments)
         {
-            var pitch = assignment.Event;
-            if (pitch is not INoteEvent noteEvent)
-            {
-                // Non-pitched event (rest, etc.) - assign to treble by default
-                treble.Add(assignment);
-            }
-            else if (noteEvent.Pitch.Value >= splitPoint)
+            if (assignment.Event.Pitch.Value >= splitPoint)
             {
                 // High notes go to treble staff
                 treble.Add(assignment);
@@ -102,7 +96,7 @@ internal static class StaffSplitter
     /// <summary>
     /// Extracts all MIDI pitch numbers from performance events.
     /// </summary>
-    private static List<int> ExtractPitches(IEnumerable<INoteEvent> events)
+    private static List<int> ExtractPitches(IEnumerable<IPerformanceEvent> events)
     {
         return events
             .Select(ev => ev.Pitch.MidiNumber)

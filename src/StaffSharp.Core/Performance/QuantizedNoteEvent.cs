@@ -5,7 +5,7 @@ namespace StaffSharp.Performance;
 /// Wraps the original NoteEvent to preserve exact audio timing for re-quantization experiments.
 /// This is the "wrapper pattern" from the architecture - preserves original data while adding musical time.
 /// </summary>
-public sealed record QuantizedNoteEvent : INoteEvent
+public sealed record QuantizedNoteEvent : IPerformanceEvent
 {
     /// <summary>
     /// Creates a new quantized note event.

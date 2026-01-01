@@ -4,7 +4,7 @@ namespace StaffSharp.Performance;
 /// A note from symbolic sources (MIDI, ABC, MusicXML) that is already in musical time.
 /// Unlike QuantizedNoteEvent, this doesn't wrap a raw audio event since it was never audio.
 /// </summary>
-public sealed record SymbolicNoteEvent : INoteEvent
+public sealed record SymbolicNoteEvent : IPerformanceEvent
 {
     /// <summary>
     /// Creates a new symbolic note event.

@@ -201,7 +201,7 @@ public sealed class NotationEngine : INotationEngine
 
         // Auto-detect based on pitch range
         // Extract all pitches from events
-        var pitches = events.OfType<INoteEvent>()
+        var pitches = events
             .Select(e => e.Pitch.MidiNumber)
             .ToList();
 

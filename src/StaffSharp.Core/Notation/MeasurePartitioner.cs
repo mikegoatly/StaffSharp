@@ -47,10 +47,9 @@ public sealed class MeasurePartitioner
         var measures = new Dictionary<int, List<INotationEvent>>();
         var currentBeat = Rational.Zero;
 
-        foreach (var evt in assignments.OrderBy(a => a.Event.OnsetBeats)
-            .Select(e => e.Event)
-            .OfType<INoteEvent>())
+        foreach (var assignment in assignments.OrderBy(a => a.Event.OnsetBeats))
         {
+            var evt = assignment.Event;
             var onsetBeats = evt.OnsetBeats;
             var durationBeats = evt.DurationBeats;
 
@@ -107,7 +106,7 @@ public sealed class MeasurePartitioner
 
     private void AddNoteWithMeasureSplits(
         Dictionary<int, List<INotationEvent>> measures,
-        INoteEvent performanceEvent,
+        IPerformanceEvent performanceEvent,
         Rational onsetBeats,
         Rational durationBeats)
     {
