@@ -38,11 +38,32 @@ internal static class MusicXmlAttributesParser
             context.TimeSignature = ParseTimeSignature(timeElement);
         }
 
-        // Parse clef
-        var clefElement = attributesElement.Element("clef");
-        if (clefElement != null)
+        // Parse staves count (for multi-staff parts like piano)
+        var stavesElement = attributesElement.Element("staves");
+        if (stavesElement != null && int.TryParse(stavesElement.Value, out var stavesCount))
         {
-            context.Clef = ParseClef(clefElement);
+            context.StavesCount = stavesCount;
+        }
+
+        // Parse clef(s) - supports multiple clefs with staff numbers for multi-staff parts
+        var clefElements = attributesElement.Elements("clef").ToList();
+        foreach (var clefElement in clefElements)
+        {
+            var clef = ParseClef(clefElement);
+
+            // Check for staff number attribute (e.g., <clef number="1"> or <clef number="2">)
+            var numberAttr = clefElement.Attribute("number");
+            if (numberAttr != null && int.TryParse(numberAttr.Value, out var staffNumber))
+            {
+                // Store clef for specific staff
+                context.StaffClefs[staffNumber] = clef;
+            }
+            else
+            {
+                // No staff number - use as default clef and for staff 1
+                context.Clef = clef;
+                context.StaffClefs[1] = clef;
+            }
         }
     }
 

@@ -19,12 +19,12 @@ public class Measure
         Number = number;
         Events = events;
         TimeSignature = timeSignature;
-        RepeatVariants = repeatVariants ?? Array.Empty<int>();
-        Slurs = slurs ?? Array.Empty<Slur>();
-        Lyrics = lyrics ?? Array.Empty<Lyric>();
+        RepeatVariants = repeatVariants ?? [];
+        Slurs = slurs ?? [];
+        Lyrics = lyrics ?? [];
         StartBarline = startBarline;
         EndBarline = endBarline;
-        Directions = directions ?? Array.Empty<Direction>();
+        Directions = directions ?? [];
     }
 
     public int Number { get; }

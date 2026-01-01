@@ -20,5 +20,5 @@ public record NotationNote(
     }
 
     // Ensure Decorations is never null
-    public IReadOnlyList<Decoration> Decorations { get; init; } = Decorations ?? Array.Empty<Decoration>();
+    public IReadOnlyList<Decoration> Decorations { get; init; } = Decorations ?? [];
 }

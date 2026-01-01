@@ -9,21 +9,23 @@ using System.Xml.Linq;
 internal static class MusicXmlMeasureParser
 {
     /// <summary>
-    /// Parses a measure element and returns measures grouped by voice number.
+    /// Parses a measure element and returns measures grouped by staff number and voice number.
+    /// Returns: Dictionary&lt;staffNumber, Dictionary&lt;voiceNumber, Measure&gt;&gt;
     /// </summary>
-    public static Dictionary<int, Measure> ParseMeasure(XElement measureElement, MusicXmlContext context, int measureNumber)
+    public static Dictionary<int, Dictionary<int, Measure>> ParseMeasure(XElement measureElement, MusicXmlContext context, int measureNumber)
     {
         ArgumentNullException.ThrowIfNull(measureElement);
         ArgumentNullException.ThrowIfNull(context);
 
         const int defaultVoice = 1;
+        const int defaultStaff = 1;
         var directions = new List<Direction>();
         BarlineType? startBarline = null;
         BarlineType? endBarline = null;
         List<int>? repeatVariants = null;
 
-        // Track state per voice
-        var voiceStates = new Dictionary<int, VoiceState>();
+        // Track state per (staff, voice) pair
+        var staffVoiceStates = new Dictionary<int, Dictionary<int, VoiceState>>();
 
         // Process measure elements in order
         foreach (var element in measureElement.Elements())
@@ -36,10 +38,19 @@ internal static class MusicXmlMeasureParser
                     break;
 
                 case "note":
-                    // Parse note and add to appropriate voice
-                    var (noteEvent, voiceNumber, slurInfos, lyricSyllables) = MusicXmlNoteParser.ParseNote(element, context);
+                    // Parse note and add to appropriate staff and voice
+                    var (noteEvent, voiceNumber, staffNumber, slurInfos, lyricSyllables) = MusicXmlNoteParser.ParseNote(element, context);
                     var voice = voiceNumber ?? defaultVoice;
+                    var staff = staffNumber; // Already has default value of 1
 
+                    // Get or create voice states for this staff
+                    if (!staffVoiceStates.TryGetValue(staff, out var voiceStates))
+                    {
+                        voiceStates = new Dictionary<int, VoiceState>();
+                        staffVoiceStates[staff] = voiceStates;
+                    }
+
+                    // Get or create voice state for this voice within the staff
                     if (!voiceStates.TryGetValue(voice, out var voiceState))
                     {
                         voiceState = new VoiceState();
@@ -133,29 +144,38 @@ internal static class MusicXmlMeasureParser
             }
         }
 
-        // Create measures from voice states
-        var measures = new Dictionary<int, Measure>();
+        // Create measures grouped by staff and voice
+        var staffMeasures = new Dictionary<int, Dictionary<int, Measure>>();
 
-        if (voiceStates.Count > 0)
+        if (staffVoiceStates.Count > 0)
         {
-            foreach (var (voiceNumber, state) in voiceStates)
+            foreach (var (staffNumber, voiceStates) in staffVoiceStates)
             {
-                measures[voiceNumber] = CreateMeasure(state, measureNumber, repeatVariants, startBarline, endBarline, directions);
+                var measures = new Dictionary<int, Measure>();
+                foreach (var (voiceNumber, state) in voiceStates)
+                {
+                    measures[voiceNumber] = CreateMeasure(state, measureNumber, repeatVariants, startBarline, endBarline, directions);
+                }
+                staffMeasures[staffNumber] = measures;
             }
         }
         else
         {
-            // No voices have events, create an empty measure for voice 1
-            measures[defaultVoice] = new Measure(
-                measureNumber,
-                [],
-                repeatVariants: repeatVariants,
-                startBarline: startBarline,
-                endBarline: endBarline,
-                directions: directions.Count > 0 ? directions : null);
+            // No staves/voices have events, create an empty measure for staff 1, voice 1
+            var emptyMeasures = new Dictionary<int, Measure>
+            {
+                [defaultVoice] = new Measure(
+                    measureNumber,
+                    [],
+                    repeatVariants: repeatVariants,
+                    startBarline: startBarline,
+                    endBarline: endBarline,
+                    directions: directions.Count > 0 ? directions : null)
+            };
+            staffMeasures[defaultStaff] = emptyMeasures;
         }
 
-        return measures;
+        return staffMeasures;
     }
 
     private static Measure CreateMeasure(
