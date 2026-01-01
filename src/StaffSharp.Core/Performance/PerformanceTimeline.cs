@@ -75,16 +75,7 @@ public sealed class PerformanceTimeline
         foreach (var evt in Events)
         {
             // For QuantizedNoteEvent and SymbolicNoteEvent, check if the note is still sounding
-            Rational offset = evt.OnsetBeats;
-
-            if (evt is QuantizedNoteEvent quantized)
-            {
-                offset = quantized.OffsetBeats;
-            }
-            else if (evt is SymbolicNoteEvent symbolic)
-            {
-                offset = symbolic.OffsetBeats;
-            }
+            Rational offset = evt.OffsetBeats;
 
             // Event is active if: onset <= beats < offset
             if (evt.OnsetBeats <= beats && beats < offset)
@@ -110,16 +101,7 @@ public sealed class PerformanceTimeline
 
             foreach (var evt in Events)
             {
-                Rational offset = evt.OnsetBeats;
-
-                if (evt is QuantizedNoteEvent quantized)
-                {
-                    offset = quantized.OffsetBeats;
-                }
-                else if (evt is SymbolicNoteEvent symbolic)
-                {
-                    offset = symbolic.OffsetBeats;
-                }
+                Rational offset = evt.OffsetBeats;
 
                 if (offset > maxOffset)
                 {
