@@ -204,16 +204,9 @@ public sealed class NotationEngine : INotationEngine
         var pitches = new List<int>();
         foreach (var ev in events)
         {
-            var pitch = ev switch
+            if (ev is INoteEvent noteEvent)
             {
-                QuantizedNoteEvent qne => qne.RawEvent.Pitch.MidiNumber,
-                SymbolicNoteEvent sne => sne.Pitch.MidiNumber,
-                _ => -1
-            };
-
-            if (pitch >= 0)
-            {
-                pitches.Add(pitch);
+                pitches.Add(noteEvent.Pitch.MidiNumber);
             }
         }
 

@@ -31,28 +31,28 @@ public sealed class MeasurePartitioner
 
         foreach (var (voiceNumber, assignments) in voiceAssignments)
         {
-            var measures = PartitionVoiceIntoMeasures(voiceNumber, assignments);
-            result[voiceNumber] = measures;
+            result[voiceNumber] = PartitionVoiceIntoMeasures(assignments);
         }
 
         return result;
     }
 
-    private List<Measure> PartitionVoiceIntoMeasures(int voiceNumber, List<VoiceAssignment> assignments)
+    private List<Measure> PartitionVoiceIntoMeasures(List<VoiceAssignment> assignments)
     {
         if (assignments.Count == 0)
         {
-            return new List<Measure>();
+            return [];
         }
 
         var measures = new Dictionary<int, List<INotationEvent>>();
         var currentBeat = Rational.Zero;
 
-        foreach (var assignment in assignments.OrderBy(a => a.Event.OnsetBeats))
+        foreach (var evt in assignments.OrderBy(a => a.Event.OnsetBeats)
+            .Select(e => e.Event)
+            .OfType<INoteEvent>())
         {
-            var @event = assignment.Event;
-            var onsetBeats = @event.OnsetBeats;
-            var durationBeats = GetEventDuration(@event);
+            var onsetBeats = evt.OnsetBeats;
+            var durationBeats = evt.DurationBeats;
 
             if (durationBeats == Rational.Zero)
             {
@@ -66,7 +66,7 @@ public sealed class MeasurePartitioner
             }
 
             // Add the note, potentially splitting across measures
-            AddNoteWithMeasureSplits(measures, @event, onsetBeats, durationBeats);
+            AddNoteWithMeasureSplits(measures, evt, onsetBeats, durationBeats);
 
             currentBeat = onsetBeats + durationBeats;
         }
@@ -96,7 +96,7 @@ public sealed class MeasurePartitioner
 
             if (!measures.TryGetValue(measureNumber, out var measureEvents))
             {
-                measureEvents = new List<INotationEvent>();
+                measureEvents = [];
                 measures[measureNumber] = measureEvents;
             }
 
@@ -107,7 +107,7 @@ public sealed class MeasurePartitioner
 
     private void AddNoteWithMeasureSplits(
         Dictionary<int, List<INotationEvent>> measures,
-        IPerformanceEvent @event,
+        INoteEvent performanceEvent,
         Rational onsetBeats,
         Rational durationBeats)
     {
@@ -142,13 +142,13 @@ public sealed class MeasurePartitioner
                 tieType = TieType.Start; // First note in tie chain
             }
 
-            var pitch = GetEventPitch(@event);
-            var velocity = GetEventVelocity(@event);
+            var pitch = performanceEvent.Pitch.ToPitch();
+            var velocity = performanceEvent.Velocity;
 
             var note = new NotationNote(
                 pitch,
                 symbolicDuration,
-                Velocity.Create(velocity),
+                velocity,
                 tieType,
                 GraceNote: null,
                 Decorations: null // IPerformanceEvent base interface doesn't include articulation data
@@ -156,7 +156,7 @@ public sealed class MeasurePartitioner
 
             if (!measures.TryGetValue(measureNumber, out var measureEvents))
             {
-                measureEvents = new List<INotationEvent>();
+                measureEvents = [];
                 measures[measureNumber] = measureEvents;
             }
 
@@ -219,43 +219,5 @@ public sealed class MeasurePartitioner
             slurs: null,
             lyrics: null
         );
-    }
-
-    private static Rational GetEventDuration(IPerformanceEvent @event)
-    {
-        return @event switch
-        {
-            QuantizedNoteEvent qne => qne.DurationBeats,
-            SymbolicNoteEvent sne => sne.DurationBeats,
-            _ => Rational.Zero
-        };
-    }
-
-    private static Pitch GetEventPitch(IPerformanceEvent @event)
-    {
-        var midiNote = @event switch
-        {
-            QuantizedNoteEvent qne => qne.RawEvent.Pitch,
-            SymbolicNoteEvent sne => sne.Pitch,
-            _ => MidiNote.Create(60) // Middle C
-        };
-
-        // Convert MIDI note to Pitch
-        var midiNumber = midiNote.MidiNumber;
-        var octave = (midiNumber / 12) - 1;
-        var pitchClass = (PitchClass)(midiNumber % 12);
-        return new Pitch(pitchClass, octave);
-    }
-
-    private static float GetEventVelocity(IPerformanceEvent @event)
-    {
-        var velocity = @event switch
-        {
-            QuantizedNoteEvent qne => qne.RawEvent.Velocity,
-            SymbolicNoteEvent sne => sne.Velocity,
-            _ => Velocity.MezzoForte
-        };
-
-        return velocity.Value;
     }
 }

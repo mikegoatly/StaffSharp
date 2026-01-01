@@ -1,3 +1,5 @@
+using StaffSharp.Notation;
+
 namespace StaffSharp;
 
 /// <summary>
@@ -124,6 +126,11 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
         }
         
         throw new ArgumentException($"Object must be of type {nameof(MidiNote)}");
+    }
+
+    public Pitch ToPitch()
+    {
+        return new Pitch(PitchClass, Octave);
     }
 
     // Well-known MIDI notes (A2 to G6)

@@ -5,7 +5,7 @@ namespace StaffSharp.Performance;
 /// Wraps the original NoteEvent to preserve exact audio timing for re-quantization experiments.
 /// This is the "wrapper pattern" from the architecture - preserves original data while adding musical time.
 /// </summary>
-public sealed record QuantizedNoteEvent : IPerformanceEvent
+public sealed record QuantizedNoteEvent : INoteEvent
 {
     /// <summary>
     /// Creates a new quantized note event.
@@ -63,6 +63,16 @@ public sealed record QuantizedNoteEvent : IPerformanceEvent
     /// Articulation detected from audio analysis (staccato, accent, etc.).
     /// </summary>
     public ArticulationFlags Articulation { get; }
+
+    /// <summary>
+    /// MIDI note number representing the pitch (delegates to RawEvent.Pitch).
+    /// </summary>
+    public MidiNote Pitch => RawEvent.Pitch;
+
+    /// <summary>
+    /// Note velocity/loudness (delegates to RawEvent.Velocity).
+    /// </summary>
+    public Velocity Velocity => RawEvent.Velocity;
 
     /// <summary>
     /// The offset time in beats (onset + duration).
