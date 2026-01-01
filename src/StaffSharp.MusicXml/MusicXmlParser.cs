@@ -57,13 +57,10 @@ internal static class MusicXmlParser
                 Tempo = metadata.Tempo
             };
 
-            // Parse the part's measures into voices
-            var voices = MusicXmlPartParser.ParsePart(partElement, context);
+            // Parse the part's measures into staves
+            var staves = MusicXmlPartParser.ParsePart(partElement, context);
 
-            // Determine clef (use treble as default, will be set by first attributes element)
-            var clef = context.Clef;
-
-            parts.Add(new Part(partName, clef, voices));
+            parts.Add(new Part(partName, staves));
         }
 
         return new NotationScore(metadata, parts);

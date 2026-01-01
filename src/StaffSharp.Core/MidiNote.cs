@@ -1,3 +1,5 @@
+using StaffSharp.Notation;
+
 namespace StaffSharp;
 
 /// <summary>
@@ -40,6 +42,38 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
     /// Converts to frequency in Hz using A4 = 440Hz.
     /// </summary>
     public Frequency ToFrequency() => Frequency.Create(MathF.Pow(2, (Value - 69) / 12) * 440);
+
+    /// <summary>
+    /// Creates a MIDI note from a frequency in Hz using A4 = 440Hz.
+    /// Uses the formula: MIDI = 12 * log2(freq / 440) + 69
+    /// </summary>
+    /// <param name="frequencyHz">The frequency in Hz.</param>
+    /// <returns>The nearest MIDI note.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when frequency results in invalid MIDI note.</exception>
+    public static MidiNote FromFrequency(double frequencyHz)
+    {
+        if (frequencyHz <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(frequencyHz),
+                frequencyHz,
+                "Frequency must be positive.");
+        }
+
+        var midiNote = 12.0 * Math.Log2(frequencyHz / 440.0) + 69.0;
+        var rounded = (float)Math.Round(midiNote);
+
+        // Validate MIDI range before creating
+        if (rounded < 0 || rounded > 127)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(frequencyHz),
+                frequencyHz,
+                $"Frequency {frequencyHz:F2} Hz corresponds to MIDI note {rounded:F2}, which is outside the valid range [0, 127].");
+        }
+
+        return new MidiNote(rounded); // Bypass Create() since we already validated
+    }
 
     /// <summary>
     /// Creates a MIDI note from a pitch class and octave.
@@ -94,9 +128,27 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
         throw new ArgumentException($"Object must be of type {nameof(MidiNote)}");
     }
 
+    public Pitch ToPitch()
+    {
+        return new Pitch(PitchClass, Octave);
+    }
+
     // Well-known MIDI notes (A2 to G6)
 
     // Octave 2
+    public static MidiNote C2 => Create(36);
+    public static MidiNote CSharp2 => Create(37);
+    public static MidiNote DFlat2 => Create(37);
+    public static MidiNote D2 => Create(38);
+    public static MidiNote DSharp2 => Create(39);
+    public static MidiNote EFlat2 => Create(39);
+    public static MidiNote E2 => Create(40);
+    public static MidiNote F2 => Create(41);
+    public static MidiNote FSharp2 => Create(42);
+    public static MidiNote GFlat2 => Create(42);
+    public static MidiNote G2 => Create(43);
+    public static MidiNote GSharp2 => Create(44);
+    public static MidiNote AFlat2 => Create(44);
     public static MidiNote A2 => Create(45);
     public static MidiNote ASharp2 => Create(46);
     public static MidiNote BFlat2 => Create(46);

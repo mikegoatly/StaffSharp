@@ -1,5 +1,7 @@
 namespace StaffSharp.TestHelpers;
 
+using System.Globalization;
+
 using StaffSharp;
 
 using StaffSharp.Notation;
@@ -318,6 +320,17 @@ public static class ScoreAssert
     }
 
     /// <summary>
+    /// Starts a fluent assertion chain for a grand staff.
+    /// </summary>
+    public static GrandStaffAssertion AssertGrandStaff(
+        this NotationScore score,
+        int partIndex = 0)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        return new GrandStaffAssertion(score.Parts[partIndex]);
+    }
+
+    /// <summary>
     /// Starts a fluent assertion chain for a sequence of events.
     /// </summary>
     public static EventSequenceAssertion AssertSequence(
@@ -412,5 +425,194 @@ public sealed class EventSequenceAssertion
     {
         Assert.Equal(expectedCount, _events.Count);
         return this;
+    }
+}
+
+/// <summary>
+/// Fluent API for asserting grand staff properties with detailed diagnostics.
+/// </summary>
+public sealed class GrandStaffAssertion
+{
+    private readonly Part _part;
+
+    public GrandStaffAssertion(Part part)
+    {
+        _part = part;
+    }
+
+    /// <summary>
+    /// Asserts that the part is configured as a grand staff.
+    /// </summary>
+    public GrandStaffAssertion IsGrandStaff()
+    {
+        Assert.True(_part.IsGrandStaff, "Expected part to be a grand staff");
+        Assert.Equal(2, _part.Staves.Count);
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts that the part is NOT configured as a grand staff.
+    /// </summary>
+    public GrandStaffAssertion IsNotGrandStaff()
+    {
+        Assert.False(_part.IsGrandStaff, "Expected part to NOT be a grand staff");
+        Assert.Single(_part.Staves);
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts the clefs are correctly set for treble and bass staves.
+    /// </summary>
+    public GrandStaffAssertion HasStandardClefs()
+    {
+        Assert.Equal(Clef.Treble, _part.Staves[0].Clef);
+        Assert.Equal(Clef.Bass, _part.Staves[1].Clef);
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts that notes are split correctly between treble and bass staves with detailed diagnostics.
+    /// </summary>
+    public GrandStaffAssertion HasNotesSplitAt(int splitPoint, params (int midiNote, string expectedStaff)[] expectedNotes)
+    {
+        IsGrandStaff();
+
+        var trebleEvents = _part.Staves[0].Voices
+            .SelectMany(v => v.Measures)
+            .SelectMany(m => m.Events)
+            .OfType<NotationNote>()
+            .ToList();
+
+        var bassEvents = _part.Staves[1].Voices
+            .SelectMany(v => v.Measures)
+            .SelectMany(m => m.Events)
+            .OfType<NotationNote>()
+            .ToList();
+
+        // Build diagnostic message
+        var diagnostics = new System.Text.StringBuilder();
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Grand Staff Note Split Analysis (split point: MIDI {splitPoint})");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Expected: Notes >= {splitPoint} ? Treble, Notes < {splitPoint} ? Bass");
+        diagnostics.AppendLine();
+        
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Treble Staff ({trebleEvents.Count} notes):");
+        foreach (var note in trebleEvents)
+        {
+            var midi = GetMidiNumber(note.Pitch);
+            diagnostics.AppendLine(CultureInfo.InvariantCulture, $"  - {note.Pitch.PitchClass}{note.Pitch.Octave} (MIDI {midi})");
+        }
+        
+        diagnostics.AppendLine();
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Bass Staff ({bassEvents.Count} notes):");
+        foreach (var note in bassEvents)
+        {
+            var midi = GetMidiNumber(note.Pitch);
+            diagnostics.AppendLine(CultureInfo.InvariantCulture, $"  - {note.Pitch.PitchClass}{note.Pitch.Octave} (MIDI {midi})");
+        }
+
+        diagnostics.AppendLine();
+        diagnostics.AppendLine("Expected Distribution:");
+        var expectedTrebleCount = expectedNotes.Count(n => n.expectedStaff == "treble");
+        var expectedBassCount = expectedNotes.Count(n => n.expectedStaff == "bass");
+        
+        foreach (var (midi, staff) in expectedNotes)
+        {
+            diagnostics.AppendLine(CultureInfo.InvariantCulture, $"  - MIDI {midi} ? {staff}");
+        }
+
+        diagnostics.AppendLine();
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Expected: {expectedTrebleCount} treble, {expectedBassCount} bass");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Actual:   {trebleEvents.Count} treble, {bassEvents.Count} bass");
+
+        // Perform assertions with diagnostic output
+        Assert.True(
+            trebleEvents.Count == expectedTrebleCount,
+            $"Treble staff note count mismatch.\n{diagnostics}");
+
+        Assert.True(
+            bassEvents.Count == expectedBassCount,
+            $"Bass staff note count mismatch.\n{diagnostics}");
+
+        // Verify each note is on the correct staff
+        foreach (var (midi, expectedStaff) in expectedNotes)
+        {
+            var isInTreble = trebleEvents.Any(n => GetMidiNumber(n.Pitch) == midi);
+            var isInBass = bassEvents.Any(n => GetMidiNumber(n.Pitch) == midi);
+
+            if (expectedStaff == "treble")
+            {
+                Assert.True(isInTreble, 
+                    $"Expected MIDI {midi} on treble staff but it was not found.\n{diagnostics}");
+            }
+            else
+            {
+                Assert.True(isInBass, 
+                    $"Expected MIDI {midi} on bass staff but it was not found.\n{diagnostics}");
+            }
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts the event counts on treble and bass staves (includes all event types: notes, rests, chords).
+    /// </summary>
+    public GrandStaffAssertion HasEventCounts(int expectedTrebleCount, int expectedBassCount)
+    {
+        IsGrandStaff();
+
+        var trebleEvents = _part.Staves[0].Voices
+            .SelectMany(v => v.Measures)
+            .SelectMany(m => m.Events)
+            .ToList();
+
+        var bassEvents = _part.Staves[1].Voices
+            .SelectMany(v => v.Measures)
+            .SelectMany(m => m.Events)
+            .ToList();
+
+        var diagnostics = new System.Text.StringBuilder();
+        diagnostics.AppendLine("Grand Staff Event Count Analysis");
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Treble Staff: {trebleEvents.Count} events");
+        foreach (var evt in trebleEvents)
+        {
+            diagnostics.AppendLine(CultureInfo.InvariantCulture, $"  - {evt.GetType().Name}");
+        }
+        
+        diagnostics.AppendLine(CultureInfo.InvariantCulture, $"Bass Staff: {bassEvents.Count} events");
+        foreach (var evt in bassEvents)
+        {
+            diagnostics.AppendLine(CultureInfo.InvariantCulture, $"  - {evt.GetType().Name}");
+        }
+
+        Assert.True(
+            trebleEvents.Count == expectedTrebleCount,
+            $"Expected {expectedTrebleCount} treble events but got {trebleEvents.Count}\n{diagnostics}");
+
+        Assert.True(
+            bassEvents.Count == expectedBassCount,
+            $"Expected {expectedBassCount} bass events but got {bassEvents.Count}\n{diagnostics}");
+
+        return this;
+    }
+
+    /// <summary>
+    /// Asserts that the bass staff is empty (no measures with events).
+    /// </summary>
+    public GrandStaffAssertion HasEmptyBassStaff()
+    {
+        IsGrandStaff();
+        
+        var bassStaff = _part.Staves[1];
+        Assert.Single(bassStaff.Voices);
+        Assert.Empty(bassStaff.Voices[0].Measures);
+        
+        return this;
+    }
+
+    private static int GetMidiNumber(Pitch pitch)
+    {
+        // Calculate MIDI number from pitch class and octave
+        return (pitch.Octave + 1) * 12 + (int)pitch.PitchClass;
     }
 }

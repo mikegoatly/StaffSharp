@@ -65,6 +65,16 @@ public sealed record QuantizedNoteEvent : IPerformanceEvent
     public ArticulationFlags Articulation { get; }
 
     /// <summary>
+    /// MIDI note number representing the pitch (delegates to RawEvent.Pitch).
+    /// </summary>
+    public MidiNote Pitch => RawEvent.Pitch;
+
+    /// <summary>
+    /// Note velocity/loudness (delegates to RawEvent.Velocity).
+    /// </summary>
+    public Velocity Velocity => RawEvent.Velocity;
+
+    /// <summary>
     /// The offset time in beats (onset + duration).
     /// </summary>
     public Rational OffsetBeats => OnsetBeats + DurationBeats;

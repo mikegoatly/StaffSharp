@@ -28,7 +28,7 @@ public record Chord : INotationEvent
         Velocity = velocity;
         Tie = tie;
         GraceNote = graceNote;
-        Decorations = decorations ?? Array.Empty<Decoration>();
+        Decorations = decorations ?? [];
         ChordSymbol = chordSymbol;
         Annotation = annotation;
     }

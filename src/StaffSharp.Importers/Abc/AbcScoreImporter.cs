@@ -12,14 +12,21 @@ public sealed class AbcScoreImporter : IScoreImporter
 
     public string FormatName => "ABC Notation";
 
-    public async Task<NotationScore> ImportAsync(Stream stream, CancellationToken cancellationToken = default)
+    public async Task<NotationScore> ImportAsync(Stream stream, IProgress<ImportProgress>? progress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
 
+        progress?.Report(new ImportProgress(1, 2, "Reading ABC file"));
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
+        progress?.Report(new ImportProgress(2, 2, "Parsing ABC notation"));
         // AbcParser.Parse is synchronous
         return AbcParser.Parse(content);
+    }
+
+    public Task<NotationScore> ImportAsync(Stream stream, CancellationToken cancellationToken = default)
+    {
+        return ImportAsync(stream, progress: null, cancellationToken);
     }
 }

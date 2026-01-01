@@ -289,4 +289,86 @@ public class MusicXmlParserTests : ScoreTestBase
             .AssertLyricSyllable(0, 1, "so", LyricSyllableType.Standalone)
             .AssertLyricSyllable(0, 2, "bright", LyricSyllableType.Hold); // has extend element
     }
+
+    [Fact]
+    public async Task Parse_PianoGrandStaff_CreatesCorrectStaves()
+    {
+        // Arrange
+        var testFilePath = Path.Combine("TestData", "piano-grand-staff.xml");
+        using var stream = File.OpenRead(testFilePath);
+        var importer = new MusicXmlScoreImporter(enableValidation: false);
+
+        // Act
+        var score = await importer.ImportAsync(stream);
+
+        // Assert metadata
+        Assert.NotNull(score);
+        Assert.Equal("Piano Grand Staff Test", score.Metadata.Title);
+
+        // Verify single part
+        AssertPartCount(score, 1);
+        var part = GetPart(score);
+        Assert.Equal("Piano", part.Name);
+
+        // Verify grand staff structure
+        Assert.True(part.IsGrandStaff, "Part should be a grand staff");
+        Assert.Equal(2, part.Staves.Count);
+
+        // Verify Staff 1 (Treble)
+        var trebleStaff = part.Staves[0];
+        Assert.Equal(1, trebleStaff.Number);
+        Assert.Equal(Clef.Treble, trebleStaff.Clef);
+        Assert.Single(trebleStaff.Voices); // Voice 1
+
+        // Verify Staff 2 (Bass)
+        var bassStaff = part.Staves[1];
+        Assert.Equal(2, bassStaff.Number);
+        Assert.Equal(Clef.Bass, bassStaff.Clef);
+        Assert.Single(bassStaff.Voices); // Voice 2
+
+        // Verify treble staff notes (measure 1: C5, E5, G5, C6)
+        var trebleVoice = trebleStaff.Voices[0];
+        Assert.Equal(1, trebleVoice.Number);
+        Assert.Equal(2, trebleVoice.Measures.Count);
+
+        var trebleMeasure1 = trebleVoice.Measures[0];
+        Assert.Equal(4, trebleMeasure1.Events.Count);
+
+        var trebleNotes1 = trebleMeasure1.Events.OfType<NotationNote>().ToList();
+        Assert.Equal(4, trebleNotes1.Count);
+        trebleNotes1[0].AssertNote(PitchClass.C, SymbolicDuration.Quarter, expectedOctave: 5);
+        trebleNotes1[1].AssertNote(PitchClass.E, SymbolicDuration.Quarter, expectedOctave: 5);
+        trebleNotes1[2].AssertNote(PitchClass.G, SymbolicDuration.Quarter, expectedOctave: 5);
+        trebleNotes1[3].AssertNote(PitchClass.C, SymbolicDuration.Quarter, expectedOctave: 6);
+
+        // Verify bass staff notes (measure 1: C3 whole note)
+        var bassVoice = bassStaff.Voices[0];
+        Assert.Equal(2, bassVoice.Number);
+        Assert.Equal(2, bassVoice.Measures.Count);
+
+        var bassMeasure1 = bassVoice.Measures[0];
+        Assert.Single(bassMeasure1.Events);
+
+        var bassNotes1 = bassMeasure1.Events.OfType<NotationNote>().ToList();
+        Assert.Single(bassNotes1);
+        bassNotes1[0].AssertNote(PitchClass.C, SymbolicDuration.Whole, expectedOctave: 3);
+
+        // Verify treble staff measure 2 (G5, E5 half notes)
+        var trebleMeasure2 = trebleVoice.Measures[1];
+        Assert.Equal(2, trebleMeasure2.Events.Count);
+
+        var trebleNotes2 = trebleMeasure2.Events.OfType<NotationNote>().ToList();
+        Assert.Equal(2, trebleNotes2.Count);
+        trebleNotes2[0].AssertNote(PitchClass.G, SymbolicDuration.Half, expectedOctave: 5);
+        trebleNotes2[1].AssertNote(PitchClass.E, SymbolicDuration.Half, expectedOctave: 5);
+
+        // Verify bass staff measure 2 (E3, G3 half notes)
+        var bassMeasure2 = bassVoice.Measures[1];
+        Assert.Equal(2, bassMeasure2.Events.Count);
+
+        var bassNotes2 = bassMeasure2.Events.OfType<NotationNote>().ToList();
+        Assert.Equal(2, bassNotes2.Count);
+        bassNotes2[0].AssertNote(PitchClass.E, SymbolicDuration.Half, expectedOctave: 3);
+        bassNotes2[1].AssertNote(PitchClass.G, SymbolicDuration.Half, expectedOctave: 3);
+    }
 }

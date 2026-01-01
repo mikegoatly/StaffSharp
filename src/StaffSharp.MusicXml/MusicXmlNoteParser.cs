@@ -9,9 +9,9 @@ using System.Xml.Linq;
 internal static class MusicXmlNoteParser
 {
     /// <summary>
-    /// Parses a note element and returns the event, voice number, slur information, and lyric syllables.
+    /// Parses a note element and returns the event, voice number, staff number, slur information, and lyric syllables.
     /// </summary>
-    public static (INotationEvent Event, int? VoiceNumber, List<SlurInfo>? SlurInfos, Dictionary<int, LyricSyllable>? LyricSyllables) ParseNote(XElement noteElement, MusicXmlContext context)
+    public static (INotationEvent Event, int? VoiceNumber, int StaffNumber, List<SlurInfo>? SlurInfos, Dictionary<int, LyricSyllable>? LyricSyllables) ParseNote(XElement noteElement, MusicXmlContext context)
     {
         ArgumentNullException.ThrowIfNull(noteElement);
         ArgumentNullException.ThrowIfNull(context);
@@ -23,6 +23,14 @@ internal static class MusicXmlNoteParser
         var voiceElement = noteElement.Element("voice");
         int? voiceNumber = voiceElement != null && int.TryParse(voiceElement.Value, out var v) ? v : null;
 
+        // Get staff number (for multi-staff parts like piano)
+        var staffElement = noteElement.Element("staff");
+        int staffNumber = 1; // Default to staff 1 for single-staff parts
+        if (staffElement != null && int.TryParse(staffElement.Value, out var s))
+        {
+            staffNumber = s;
+        }
+
         // Parse lyrics
         var lyricSyllables = ParseLyrics(noteElement);
 
@@ -31,7 +39,7 @@ internal static class MusicXmlNoteParser
         if (restElement != null)
         {
             var slurInfosForRest = ParseSlurs(noteElement);
-            return (ParseRest(noteElement, context), voiceNumber, slurInfosForRest, lyricSyllables);
+            return (ParseRest(noteElement, context), voiceNumber, staffNumber, slurInfosForRest, lyricSyllables);
         }
 
         // Parse pitch
@@ -66,7 +74,7 @@ internal static class MusicXmlNoteParser
         // Parse slurs
         var slurInfos = ParseSlurs(noteElement);
 
-        return (note, voiceNumber, slurInfos, lyricSyllables);
+        return (note, voiceNumber, staffNumber, slurInfos, lyricSyllables);
     }
 
     private static Pitch ParsePitch(XElement pitchElement)

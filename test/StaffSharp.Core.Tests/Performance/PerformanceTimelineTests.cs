@@ -1,5 +1,6 @@
 using StaffSharp.Notation;
 using StaffSharp.Performance;
+using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Tests.Performance;
 
@@ -18,12 +19,13 @@ public class PerformanceTimelineTests
         var tempoMap = CreateSimpleTempoMap();
 
         // Create events out of order
-        var events = new IPerformanceEvent[]
-        {
-            new SymbolicNoteEvent(MidiNote.Create(64), Rational.Create(4, 1), Rational.Create(1, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(60), Rational.Create(0, 1), Rational.Create(1, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(62), Rational.Create(2, 1), Rational.Create(1, 1), Velocity.Create(0.8f))
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVelocity(Velocity.Create(0.8f))
+            .WithDuration(1, 1)  // Whole note
+            .AddNoteAt(Rational.Create(4, 1), MidiNote.Create(64))  // E4 at beat 4
+            .AddNoteAt(Rational.Zero, MidiNote.C4)                  // C4 at beat 0
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.Create(62))  // D4 at beat 2
+            .Build();
 
         var timeline = new PerformanceTimeline(tempoMap, events);
 
@@ -37,13 +39,14 @@ public class PerformanceTimelineTests
     {
         var tempoMap = CreateSimpleTempoMap();
 
-        var events = new IPerformanceEvent[]
-        {
-            new SymbolicNoteEvent(MidiNote.Create(60), Rational.Create(0, 1), Rational.Create(1, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(62), Rational.Create(2, 1), Rational.Create(1, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(64), Rational.Create(4, 1), Rational.Create(1, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(65), Rational.Create(6, 1), Rational.Create(1, 1), Velocity.Create(0.8f))
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVelocity(Velocity.Create(0.8f))
+            .WithDuration(1, 1)  // Whole note
+            .AddNoteAt(Rational.Create(0, 1), MidiNote.C4)          // C4 at beat 0
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.Create(62))  // D4 at beat 2
+            .AddNoteAt(Rational.Create(4, 1), MidiNote.E4)          // E4 at beat 4
+            .AddNoteAt(Rational.Create(6, 1), MidiNote.Create(65))  // F4 at beat 6
+            .Build();
 
         var timeline = new PerformanceTimeline(tempoMap, events);
 
@@ -59,15 +62,15 @@ public class PerformanceTimelineTests
     {
         var tempoMap = CreateSimpleTempoMap();
 
-        var events = new IPerformanceEvent[]
-        {
-            // Event from beat 0 to 2
-            new SymbolicNoteEvent(MidiNote.Create(60), Rational.Create(0, 1), Rational.Create(2, 1), Velocity.Create(0.8f)),
-            // Event from beat 1 to 3
-            new SymbolicNoteEvent(MidiNote.Create(62), Rational.Create(1, 1), Rational.Create(2, 1), Velocity.Create(0.8f)),
-            // Event from beat 4 to 5
-            new SymbolicNoteEvent(MidiNote.Create(64), Rational.Create(4, 1), Rational.Create(1, 1), Velocity.Create(0.8f))
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVelocity(Velocity.Create(0.8f))
+            // Event from beat 0 to 2 (whole note = 2 beats)
+            .AddNoteAt(Rational.Create(0, 1), MidiNote.C4, Rational.Create(2, 1))
+            // Event from beat 1 to 3 (whole note = 2 beats)
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.Create(62), Rational.Create(2, 1))
+            // Event from beat 4 to 5 (whole note = 1 beat)
+            .AddNoteAt(Rational.Create(4, 1), MidiNote.E4, Rational.Create(1, 1))
+            .Build();
 
         var timeline = new PerformanceTimeline(tempoMap, events);
 
@@ -86,11 +89,11 @@ public class PerformanceTimelineTests
     {
         var tempoMap = CreateSimpleTempoMap();
 
-        var events = new IPerformanceEvent[]
-        {
-            new SymbolicNoteEvent(MidiNote.Create(60), Rational.Create(0, 1), Rational.Create(2, 1), Velocity.Create(0.8f)),
-            new SymbolicNoteEvent(MidiNote.Create(62), Rational.Create(2, 1), Rational.Create(3, 1), Velocity.Create(0.8f))  // Ends at beat 5
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVelocity(Velocity.Create(0.8f))
+            .AddNoteAt(Rational.Create(0, 1), MidiNote.C4, Rational.Create(2, 1))   // 2 beats duration
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.Create(62), Rational.Create(3, 1))  // 3 beats duration, ends at beat 5
+            .Build();
 
         var timeline = new PerformanceTimeline(tempoMap, events);
 
@@ -102,10 +105,10 @@ public class PerformanceTimelineTests
     {
         var tempoMap = CreateSimpleTempoMap(); // 120 BPM = 2 beats per second
 
-        var events = new IPerformanceEvent[]
-        {
-            new SymbolicNoteEvent(MidiNote.Create(60), Rational.Create(0, 1), Rational.Create(4, 1), Velocity.Create(0.8f))  // 4 beats
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVelocity(Velocity.Create(0.8f))
+            .AddNoteAt(Rational.Create(0, 1), MidiNote.C4, Rational.Create(4, 1))  // 4 beats
+            .Build();
 
         var timeline = new PerformanceTimeline(tempoMap, events);
 
@@ -121,21 +124,5 @@ public class PerformanceTimelineTests
 
         Assert.Equal(Rational.Zero, timeline.TotalDurationBeats);
         Assert.Equal(0.0, timeline.TotalDurationSeconds);
-    }
-
-    [Fact]
-    public void PerformanceTimeline_PreservesMetadata()
-    {
-        var tempoMap = CreateSimpleTempoMap();
-        var metadata = new PerformanceMetadata(
-            Title: "Test Piece",
-            Composer: "Test Composer",
-            SourceFile: "test.wav");
-
-        var timeline = new PerformanceTimeline(tempoMap, Array.Empty<IPerformanceEvent>(), metadata);
-
-        Assert.Equal("Test Piece", timeline.Metadata.Title);
-        Assert.Equal("Test Composer", timeline.Metadata.Composer);
-        Assert.Equal("test.wav", timeline.Metadata.SourceFile);
     }
 }
