@@ -19,6 +19,7 @@
     <Project Path="test/StaffSharp.Importers.Tests/StaffSharp.Importers.Tests.csproj" />
     <Project Path="test/StaffSharp.Midi.Tests/StaffSharp.Midi.Tests.csproj" />
     <Project Path="test/StaffSharp.MusicXml.Tests/StaffSharp.MusicXml.Tests.csproj" />
+    <Project Path="test/StaffSharp.Svg.Tests/StaffSharp.Svg.Tests.csproj" />
     <Project Path="test/StaffSharp.TestHelpers/StaffSharp.TestHelpers.csproj" Id="597094f3-6468-45cb-86cc-386bd6188d79" />
   </Folder>
 </Solution>
