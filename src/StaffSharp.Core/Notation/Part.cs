@@ -24,7 +24,7 @@ public class Part
     /// Creates a new part with a single staff (legacy constructor for backward compatibility).
     /// </summary>
     public Part(string name, Clef clef, IReadOnlyList<Voice> voices)
-        : this(name, new[] { new Staff(1, clef, voices) })
+        : this(name, [new Staff(1, clef, voices)])
     {
     }
 

@@ -59,7 +59,7 @@ public sealed class NotationEngine : INotationEngine
                 : 120.0)
         );
 
-        return new NotationScore(metadata, new[] { part });
+        return new NotationScore(metadata, [part]);
     }
 
     /// <summary>
@@ -137,7 +137,7 @@ public sealed class NotationEngine : INotationEngine
         // Create grand staff part
         return new Part(
             name: timeline.Metadata.Title ?? "Piano",
-            staves: new[] { trebleStaff, bassStaff }
+            staves: [trebleStaff, bassStaff]
         );
     }
 
@@ -156,7 +156,7 @@ public sealed class NotationEngine : INotationEngine
             return new Staff(
                 number: staffNumber,
                 clef: clef,
-                voices: new[] { new Voice(1, new List<Measure>()) }
+                voices: [new Voice(1, [])]
             );
         }
 
@@ -201,14 +201,9 @@ public sealed class NotationEngine : INotationEngine
 
         // Auto-detect based on pitch range
         // Extract all pitches from events
-        var pitches = new List<int>();
-        foreach (var ev in events)
-        {
-            if (ev is INoteEvent noteEvent)
-            {
-                pitches.Add(noteEvent.Pitch.MidiNumber);
-            }
-        }
+        var pitches = events.OfType<INoteEvent>()
+            .Select(e => e.Pitch.MidiNumber)
+            .ToList();
 
         if (pitches.Count == 0)
         {
