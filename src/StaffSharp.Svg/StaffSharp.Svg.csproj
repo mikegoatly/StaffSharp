@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>StaffSharp</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+        <ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
+	</ItemGroup>
+
+</Project>
