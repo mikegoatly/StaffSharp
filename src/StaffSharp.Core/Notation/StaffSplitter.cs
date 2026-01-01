@@ -19,7 +19,7 @@ internal static class StaffSplitter
             return false;
         }
 
-        var pitches = ExtractPitches(events);
+        var pitches = ExtractPitches(events.OfType<INoteEvent>());
         if (pitches.Count == 0)
         {
             return false;
@@ -42,13 +42,13 @@ internal static class StaffSplitter
 
         foreach (var assignment in assignments)
         {
-            var pitch = ExtractPitch(assignment.Event);
-            if (pitch < 0)
+            var pitch = assignment.Event;
+            if (pitch is not INoteEvent noteEvent)
             {
                 // Non-pitched event (rest, etc.) - assign to treble by default
                 treble.Add(assignment);
             }
-            else if (pitch >= splitPoint)
+            else if (noteEvent.Pitch.Value >= splitPoint)
             {
                 // High notes go to treble staff
                 treble.Add(assignment);
@@ -102,31 +102,10 @@ internal static class StaffSplitter
     /// <summary>
     /// Extracts all MIDI pitch numbers from performance events.
     /// </summary>
-    private static List<int> ExtractPitches(IReadOnlyList<IPerformanceEvent> events)
+    private static List<int> ExtractPitches(IEnumerable<INoteEvent> events)
     {
-        var pitches = new List<int>();
-        foreach (var ev in events)
-        {
-            var pitch = ExtractPitch(ev);
-            if (pitch >= 0)
-            {
-                pitches.Add(pitch);
-            }
-        }
-        return pitches;
-    }
-
-    /// <summary>
-    /// Extracts the MIDI pitch number from a performance event.
-    /// Returns -1 for non-pitched events (rests, etc.).
-    /// </summary>
-    private static int ExtractPitch(IPerformanceEvent ev)
-    {
-        return ev switch
-        {
-            QuantizedNoteEvent qne => qne.RawEvent.Pitch.MidiNumber,
-            SymbolicNoteEvent sne => sne.Pitch.MidiNumber,
-            _ => -1
-        };
+        return events
+            .Select(ev => ev.Pitch.MidiNumber)
+            .ToList();
     }
 }
