@@ -3,6 +3,38 @@ using StaffSharp.Notation;
 namespace StaffSharp.Core.Notation;
 
 /// <summary>
+/// Specifies how to determine which clef to use for notation.
+/// </summary>
+public enum ClefPreference
+{
+    /// <summary>
+    /// Automatically detect the appropriate clef based on pitch range.
+    /// Uses treble for high notes, bass for low notes.
+    /// </summary>
+    Auto,
+
+    /// <summary>
+    /// Force all parts to use treble clef regardless of pitch range.
+    /// </summary>
+    ForceTreble,
+
+    /// <summary>
+    /// Force all parts to use bass clef regardless of pitch range.
+    /// </summary>
+    ForceBass,
+
+    /// <summary>
+    /// Force all parts to use alto clef regardless of pitch range.
+    /// </summary>
+    ForceAlto,
+
+    /// <summary>
+    /// Force all parts to use tenor clef regardless of pitch range.
+    /// </summary>
+    ForceTenor
+}
+
+/// <summary>
 /// Options for controlling how performance data (IR1) is converted to notation (IR2).
 /// </summary>
 public record NotationOptions
@@ -26,6 +58,12 @@ public record NotationOptions
     /// Default key signature to use when none is specified.
     /// </summary>
     public KeySignature DefaultKeySignature { get; init; } = KeySignature.C;
+
+    /// <summary>
+    /// Determines which clef to use for notation.
+    /// Default is Auto, which detects based on pitch range.
+    /// </summary>
+    public ClefPreference ClefPreference { get; init; } = ClefPreference.Auto;
 
     /// <summary>
     /// Validates that all options have valid values.

@@ -42,10 +42,14 @@ public sealed class NotationEngine : INotationEngine
             voices.Add(new Voice(voiceNumber, measures));
         }
 
+        // Determine clef based on options and pitch range
+        var clef = DetermineClef(timeline.Events, options);
+
         // Create a single part (monophonic or single instrument for now)
+        // TODO: For wide pitch ranges (grand staff), split into treble and bass parts
         var part = new Part(
             name: timeline.Metadata.Title ?? "Part 1",
-            clef: Clef.Treble, // TODO: Determine from pitch range
+            clef: clef,
             voices: voices
         );
 
@@ -63,5 +67,67 @@ public sealed class NotationEngine : INotationEngine
         );
 
         return new NotationScore(metadata, new[] { part });
+    }
+
+    /// <summary>
+    /// Determines the appropriate clef based on options and pitch range analysis.
+    /// </summary>
+    private static Clef DetermineClef(IReadOnlyList<IPerformanceEvent> events, NotationOptions options)
+    {
+        // If user forced a specific clef, use it
+        if (options.ClefPreference != ClefPreference.Auto)
+        {
+            return options.ClefPreference switch
+            {
+                ClefPreference.ForceTreble => Clef.Treble,
+                ClefPreference.ForceBass => Clef.Bass,
+                ClefPreference.ForceAlto => Clef.Alto,
+                ClefPreference.ForceTenor => Clef.Tenor,
+                _ => Clef.Treble
+            };
+        }
+
+        // Auto-detect based on pitch range
+        // Extract all pitches from events
+        var pitches = new List<int>();
+        foreach (var ev in events)
+        {
+            var pitch = ev switch
+            {
+                QuantizedNoteEvent qne => qne.RawEvent.Pitch.MidiNumber,
+                SymbolicNoteEvent sne => sne.Pitch.MidiNumber,
+                _ => -1
+            };
+
+            if (pitch >= 0)
+            {
+                pitches.Add(pitch);
+            }
+        }
+
+        if (pitches.Count == 0)
+        {
+            // No pitched events, default to treble
+            return Clef.Treble;
+        }
+
+        // Calculate average pitch
+        var averagePitch = pitches.Average();
+
+        // Middle C is MIDI 60
+        // Treble clef center is around B4 (MIDI 71)
+        // Bass clef center is around D3 (MIDI 50)
+        // Use MIDI 60 (Middle C) as the pivot point
+
+        if (averagePitch >= 60)
+        {
+            // Average pitch is at or above middle C - use treble clef
+            return Clef.Treble;
+        }
+        else
+        {
+            // Average pitch is below middle C - use bass clef
+            return Clef.Bass;
+        }
     }
 }
