@@ -1,0 +1,5 @@
+# Test artifacts (generated on test failure for debugging)
+Artifacts/
+
+# Snapshots are checked in as the golden baseline
+# Do NOT ignore Snapshots/

@@ -1,19 +1,22 @@
 <Project>
-	<PropertyGroup>
-		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-	</PropertyGroup>
-	<ItemGroup>
-	</ItemGroup>
-	<ItemGroup>
-		<PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
-		<PackageVersion Include="Melanchall.DryWetMidi" Version="7.2.0" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
-		<PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-		<PackageVersion Include="System.Numerics.Tensors" Version="9.0.0" />
-		<PackageVersion Include="coverlet.collector" Version="6.0.4" />
-		<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-		<PackageVersion Include="xunit" Version="2.9.3" />
-		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
-	</ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageVersion Include="Melanchall.DryWetMidi" Version="7.2.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
+    <PackageVersion Include="Svg.Skia" Version="1.0.0.18" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="9.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="SkiaSharp" Version="2.88.8" />
+    <PackageVersion Include="SkiaSharp.Svg" Version="1.60.0" />
+  </ItemGroup>
 </Project>
