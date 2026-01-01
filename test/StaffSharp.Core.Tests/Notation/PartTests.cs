@@ -13,8 +13,8 @@ public sealed class PartTests
         // Arrange
         var voices = new List<Voice>
         {
-            new Voice(1, new List<Measure>()),
-            new Voice(2, new List<Measure>())
+            new Voice(1, []),
+            new Voice(2, [])
         };
 
         // Act
@@ -35,8 +35,8 @@ public sealed class PartTests
         // Arrange
         var voices = new List<Voice>
         {
-            new Voice(1, new List<Measure>()),
-            new Voice(2, new List<Measure>())
+            new Voice(1, []),
+            new Voice(2, [])
         };
 
         // Act
@@ -55,11 +55,11 @@ public sealed class PartTests
         // Arrange
         var trebleVoices = new List<Voice>
         {
-            new Voice(1, new List<Measure>())
+            new Voice(1, [])
         };
         var bassVoices = new List<Voice>
         {
-            new Voice(1, new List<Measure>())
+            new Voice(1, [])
         };
 
         var staves = new List<Staff>
@@ -85,12 +85,12 @@ public sealed class PartTests
         // Arrange
         var trebleVoices = new List<Voice>
         {
-            new Voice(1, new List<Measure>()),
-            new Voice(2, new List<Measure>())
+            new Voice(1, []),
+            new Voice(2, [])
         };
         var bassVoices = new List<Voice>
         {
-            new Voice(1, new List<Measure>())
+            new Voice(1, [])
         };
 
         var staves = new List<Staff>
@@ -130,7 +130,7 @@ public sealed class PartTests
     public void Staff_Constructor_ValidatesStaffNumber()
     {
         // Arrange
-        var voices = new List<Voice> { new Voice(1, new List<Measure>()) };
+        var voices = new List<Voice> { new Voice(1, []) };
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentException>(() => new Staff(0, Clef.Treble, voices));
@@ -150,8 +150,8 @@ public sealed class PartTests
         // Arrange
         var voices = new List<Voice>
         {
-            new Voice(1, new List<Measure>()),
-            new Voice(2, new List<Measure>())
+            new Voice(1, []),
+            new Voice(2, [])
         };
 
         // Act

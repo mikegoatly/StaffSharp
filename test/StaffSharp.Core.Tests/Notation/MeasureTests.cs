@@ -15,7 +15,7 @@ public class MeasureTests
 
         var measure = new Measure(
             1,
-            new List<INotationEvent> { new Rest(SymbolicDuration.Quarter) },
+            [new Rest(SymbolicDuration.Quarter)],
             directions: directions);
 
         Assert.Equal(2, measure.Directions.Count);
@@ -31,7 +31,7 @@ public class MeasureTests
     {
         var measure = new Measure(
             1,
-            new List<INotationEvent> { new Rest(SymbolicDuration.Quarter) });
+            [new Rest(SymbolicDuration.Quarter)]);
 
         Assert.Empty(measure.Directions);
     }
@@ -41,7 +41,7 @@ public class MeasureTests
     {
         var measure = new Measure(
             1,
-            new List<INotationEvent> { new Rest(SymbolicDuration.Quarter) },
+            [new Rest(SymbolicDuration.Quarter)],
             startBarline: BarlineType.RepeatStart,
             endBarline: BarlineType.RepeatEnd);
 
@@ -54,7 +54,7 @@ public class MeasureTests
     {
         var measure = new Measure(
             1,
-            new List<INotationEvent> { new Rest(SymbolicDuration.Quarter) });
+            [new Rest(SymbolicDuration.Quarter)]);
 
         Assert.Null(measure.StartBarline);
         Assert.Null(measure.EndBarline);
@@ -82,7 +82,7 @@ public class MeasureTests
 
         var measure = new Measure(
             number: 5,
-            events: new List<INotationEvent> { new Rest(SymbolicDuration.Quarter) },
+            events: [new Rest(SymbolicDuration.Quarter)],
             timeSignature: new TimeSignature(3, 4),
             repeatVariants: repeatVariants,
             slurs: slurs,
@@ -116,7 +116,7 @@ public class MeasureTests
 
         var measure = new Measure(
             1,
-            new List<INotationEvent> { new Rest(SymbolicDuration.Whole) },
+            [new Rest(SymbolicDuration.Whole)],
             directions: directions);
 
         Assert.Equal(5, measure.Directions.Count);

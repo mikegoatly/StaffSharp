@@ -23,8 +23,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -55,8 +55,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -86,8 +86,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -117,8 +117,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -145,8 +145,8 @@ public sealed class NotationEngineTests
         var events = SymbolicNoteEventBuilder.SingleNote(MidiNote.C4);
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -173,8 +173,8 @@ public sealed class NotationEngineTests
         var events = SymbolicNoteEventBuilder.SingleNote(MidiNote.C4);
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -201,8 +201,8 @@ public sealed class NotationEngineTests
         var events = SymbolicNoteEventBuilder.SingleNote(MidiNote.C4); // C4 = MIDI 60
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -229,8 +229,8 @@ public sealed class NotationEngineTests
         var events = new List<IPerformanceEvent>();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -266,8 +266,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -308,8 +308,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -344,8 +344,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -388,8 +388,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(
@@ -420,8 +420,8 @@ public sealed class NotationEngineTests
             .Build();
 
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var timeline = new PerformanceTimeline(

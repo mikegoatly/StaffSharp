@@ -15,8 +15,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: 4/4 time throughout
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var options = new NotationOptions();
@@ -68,12 +68,11 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: Start in 4/4, change to 3/4 at beat 8
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange>
-            {
+            [new(Rational.Zero, 120.0)],
+            [
                 new(Rational.Zero, TimeSignature.CommonTime), // 4/4 at start
                 new(Rational.Create(8, 1), new TimeSignature(3, 4)) // 3/4 at beat 8
-            }
+            ]
         );
 
         var options = new NotationOptions();
@@ -117,8 +116,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: 4/4 time
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var options = new NotationOptions();
@@ -166,8 +165,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: 4/4 time
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var options = new NotationOptions();
@@ -218,8 +217,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: 4/4 time
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var options = new NotationOptions();
@@ -264,8 +263,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, TimeSignature.CommonTime) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
         );
 
         var options = new NotationOptions();
@@ -285,8 +284,8 @@ public sealed class MeasurePartitionerTests
     {
         // Arrange: 3/4 time throughout
         var tempoMap = new TempoMap(
-            new List<TempoChange> { new(Rational.Zero, 120.0) },
-            new List<TimeSignatureChange> { new(Rational.Zero, new TimeSignature(3, 4)) }
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, new TimeSignature(3, 4))]
         );
 
         var options = new NotationOptions();
