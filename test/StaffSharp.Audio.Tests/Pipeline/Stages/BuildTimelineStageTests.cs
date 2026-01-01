@@ -3,6 +3,7 @@ using StaffSharp.Audio.Pipeline;
 using StaffSharp.Audio.Pipeline.Stages;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
+using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Audio.Tests.Pipeline.Stages;
 
@@ -188,13 +189,12 @@ public sealed class BuildTimelineStageTests
     {
         // Arrange
         var tempoMap = CreateTempoMap();
-        var quantizedNotes = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 0.25, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 0.5, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(72, 0.75, 0.25)
-        };
+        var quantizedNotes = QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4)      // C4 at beat 0
+            .AddNoteAt(0.25, MidiNote.E4)     // E4 at beat 0.25
+            .AddNoteAt(0.5, MidiNote.G4)      // G4 at beat 0.5
+            .AddNoteAt(0.75, MidiNote.C5)     // C5 at beat 0.75
+            .Build();
         var context = CreateContext(tempoMap);
         var stage = new BuildTimelineStage();
 
@@ -211,12 +211,11 @@ public sealed class BuildTimelineStageTests
     {
         // Arrange
         var tempoMap = CreateTempoMap();
-        var quantizedNotes = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 1.0, 0.5),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 2.0, 1.0)
-        };
+        var quantizedNotes = QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4, 0.25)    // Quarter note
+            .AddNoteAt(1.0, MidiNote.E4, 0.5)     // Half note
+            .AddNoteAt(2.0, MidiNote.G4, 1.0)     // Whole note
+            .Build();
         var context = CreateContext(tempoMap);
         var stage = new BuildTimelineStage();
 
@@ -241,14 +240,13 @@ public sealed class BuildTimelineStageTests
         return new TempoMap(tempoChanges, timeSignatures);
     }
 
-    private static List<QuantizedNoteEvent> CreateQuantizedNotes()
+    private static IReadOnlyList<QuantizedNoteEvent> CreateQuantizedNotes()
     {
-        return new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 0.25, 0.25),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 0.5, 0.25)
-        };
+        return QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4)      // C4 at beat 0
+            .AddNoteAt(0.25, MidiNote.E4)     // E4 at beat 0.25
+            .AddNoteAt(0.5, MidiNote.G4)      // G4 at beat 0.5
+            .Build();
     }
 
     private static AudioPipelineContext CreateContext(TempoMap tempoMap)
@@ -258,3 +256,4 @@ public sealed class BuildTimelineStageTests
         return context;
     }
 }
+

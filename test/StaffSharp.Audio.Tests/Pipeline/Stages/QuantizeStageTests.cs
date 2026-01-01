@@ -2,8 +2,10 @@ using StaffSharp;
 using StaffSharp.Audio.Analysis.Quantization;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Audio.Pipeline.Stages;
+using StaffSharp.Audio.Tests.Fakes;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
+using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Audio.Tests.Pipeline.Stages;
 
@@ -19,14 +21,13 @@ public sealed class QuantizeStageTests
         var tempoMap = CreateTempoMap();
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
         var pitches = new int[] { 60, 64, 67, 72 };
-        var expectedQuantized = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 0.5, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 1.0, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(72, 1.5, 0.0)
-        };
-        var quantizer = new MockQuantizer(expectedQuantized);
+        var expectedQuantized = QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4)
+            .AddNoteAt(0.5, MidiNote.E4)
+            .AddNoteAt(1.0, MidiNote.G4)
+            .AddNoteAt(1.5, MidiNote.C5)
+            .Build();
+        var quantizer = new FakeQuantizer(expectedQuantized);
         var context = CreateContext(onsets, pitches, tempoMap);
         var stage = new QuantizeStage(quantizer);
 
@@ -103,13 +104,12 @@ public sealed class QuantizeStageTests
         var tempoMap = CreateTempoMap();
         var onsets = new double[] { 0.0, 0.5, 1.0 };
         var pitches = new int[] { 60, 64, 67 };
-        var expectedQuantized = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 0.5, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 1.0, 0.0)
-        };
-        var quantizer = new MockQuantizer(expectedQuantized);
+        var expectedQuantized = QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4)
+            .AddNoteAt(0.5, MidiNote.E4)
+            .AddNoteAt(1.0, MidiNote.G4)
+            .Build();
+        var quantizer = new FakeQuantizer(expectedQuantized);
         var diagnostics = new MemoryDiagnosticsCollector();
         var context = new AudioPipelineContext(diagnosticsCollector: diagnostics);
         context.Onsets = onsets;
@@ -168,13 +168,12 @@ public sealed class QuantizeStageTests
         var tempoMap = CreateTempoMap();
         var onsets = new double[] { 0.0, 0.5, 1.0 };
         var pitches = new int[] { 60, 64, 67 };
-        var expectedQuantized = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(64, 0.5, 0.0),
-            TestDataFactory.CreateQuantizedNoteEvent(67, 1.0, 0.0)
-        };
-        var quantizer = new MockQuantizer(expectedQuantized);
+        var expectedQuantized = QuantizedNoteEventBuilder.Create()
+            .AddNoteAt(0.0, MidiNote.C4)
+            .AddNoteAt(0.5, MidiNote.E4)
+            .AddNoteAt(1.0, MidiNote.G4)
+            .Build();
+        var quantizer = new FakeQuantizer(expectedQuantized);
         var context = CreateContext(onsets, pitches, tempoMap);
         var stage = new QuantizeStage(quantizer);
 
@@ -195,11 +194,8 @@ public sealed class QuantizeStageTests
         var tempoMap = CreateTempoMap();
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
         var pitches = new int[] { 60, 64, 67, 72 };
-        var expectedQuantized = new List<QuantizedNoteEvent>
-        {
-            TestDataFactory.CreateQuantizedNoteEvent(60, 0.0, 0.0)
-        };
-        var quantizer = new MockQuantizer(expectedQuantized);
+        var expectedQuantized = QuantizedNoteEventBuilder.SingleNote(MidiNote.C4);
+        var quantizer = new FakeQuantizer(expectedQuantized);
         var context = CreateContext(onsets, pitches, tempoMap);
         var stage = new QuantizeStage(quantizer);
 
@@ -241,32 +237,5 @@ public sealed class QuantizeStageTests
             ReadOnlySpan<double> onsets,
             ReadOnlySpan<int> pitches,
             TempoMap tempoMap) => null;
-    }
-
-    private sealed class MockQuantizer : IQuantizer
-    {
-        private readonly IReadOnlyList<QuantizedNoteEvent> _quantized;
-
-        public bool WasCalled { get; private set; }
-        public double[]? ReceivedOnsets { get; private set; }
-        public int[]? ReceivedPitches { get; private set; }
-        public TempoMap? ReceivedTempoMap { get; private set; }
-
-        public MockQuantizer(IReadOnlyList<QuantizedNoteEvent> quantized)
-        {
-            _quantized = quantized;
-        }
-
-        public IReadOnlyList<QuantizedNoteEvent>? Quantize(
-            ReadOnlySpan<double> onsets,
-            ReadOnlySpan<int> pitches,
-            TempoMap tempoMap)
-        {
-            WasCalled = true;
-            ReceivedOnsets = onsets.ToArray();
-            ReceivedPitches = pitches.ToArray();
-            ReceivedTempoMap = tempoMap;
-            return _quantized;
-        }
     }
 }

@@ -2,6 +2,7 @@ using StaffSharp;
 using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Audio.Pipeline.Stages;
+using StaffSharp.Audio.Tests.Fakes;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 
@@ -25,7 +26,7 @@ public sealed class DetectTempoStageTests
             new List<TempoChange> { new TempoChange(Rational.Zero, 120.0) },
             timeSignatures
         );
-        var detector = new MockTempoDetector(expectedTempo);
+        var detector = new FakeTempoDetector(expectedTempo);
         var context = CreateContext(onsets);
         var stage = new DetectTempoStage(detector);
 
@@ -73,7 +74,7 @@ public sealed class DetectTempoStageTests
             new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime)
         };
         var onsets = new double[] { 0.0, 0.5, 1.0 };
-        var detector = new NullReturningTempoDetector();
+        var detector = new FakeTempoDetector(null!);
         var context = CreateContext(onsets);
         var stage = new DetectTempoStage(detector);
 
@@ -96,7 +97,7 @@ public sealed class DetectTempoStageTests
             new List<TempoChange> { new TempoChange(Rational.Zero, 120.0) },
             timeSignatures
         );
-        var detector = new MockTempoDetector(expectedTempo);
+        var detector = new FakeTempoDetector(expectedTempo);
         var diagnostics = new MemoryDiagnosticsCollector();
         var context = new AudioPipelineContext(diagnosticsCollector: diagnostics);
         context.Onsets = onsets;
@@ -160,7 +161,7 @@ public sealed class DetectTempoStageTests
             new List<TempoChange> { new TempoChange(Rational.Zero, 120.0) },
             timeSignatures
         );
-        var detector = new MockTempoDetector(expectedTempo);
+        var detector = new FakeTempoDetector(expectedTempo);
         var context = CreateContext(onsets);
         var stage = new DetectTempoStage(detector);
 
@@ -187,7 +188,7 @@ public sealed class DetectTempoStageTests
             new List<TempoChange> { new TempoChange(Rational.Zero, 120.0) },
             timeSignatures
         );
-        var detector = new MockTempoDetector(expectedTempo);
+        var detector = new FakeTempoDetector(expectedTempo);
         var context = CreateContext(onsets);
         var stage = new DetectTempoStage(detector);
 
@@ -204,30 +205,5 @@ public sealed class DetectTempoStageTests
         var context = new AudioPipelineContext();
         context.Onsets = onsets;
         return context;
-    }
-
-    private sealed class NullReturningTempoDetector : ITempoDetector
-    {
-        public TempoMap? DetectTempo(ReadOnlySpan<double> onsets) => null;
-    }
-
-    private sealed class MockTempoDetector : ITempoDetector
-    {
-        private readonly TempoMap _tempoMap;
-
-        public bool WasCalled { get; private set; }
-        public double[]? ReceivedOnsets { get; private set; }
-
-        public MockTempoDetector(TempoMap tempoMap)
-        {
-            _tempoMap = tempoMap;
-        }
-
-        public TempoMap? DetectTempo(ReadOnlySpan<double> onsets)
-        {
-            WasCalled = true;
-            ReceivedOnsets = onsets.ToArray();
-            return _tempoMap;
-        }
     }
 }

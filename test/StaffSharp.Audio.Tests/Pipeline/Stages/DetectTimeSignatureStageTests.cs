@@ -1,7 +1,7 @@
 using StaffSharp;
-using StaffSharp.Audio.Analysis.Meter;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Audio.Pipeline.Stages;
+using StaffSharp.Audio.Tests.Fakes;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 
@@ -36,7 +36,7 @@ public sealed class DetectTimeSignatureStageTests
     {
         // Arrange
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
-        var detector = new NullReturningTimeSignatureDetector();
+        var detector = new FakeTimeSignatureDetector(null!);
         var context = new AudioPipelineContext();
         var stage = new DetectTimeSignatureStage(detector);
 
@@ -54,7 +54,7 @@ public sealed class DetectTimeSignatureStageTests
     {
         // Arrange
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
-        var detector = new EmptyReturningTimeSignatureDetector();
+        var detector = new FakeTimeSignatureDetector([]);
         var context = new AudioPipelineContext();
         var stage = new DetectTimeSignatureStage(detector);
 
@@ -76,7 +76,7 @@ public sealed class DetectTimeSignatureStageTests
         {
             new TimeSignatureChange(Rational.Zero, new TimeSignature(3, 4))
         };
-        var detector = new MockTimeSignatureDetector(expectedTimeSignatures);
+        var detector = new FakeTimeSignatureDetector(expectedTimeSignatures);
         var context = new AudioPipelineContext();
         var stage = new DetectTimeSignatureStage(detector);
 
@@ -121,7 +121,7 @@ public sealed class DetectTimeSignatureStageTests
         {
             new TimeSignatureChange(Rational.Zero, new TimeSignature(3, 4))
         };
-        var detector = new MockTimeSignatureDetector(expectedTimeSignatures);
+        var detector = new FakeTimeSignatureDetector(expectedTimeSignatures);
         var diagnostics = new MemoryDiagnosticsCollector();
         var context = new AudioPipelineContext(diagnosticsCollector: diagnostics);
         var stage = new DetectTimeSignatureStage(detector);
@@ -136,7 +136,7 @@ public sealed class DetectTimeSignatureStageTests
         Assert.Contains(entries, e => e.StageName == "DetectTimeSignature" && e.Key == "TimeSignatures");
 
         var detectorUsedEntry = entries.First(e => e.Key == "DetectorUsed");
-        Assert.Equal("MockTimeSignatureDetector", detectorUsedEntry.Value);
+        Assert.Equal("FakeTimeSignatureDetector", detectorUsedEntry.Value);
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed class DetectTimeSignatureStageTests
     {
         // Arrange
         var onsets = new double[] { 0.0, 0.5, 1.0 };
-        var detector = new NullReturningTimeSignatureDetector();
+        var detector = new FakeTimeSignatureDetector(null!);
         var diagnostics = new MemoryDiagnosticsCollector();
         var context = new AudioPipelineContext(diagnosticsCollector: diagnostics);
         var stage = new DetectTimeSignatureStage(detector);
@@ -202,29 +202,5 @@ public sealed class DetectTimeSignatureStageTests
         // Assert
         Assert.NotNull(context.TimeSignatures);
         Assert.Same(result, context.TimeSignatures);
-    }
-
-    private sealed class NullReturningTimeSignatureDetector : ITimeSignatureDetector
-    {
-        public IReadOnlyList<TimeSignatureChange>? DetectTimeSignatures(ReadOnlySpan<double> onsets, double? estimatedTempo = null) => null;
-    }
-
-    private sealed class EmptyReturningTimeSignatureDetector : ITimeSignatureDetector
-    {
-        public IReadOnlyList<TimeSignatureChange>? DetectTimeSignatures(ReadOnlySpan<double> onsets, double? estimatedTempo = null) =>
-            new List<TimeSignatureChange>();
-    }
-
-    private sealed class MockTimeSignatureDetector : ITimeSignatureDetector
-    {
-        private readonly IReadOnlyList<TimeSignatureChange> _timeSignatures;
-
-        public MockTimeSignatureDetector(IReadOnlyList<TimeSignatureChange> timeSignatures)
-        {
-            _timeSignatures = timeSignatures;
-        }
-
-        public IReadOnlyList<TimeSignatureChange>? DetectTimeSignatures(ReadOnlySpan<double> onsets, double? estimatedTempo = null) =>
-            _timeSignatures;
     }
 }

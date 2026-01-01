@@ -129,6 +129,19 @@ public readonly record struct MidiNote(float Value) : IComparable<MidiNote>, ICo
     // Well-known MIDI notes (A2 to G6)
 
     // Octave 2
+    public static MidiNote C2 => Create(36);
+    public static MidiNote CSharp2 => Create(37);
+    public static MidiNote DFlat2 => Create(37);
+    public static MidiNote D2 => Create(38);
+    public static MidiNote DSharp2 => Create(39);
+    public static MidiNote EFlat2 => Create(39);
+    public static MidiNote E2 => Create(40);
+    public static MidiNote F2 => Create(41);
+    public static MidiNote FSharp2 => Create(42);
+    public static MidiNote GFlat2 => Create(42);
+    public static MidiNote G2 => Create(43);
+    public static MidiNote GSharp2 => Create(44);
+    public static MidiNote AFlat2 => Create(44);
     public static MidiNote A2 => Create(45);
     public static MidiNote ASharp2 => Create(46);
     public static MidiNote BFlat2 => Create(46);

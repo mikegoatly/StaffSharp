@@ -27,33 +27,4 @@ internal static class TestDataFactory
             leadingSilence ?? TimeSpan.Zero,
             trailingSilence ?? TimeSpan.Zero);
     }
-
-    /// <summary>
-    /// Creates a QuantizedNoteEvent for testing.
-    /// </summary>
-    public static QuantizedNoteEvent CreateQuantizedNoteEvent(
-        int midiPitch,
-        double onsetBeats,
-        double durationBeats,
-        double onsetSeconds = 0.0,
-        double durationSeconds = 0.0)
-    {
-        var rawEvent = new NoteEvent(
-            Pitch: new MidiNote(midiPitch),
-            Onset: TimeSpan.FromSeconds(onsetSeconds),
-            Duration: TimeSpan.FromSeconds(durationSeconds),
-            Velocity: new Velocity(0.8f));
-
-        var metadata = new QuantizationMetadata(
-            Subdivision: 16,
-            TempoAtOnset: 120.0,
-            OnsetError: TimeSpan.Zero,
-            DurationError: TimeSpan.Zero);
-
-        return new QuantizedNoteEvent(
-            rawEvent,
-            Rational.Create((int)(onsetBeats * 4.0f), 4),
-            Rational.Create((int)(durationBeats * 4.0f), 4),
-            metadata);
-    }
 }

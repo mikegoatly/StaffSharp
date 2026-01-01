@@ -28,9 +28,20 @@ internal sealed class MusicXmlContext
     public TimeSignature TimeSignature { get; set; } = TimeSignature.CommonTime;
 
     /// <summary>
-    /// Gets or sets the current clef.
+    /// Gets or sets the current clef (for single-staff parts or default clef).
     /// </summary>
     public Clef Clef { get; set; } = Clef.Treble;
+
+    /// <summary>
+    /// Gets or sets the number of staves in the current part (from &lt;staves&gt; element).
+    /// Default is 1 for single-staff parts.
+    /// </summary>
+    public int StavesCount { get; set; } = 1;
+
+    /// <summary>
+    /// Clef for each staff number (1-based). Used for multi-staff parts (e.g., piano).
+    /// </summary>
+    public Dictionary<int, Clef> StaffClefs { get; } = new();
 
     /// <summary>
     /// Gets or sets the current tempo in beats per minute.
@@ -57,6 +68,21 @@ internal sealed class MusicXmlContext
     }
 
     /// <summary>
+    /// Gets the clef for a specific staff number.
+    /// Falls back to the default Clef if no staff-specific clef is defined.
+    /// </summary>
+    public Clef GetClefForStaff(int staffNumber)
+    {
+        if (StaffClefs.TryGetValue(staffNumber, out var clef))
+        {
+            return clef;
+        }
+
+        // Fallback: use default Clef for staff 1, or Treble for other staves
+        return staffNumber == 1 ? Clef : Clef.Treble;
+    }
+
+    /// <summary>
     /// Creates a copy of this context to preserve state for a new part or section.
     /// </summary>
     public MusicXmlContext Clone()
@@ -67,8 +93,15 @@ internal sealed class MusicXmlContext
             KeySignature = KeySignature,
             TimeSignature = TimeSignature,
             Clef = Clef,
+            StavesCount = StavesCount,
             Tempo = Tempo
         };
+
+        // Copy staff-specific clefs
+        foreach (var (staffNumber, clef) in StaffClefs)
+        {
+            clone.StaffClefs[staffNumber] = clef;
+        }
 
         // Note: We don't clone ActiveSlurs or ActiveTies as they are measure-specific
         return clone;

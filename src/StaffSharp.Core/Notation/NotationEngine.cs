@@ -31,27 +31,20 @@ public sealed class NotationEngine : INotationEngine
             .GroupBy(a => a.VoiceNumber)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // Step 3: Partition each voice into measures with ties
-        var partitioner = new MeasurePartitioner(timeline.TempoMap, options);
-        var voiceMeasures = partitioner.PartitionIntoMeasures(voiceGroups);
+        // Step 3: Check if grand staff is needed
+        var useGrandStaff = StaffSplitter.ShouldUseGrandStaff(timeline.Events, options);
 
-        // Step 4: Build the notation score structure
-        var voices = new List<Voice>();
-        foreach (var (voiceNumber, measures) in voiceMeasures.OrderBy(kvp => kvp.Key))
+        Part part;
+        if (useGrandStaff)
         {
-            voices.Add(new Voice(voiceNumber, measures));
+            // Create grand staff (treble + bass)
+            part = CreateGrandStaffPart(timeline, voiceAssignments, options);
         }
-
-        // Determine clef based on options and pitch range
-        var clef = DetermineClef(timeline.Events, options);
-
-        // Create a single part (monophonic or single instrument for now)
-        // TODO: For wide pitch ranges (grand staff), split into treble and bass parts
-        var part = new Part(
-            name: timeline.Metadata.Title ?? "Part 1",
-            clef: clef,
-            voices: voices
-        );
+        else
+        {
+            // Create single-staff part
+            part = CreateSingleStaffPart(timeline, voiceAssignments, options);
+        }
 
         // Create score metadata
         var metadata = new ScoreMetadata(
@@ -70,12 +63,131 @@ public sealed class NotationEngine : INotationEngine
     }
 
     /// <summary>
+    /// Creates a single-staff part from voice assignments.
+    /// </summary>
+    private static Part CreateSingleStaffPart(
+        PerformanceTimeline timeline,
+        IReadOnlyList<VoiceAssignment> voiceAssignments,
+        NotationOptions options)
+    {
+        // Group measures by voice
+        var voiceGroups = voiceAssignments
+            .GroupBy(a => a.VoiceNumber)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Partition into measures
+        var partitioner = new MeasurePartitioner(timeline.TempoMap, options);
+        var voiceMeasures = partitioner.PartitionIntoMeasures(voiceGroups);
+
+        // Build voices
+        var voices = new List<Voice>();
+        foreach (var (voiceNumber, measures) in voiceMeasures.OrderBy(kvp => kvp.Key))
+        {
+            voices.Add(new Voice(voiceNumber, measures));
+        }
+
+        // Determine clef
+        var clef = DetermineClef(timeline.Events, options);
+
+        // Create single-staff part using legacy constructor
+        return new Part(
+            name: timeline.Metadata.Title ?? "Part 1",
+            clef: clef,
+            voices: voices
+        );
+    }
+
+    /// <summary>
+    /// Creates a grand staff part (treble + bass) from voice assignments.
+    /// </summary>
+    private static Part CreateGrandStaffPart(
+        PerformanceTimeline timeline,
+        IReadOnlyList<VoiceAssignment> voiceAssignments,
+        NotationOptions options)
+    {
+        // Split into treble and bass based on pitch
+        var (trebleAssignments, bassAssignments) = StaffSplitter.SplitVoiceAssignments(
+            voiceAssignments,
+            options.GrandStaffSplitPoint
+        );
+
+        // Renumber voices within each staff
+        trebleAssignments = StaffSplitter.RenumberVoices(trebleAssignments);
+        bassAssignments = StaffSplitter.RenumberVoices(bassAssignments);
+
+        // Create partitioner
+        var partitioner = new MeasurePartitioner(timeline.TempoMap, options);
+
+        // Create treble staff (Staff 1)
+        var trebleStaff = CreateStaffFromAssignments(
+            trebleAssignments,
+            staffNumber: 1,
+            clef: Clef.Treble,
+            partitioner
+        );
+
+        // Create bass staff (Staff 2)
+        var bassStaff = CreateStaffFromAssignments(
+            bassAssignments,
+            staffNumber: 2,
+            clef: Clef.Bass,
+            partitioner
+        );
+
+        // Create grand staff part
+        return new Part(
+            name: timeline.Metadata.Title ?? "Piano",
+            staves: new[] { trebleStaff, bassStaff }
+        );
+    }
+
+    /// <summary>
+    /// Creates a staff from voice assignments.
+    /// </summary>
+    private static Staff CreateStaffFromAssignments(
+        List<VoiceAssignment> assignments,
+        int staffNumber,
+        Clef clef,
+        MeasurePartitioner partitioner)
+    {
+        if (assignments.Count == 0)
+        {
+            // Empty staff - create single empty voice
+            return new Staff(
+                number: staffNumber,
+                clef: clef,
+                voices: new[] { new Voice(1, new List<Measure>()) }
+            );
+        }
+
+        // Group by voice
+        var voiceGroups = assignments
+            .GroupBy(a => a.VoiceNumber)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Partition into measures
+        var voiceMeasures = partitioner.PartitionIntoMeasures(voiceGroups);
+
+        // Build voices
+        var voices = voiceMeasures
+            .OrderBy(kvp => kvp.Key)
+            .Select(kvp => new Voice(kvp.Key, kvp.Value))
+            .ToList();
+
+        return new Staff(
+            number: staffNumber,
+            clef: clef,
+            voices: voices
+        );
+    }
+
+    /// <summary>
     /// Determines the appropriate clef based on options and pitch range analysis.
     /// </summary>
     private static Clef DetermineClef(IReadOnlyList<IPerformanceEvent> events, NotationOptions options)
     {
-        // If user forced a specific clef, use it
-        if (options.ClefPreference != ClefPreference.Auto)
+        // If user forced a specific clef, use it (but not AutoGrandStaff - that's handled separately)
+        if (options.ClefPreference != ClefPreference.Auto && options.ClefPreference != ClefPreference.AutoGrandStaff)
         {
             return options.ClefPreference switch
             {
