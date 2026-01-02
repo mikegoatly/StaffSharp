@@ -11,17 +11,17 @@ public static class LayoutEngine
 {
     internal static ILayoutPass[] LayoutPasses { get; } =
     [
-        new VerticalPositionPass(), // Y positions relative to staff
-        new AccidentalPlacementPass(),  // Which accidentals to show
-        new HeadShiftPass(),           // Chord notehead shifts
-        new StemAndBeamPass(),         // Stems and beams
-        new HorizontalSpacingPass(),  // Horizontal spacing between elements
-        new SystemBreakingPass(),     // Breaks systems based on content
-        new SystemSymbolInsertionPass(), // Inserts system symbols (clefs, keys, etc.)
-        new HorizontalSpacingPass(),  // Recalculates horizontal spacing
-        new SystemGenerationPass(),   // Generates system layout
-        new TieAndSlurPass(),        // Creates tie/slur curves (needs final positions)
-        new BoundsCalculationPass()   // Calculates accurate bounds (MUST be last)
+        new VerticalPositionPass(),          // Y positions relative to staff
+        new AccidentalPlacementPass(),       // Which accidentals to show
+        new HeadShiftPass(),                 // Chord notehead shifts
+        new StemAndBeamPass(),               // Stems and beams
+        new MeasureWidthCalculationPass(),   // Calculate measure widths (for breaking decisions)
+        new SystemBreakingPass(),            // Breaks systems based on measure widths
+        new SystemSymbolInsertionPass(),     // Inserts system symbols (clefs, keys, etc.)
+        new HorizontalPositionPass(),        // Assigns final X positions
+        new SystemGenerationPass(),          // Generates system layout
+        new TieAndSlurPass(),                // Creates tie/slur curves (needs final positions)
+        new BoundsCalculationPass()          // Calculates accurate bounds (MUST be last)
     ];
 
     public static LayoutModel Layout(NotationScore score, SvgContext context)
@@ -104,7 +104,7 @@ public static class LayoutEngine
             // Add key signature at the start of the first measure (after clef)
             if (measureNumber == 1 && metadata.KeySignature != KeySignature.C)
             {
-                var keySymbol = new KeySignatureLayoutSymbol { KeySignature = metadata.KeySignature, TimePosition = -2.0 };
+                var keySymbol = new KeySignatureLayoutSymbol { KeySignature = metadata.KeySignature, Clef = staff.Clef, TimePosition = -2.0 };
                 layoutMeasure.AddSymbol(keySymbol);
             }
 

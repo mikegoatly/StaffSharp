@@ -82,6 +82,7 @@ public sealed class ClefLayoutSymbol : LayoutSymbol
 public sealed class KeySignatureLayoutSymbol : LayoutSymbol
 {
     public required KeySignature KeySignature { get; init; }
+    public Clef Clef { get; init; } = Clef.Treble;
 }
 
 /// <summary>

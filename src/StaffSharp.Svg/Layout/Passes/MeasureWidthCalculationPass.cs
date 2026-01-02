@@ -5,14 +5,11 @@ using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
-/// Assigns horizontal positions (X coordinates) to all symbols based on duration.
-/// Handles multi-voice by aligning symbols at the same time position.
-///
-/// Note: This pass runs TWICE in the layout pipeline:
-/// 1. First run (before SystemBreakingPass): Calculates measure widths needed for line breaking decisions
-/// 2. Second run (after SystemBreakingPass): Recalculates X positions after system structure is finalized
+/// Calculates measure widths based on symbol durations and types.
+/// This pass ONLY calculates widths and does NOT assign X positions.
+/// It runs before SystemBreakingPass to provide the width information needed for line breaking decisions.
 /// </summary>
-public class HorizontalSpacingPass : ILayoutPass
+public class MeasureWidthCalculationPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
@@ -23,47 +20,40 @@ public class HorizontalSpacingPass : ILayoutPass
         {
             foreach (var staff in system.Staves)
             {
-                double currentX = context.Margins.Left;
-                staff.X = currentX;
-
                 foreach (var measure in staff.Measures)
                 {
-                    measure.X = currentX;
-                    double measureStartX = currentX;
-
-                    // Group symbols by time position to handle multi-voice alignment
-                    var symbolsByTime = measure.Symbols
-                        .GroupBy(s => s.TimePosition)
-                        .OrderBy(g => g.Key)
-                        .ToList();
-
-                    foreach (var timeGroup in symbolsByTime)
-                    {
-                        // Find the maximum width needed for symbols at this time
-                        var maxWidth = timeGroup.Max(s => GetSymbolWidth(s, context));
-
-                        // All symbols at this time get the same X position
-                        foreach (var symbol in timeGroup)
-                        {
-                            symbol.X = currentX;
-                            symbol.Width = GetSymbolWidth(symbol, context);
-                        }
-
-                        currentX += maxWidth + (0.5 * context.StaffSpace); // Fixed gap
-                    }
-
-                    measure.Width = currentX - measureStartX;
+                    CalculateMeasureWidth(measure, context);
                 }
-
-                staff.Width = currentX - staff.X;
-            }
-
-            // Update system width (use the widest staff)
-            if (system.Staves.Count > 0)
-            {
-                system.Width = system.Staves.Max(s => s.Width);
             }
         }
+    }
+
+    private static void CalculateMeasureWidth(LayoutMeasure measure, SvgContext context)
+    {
+        // Group symbols by time position to handle multi-voice alignment
+        var symbolsByTime = measure.Symbols
+            .GroupBy(s => s.TimePosition)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        double totalWidth = 0;
+
+        foreach (var timeGroup in symbolsByTime)
+        {
+            // Find the maximum width needed for symbols at this time
+            var maxWidth = timeGroup.Max(s => GetSymbolWidth(s, context));
+
+            // Set individual symbol widths
+            foreach (var symbol in timeGroup)
+            {
+                symbol.Width = GetSymbolWidth(symbol, context);
+            }
+
+            // Add to total width with spacing
+            totalWidth += maxWidth + (0.3 * context.StaffSpace); // Fixed gap between elements
+        }
+
+        measure.Width = totalWidth;
     }
 
     private static double GetSymbolWidth(LayoutSymbol symbol, SvgContext context)
@@ -73,9 +63,9 @@ public class HorizontalSpacingPass : ILayoutPass
             NoteLayoutSymbol noteSymbol => GetDurationWidth(noteSymbol.Note.Duration, context),
             RestLayoutSymbol restSymbol => GetDurationWidth(restSymbol.Rest.Duration, context),
             ChordLayoutSymbol chordSymbol => GetDurationWidth(chordSymbol.Chord.Duration, context),
-            ClefLayoutSymbol => 3.0 * context.StaffSpace,
+            ClefLayoutSymbol => 2.2 * context.StaffSpace,
             KeySignatureLayoutSymbol keySymbol => GetKeySignatureWidth(keySymbol.KeySignature, context),
-            TimeSignatureLayoutSymbol => 2.0 * context.StaffSpace,
+            TimeSignatureLayoutSymbol => 1.8 * context.StaffSpace,
             BarlineLayoutSymbol => 0.5 * context.StaffSpace,
             _ => context.StaffSpace
         };
