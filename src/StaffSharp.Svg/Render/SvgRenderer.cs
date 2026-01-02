@@ -280,7 +280,7 @@ public static class SvgRenderer
     {
         var group = new XElement(SvgNamespace + "g",
             new XAttribute("class", "chord"),
-            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},0)")
+            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
         );
 
         // Render accidentals if present
@@ -288,19 +288,20 @@ public static class SvgRenderer
         {
             var accidental = symbol.Accidentals[i];
             var xOffset = symbol.AccidentalXOffsets[i];
-            var yPos = symbol.AccidentalYPositions[i];
+            var yPos = symbol.AccidentalYPositions[i] - symbol.Y;  // Make relative to chord Y
             RenderAccidental(group, accidental, xOffset, yPos, context);
         }
 
         var notehead = GetNoteheadGlyph(symbol.Chord.Duration);
 
         // Render each notehead at its calculated Y position with optional X shift
+        // Y positions are absolute, so make them relative to symbol.Y
         for (int i = 0; i < symbol.NoteheadYPositions.Count; i++)
         {
-            var y = symbol.NoteheadYPositions[i];
+            var y = symbol.NoteheadYPositions[i] - symbol.Y;
             var xShift = symbol.NoteheadXShifts.Count > i ? symbol.NoteheadXShifts[i] : 0;
             var transform = $"translate({xShift.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
-            
+
             var noteheadElement = RenderGlyph(notehead, 1.0, transform, context);
             if (noteheadElement != null)
             {
