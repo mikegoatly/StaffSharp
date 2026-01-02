@@ -61,14 +61,25 @@ public class TieAndSlurPass : ILayoutPass
         // If stems are up, curve goes below; if stems are down, curve goes above
         var curveAbove = !startNote.StemUp;
 
-        var startX = startNote.X + (1.0 * context.StaffSpace); // Offset from notehead center
-        var endX = endNote.X - (0.5 * context.StaffSpace);
-        var startY = startNote.Y;
-        var endY = endNote.Y;
+        // Calculate notehead width (scaled from SMuFL units)
+        // NoteHeadBlack height: 279 units, width: 330 units, scaled to 1.0 staff spaces height
+        var noteheadWidth = 1.18 * context.StaffSpace;
+        var noteheadHeight = 1.0 * context.StaffSpace;
+
+        // Start tie at right edge of first notehead
+        var startX = startNote.X + noteheadWidth;
+        // End tie at left edge of second notehead
+        var endX = endNote.X;
+
+        // Position tie above or below the notehead, not through the middle
+        // Add small clearance (0.15 staff spaces) from the notehead edge
+        var verticalOffset = curveAbove ? -noteheadHeight * 0.5 - 0.15 * context.StaffSpace
+                                         : noteheadHeight * 0.5 + 0.15 * context.StaffSpace;
+        var startY = startNote.Y + verticalOffset;
+        var endY = endNote.Y + verticalOffset;
 
         // Calculate control points for a smooth curve
-        var midX = (startX + endX) / 2;
-        var curveHeight = 1.5 * context.StaffSpace;
+        var curveHeight = 0.5 * context.StaffSpace; // Reduced height for more subtle curve
         var controlYOffset = curveAbove ? -curveHeight : curveHeight;
 
         return new LayoutCurve

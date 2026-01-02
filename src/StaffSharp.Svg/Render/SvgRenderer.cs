@@ -103,17 +103,32 @@ public static class SvgRenderer
     {
         foreach (var curve in measure.Curves)
         {
-            // Create a cubic Bézier curve path
-            var path = $"M {curve.StartX.ToString(CultureInfo.InvariantCulture)} {curve.StartY.ToString(CultureInfo.InvariantCulture)} " +
-                       $"C {curve.ControlX1.ToString(CultureInfo.InvariantCulture)} {curve.ControlY1.ToString(CultureInfo.InvariantCulture)}, " +
-                       $"{curve.ControlX2.ToString(CultureInfo.InvariantCulture)} {curve.ControlY2.ToString(CultureInfo.InvariantCulture)}, " +
-                       $"{curve.EndX.ToString(CultureInfo.InvariantCulture)} {curve.EndY.ToString(CultureInfo.InvariantCulture)}";
+            // Create a filled tie shape with tapered ends
+            // Thickness in the middle, tapered to points at the ends
+            var thickness = 0.15 * context.StaffSpace; // Tie thickness at the thickest point
+            var direction = curve.CurveAbove ? -1 : 1;
+
+            // Create the tie as two Bézier curves forming a closed shape
+            // Top curve (from start to end)
+            var topPath = $"M {curve.StartX.ToString(CultureInfo.InvariantCulture)} {curve.StartY.ToString(CultureInfo.InvariantCulture)} " +
+                          $"C {curve.ControlX1.ToString(CultureInfo.InvariantCulture)} {curve.ControlY1.ToString(CultureInfo.InvariantCulture)}, " +
+                          $"{curve.ControlX2.ToString(CultureInfo.InvariantCulture)} {curve.ControlY2.ToString(CultureInfo.InvariantCulture)}, " +
+                          $"{curve.EndX.ToString(CultureInfo.InvariantCulture)} {curve.EndY.ToString(CultureInfo.InvariantCulture)}";
+
+            // Bottom curve (from end back to start, with thickness offset)
+            var bottomStartY = curve.EndY + direction * thickness;
+            var bottomEndY = curve.StartY + direction * thickness;
+            var bottomControl1Y = curve.ControlY2 + direction * thickness;
+            var bottomControl2Y = curve.ControlY1 + direction * thickness;
+
+            var bottomPath = $" L {curve.EndX.ToString(CultureInfo.InvariantCulture)} {bottomStartY.ToString(CultureInfo.InvariantCulture)} " +
+                            $"C {curve.ControlX2.ToString(CultureInfo.InvariantCulture)} {bottomControl1Y.ToString(CultureInfo.InvariantCulture)}, " +
+                            $"{curve.ControlX1.ToString(CultureInfo.InvariantCulture)} {bottomControl2Y.ToString(CultureInfo.InvariantCulture)}, " +
+                            $"{curve.StartX.ToString(CultureInfo.InvariantCulture)} {bottomEndY.ToString(CultureInfo.InvariantCulture)} Z";
 
             group.Add(new XElement(SvgNamespace + "path",
-                new XAttribute("d", path),
-                new XAttribute("fill", "none"),
-                new XAttribute("stroke", "black"),
-                new XAttribute("stroke-width", "1.5"),
+                new XAttribute("d", topPath + bottomPath),
+                new XAttribute("fill", "black"),
                 new XAttribute("class", curve.IsTie ? "tie" : "slur")
             ));
         }
