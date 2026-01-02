@@ -1,0 +1,57 @@
+namespace StaffSharp.Svg;
+
+using System.Globalization;
+using System.Xml.Linq;
+using StaffSharp.Notation;
+using StaffSharp.Svg.Layout;
+using StaffSharp.Svg.Render;
+
+internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureLayoutSymbol>
+{
+    public static KeySignatureRenderer Instance { get; } = new();
+    public override XElement Render(KeySignatureLayoutSymbol symbol, SvgContext context)
+    {
+        if (symbol.KeySignature.Sharps == 0)
+        {
+            return new XElement(SvgNamespace + "g"); // C major, no accidentals
+        }
+
+        var group = new XElement(
+            SvgNamespace + "g",
+            new XAttribute("class", "key-signature"),
+            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+        );
+
+        // Get accidental positions from service (handles all clef types)
+        var positions = Layout.Services.KeySignatureService.GetAccidentalPositions(
+            symbol.KeySignature,
+            symbol.Clef,
+            context.StaffSpace);
+
+        var xSpacing = Layout.Services.KeySignatureService.AccidentalSpacing * context.StaffSpace;
+        var currentX = 0.0;
+
+        foreach (var (accidental, yPosition) in positions)
+        {
+            var glyph = accidental switch
+            {
+                Accidental.Sharp => MusicGlyphs.Sharp,
+                Accidental.Flat => MusicGlyphs.Flat,
+                _ => default(GlyphInfo?)
+            };
+
+            if (glyph != null)
+            {
+                var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{yPosition.ToString(CultureInfo.InvariantCulture)})";
+                var glyphElement = RenderGlyph(glyph.Value, 1.0, transform, context);
+                if (glyphElement != null)
+                {
+                    group.Add(glyphElement);
+                }
+                currentX += xSpacing;
+            }
+        }
+
+        return group;
+    }
+}

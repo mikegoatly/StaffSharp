@@ -262,6 +262,54 @@ public class SvgExporterTests : VisualSnapshotTestBase
     }
 
     [Fact]
+    public async Task Export_BeamedNotes_ArchingUp_RendersSlantedBeam()
+    {
+        var metadata = new ScoreMetadata("Beamed Notes Arching Up", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        var notes = NotationEventBuilder.Create()
+            .DefaultDuration(SymbolicDuration.Eighth)
+            .C().E().G().E().C() // Arch up in middle
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_BeamedNotes_DippingDown_RendersSlantedBeam()
+    {
+        var metadata = new ScoreMetadata("Beamed Notes Dipping Down", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        var notes = NotationEventBuilder.Create()
+            .DefaultDuration(SymbolicDuration.Eighth)
+            .E(5).D(5).C(5).E(5).E(5) // Dip down in middle
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
     public async Task Export_ChromaticScale_RendersAccidentalsCorrectly()
     {
         var metadata = new ScoreMetadata("Chromatic Scale", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
