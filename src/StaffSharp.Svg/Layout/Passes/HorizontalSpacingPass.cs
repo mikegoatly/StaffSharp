@@ -2,11 +2,15 @@ namespace StaffSharp.Svg.Layout.Passes;
 
 using StaffSharp.Notation;
 using StaffSharp.Svg;
+using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
-/// Assigns horizontal positions (X coordinates) to all symbols.
-/// MVP version uses fixed spacing based on duration.
+/// Assigns horizontal positions (X coordinates) to all symbols based on duration.
 /// Handles multi-voice by aligning symbols at the same time position.
+///
+/// Note: This pass runs TWICE in the layout pipeline:
+/// 1. First run (before SystemBreakingPass): Calculates measure widths needed for line breaking decisions
+/// 2. Second run (after SystemBreakingPass): Recalculates X positions after system structure is finalized
 /// </summary>
 public class HorizontalSpacingPass : ILayoutPass
 {
@@ -110,14 +114,6 @@ public class HorizontalSpacingPass : ILayoutPass
 
     private static double GetKeySignatureWidth(KeySignature keySignature, SvgContext context)
     {
-        // For now, just return a fixed width
-        // TODO: Calculate based on actual number of accidentals
-        if (keySignature == KeySignature.C)
-        {
-            return 0;
-        }
-
-        // Approximate: each accidental is about 1 staff space wide
-        return 3.0 * context.StaffSpace;
+        return KeySignatureService.CalculateWidth(keySignature, context.StaffSpace);
     }
 }

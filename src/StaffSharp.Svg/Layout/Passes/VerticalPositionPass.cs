@@ -2,6 +2,7 @@ namespace StaffSharp.Svg.Layout.Passes;
 
 using StaffSharp.Notation;
 using StaffSharp.Svg;
+using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Assigns vertical positions (Y coordinates) to all symbols based on their pitch.
@@ -21,7 +22,6 @@ public class VerticalPositionPass : ILayoutPass
             {
                 // Position the staff
                 staff.Y = currentY;
-                staff.Height = 4 * context.StaffSpace; // 5 staff lines, 4 spaces between them
 
                 // Staff baseline (middle line of a 5-line staff) - RELATIVE to staff origin
                 var staffBaseline = 2 * context.StaffSpace;
@@ -30,12 +30,13 @@ public class VerticalPositionPass : ILayoutPass
                 {
                     foreach (var symbol in measure.Symbols)
                     {
-                        CalculateSymbolVerticalPosition(symbol, staffBaseline, context);
+                        CalculateSymbolVerticalPosition(symbol, staff, staffBaseline, context);
                     }
                 }
 
-                // Move to next staff
-                currentY += staff.Height + (2 * context.StaffSpace);
+                // Move to next staff (temporary height, will be recalculated by BoundsCalculationPass)
+                var tempHeight = 4 * context.StaffSpace; // 5 staff lines = 4 spaces
+                currentY += tempHeight + (2 * context.StaffSpace);
             }
 
             // Update system height
@@ -43,15 +44,14 @@ public class VerticalPositionPass : ILayoutPass
         }
     }
 
-    private static void CalculateSymbolVerticalPosition(LayoutSymbol symbol, double staffBaseline, SvgContext context)
+    private static void CalculateSymbolVerticalPosition(LayoutSymbol symbol, LayoutStaff staff, double staffBaseline, SvgContext context)
     {
         switch (symbol)
         {
             case NoteLayoutSymbol noteSymbol:
                 {
-                    var staffPosition = PitchToStaffPosition(noteSymbol.Note.Pitch, Clef.Treble); // TODO: track actual clef
+                    var staffPosition = PitchCalculator.PitchToStaffPosition(noteSymbol.Note.Pitch, staff.CurrentClef);
                     symbol.Y = staffBaseline - (staffPosition * 0.5 * context.StaffSpace);
-                    symbol.Height = context.StaffSpace; // Height of a note head
 
                     // Calculate ledger lines needed
                     if (staffPosition > 5)
@@ -70,7 +70,6 @@ public class VerticalPositionPass : ILayoutPass
             case RestLayoutSymbol:
                 // Center rests on the staff
                 symbol.Y = staffBaseline;
-                symbol.Height = 2 * context.StaffSpace;
                 break;
 
             case ChordLayoutSymbol chordSymbol:
@@ -79,7 +78,7 @@ public class VerticalPositionPass : ILayoutPass
                     var pitches = chordSymbol.Chord.Pitches;
                     if (pitches.Count > 0)
                     {
-                        var positions = pitches.Select(p => PitchToStaffPosition(p, Clef.Treble)).OrderBy(x => x).ToList();
+                        var positions = pitches.Select(p => PitchCalculator.PitchToStaffPosition(p, staff.CurrentClef)).OrderBy(x => x).ToList();
                         var lowestPosition = positions[0];
                         var highestPosition = positions[^1];
 
@@ -92,7 +91,6 @@ public class VerticalPositionPass : ILayoutPass
 
                         // Symbol Y is positioned at the bottom note
                         symbol.Y = staffBaseline - (lowestPosition * 0.5 * context.StaffSpace);
-                        symbol.Height = Math.Abs(highestPosition - lowestPosition) * 0.5 * context.StaffSpace + context.StaffSpace;
 
                         // Calculate ledger lines
                         if (highestPosition > 5)
@@ -130,74 +128,23 @@ public class VerticalPositionPass : ILayoutPass
                 {
                     symbol.Y = 2 * context.StaffSpace; // Default to middle line
                 }
-                symbol.Height = 4 * context.StaffSpace;
                 break;
 
             case KeySignatureLayoutSymbol:
                 // Position at top of staff (Y coordinates are relative to staff)
                 symbol.Y = 0;
-                symbol.Height = 4 * context.StaffSpace;
                 break;
 
             case TimeSignatureLayoutSymbol:
                 // Position at top of staff
                 symbol.Y = 0;
-                symbol.Height = 4 * context.StaffSpace;
                 break;
 
             case BarlineLayoutSymbol:
                 // Position at top of staff
                 symbol.Y = 0;
-                symbol.Height = 4 * context.StaffSpace;
                 break;
         }
     }
 
-    /// <summary>
-    /// Converts a pitch to a staff position.
-    /// Staff position 0 = middle line (B4 in treble clef).
-    /// Positive values are above, negative below.
-    /// </summary>
-    private static int PitchToStaffPosition(Pitch pitch, Clef clef)
-    {
-        // For treble clef: B4 (MIDI 71) is on the middle line (position 0)
-        // Each semitone that's a natural note changes position by 1
-        // C4 = MIDI 60, B4 = MIDI 71
-
-        if (clef == Clef.Treble)
-        {
-            // Map MIDI note number to staff position
-            // Middle line (B4) = MIDI 71 = position 0
-            // The staff positions for natural notes in treble clef:
-            // C5=72->2, D5=74->3, E5=76->4, F5=77->5, G5=79->6, A5=81->7, B5=83->8, C6=84->9
-            // C4=60->-6, D4=62->-5, E4=64->-4, F4=65->-3, G4=67->-2, A4=69->-1, B4=71->0
-
-            var midiNote = (int)pitch.ToMidiNote().Value;
-            var octave = (midiNote / 12) - 1; // MIDI octave (C4 = octave 4)
-            var noteClass = midiNote % 12;
-
-            // Map note class to position within octave (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
-            var diatonicPosition = noteClass switch
-            {
-                0 => 0,  // C
-                2 => 1,  // D
-                4 => 2,  // E
-                5 => 3,  // F
-                7 => 4,  // G
-                9 => 5,  // A
-                11 => 6, // B
-                _ => noteClass / 2  // Approximate for accidentals
-            };
-
-            // Calculate staff position relative to B4 (middle line)
-            // B4 is octave 4, position 6 within octave
-            var positionFromC0 = (octave * 7) + diatonicPosition;
-            var b4PositionFromC0 = (4 * 7) + 6; // B4
-
-            return positionFromC0 - b4PositionFromC0;
-        }
-
-        // TODO: Handle other clefs
-        return 0;
-    }
 }
