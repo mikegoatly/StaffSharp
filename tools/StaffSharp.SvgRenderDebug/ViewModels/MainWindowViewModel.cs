@@ -27,7 +27,7 @@ L:1/4
 K:C
 C D E F | G A B c |]";
 
-    private string? _selectedLayoutPass;
+    private int _selectedLayoutPass;
     private string? _svgContent;
     private string? _errorMessage;
     private double _controlWidth = 800;
@@ -52,7 +52,7 @@ C D E F | G A B c |]";
 
     public ReadOnlyCollection<AbcExample> Examples { get; }
 
-    public string? SelectedLayoutPass
+    public int SelectedLayoutPassIndex
     {
         get => _selectedLayoutPass;
         set
@@ -207,7 +207,7 @@ G2 A2 B2 c2 | d2 c2 B2 A2 | G2 F2 E2 D2 | C8 |]" }
         Examples = new ReadOnlyCollection<AbcExample>(examples);
 
         // Select the last pass by default (run all passes)
-        _selectedLayoutPass = LayoutPasses.LastOrDefault();
+        _selectedLayoutPass = LayoutPasses.Count - 1;
 
         // Initial render
         UpdateSvg();
@@ -231,13 +231,10 @@ G2 A2 B2 c2 | d2 c2 B2 A2 | G2 F2 E2 D2 | C8 |]" }
             // Create SVG context with optional bail-after-pass
             var options = new Dictionary<string, string>
             {
-                ["maxWidth"] = ControlWidth.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                ["maxWidth"] = ((int)ControlWidth).ToString(System.Globalization.CultureInfo.InvariantCulture)
             };
 
-            if (SelectedLayoutPass != null)
-            {
-                options["bailAfterPass"] = SelectedLayoutPass;
-            }
+            options["bailAfterPass"] = LayoutPasses[SelectedLayoutPassIndex];
 
             // Export to SVG
             var exporter = new SvgScoreExporter();
