@@ -12,5 +12,6 @@ public class LayoutMeasure : LayoutElement
     private readonly List<LayoutCurve> _curves = new();
 
     internal void AddSymbol(LayoutSymbol symbol) => _symbols.Add(symbol);
+    internal void InsertSymbol(int index, LayoutSymbol symbol) => _symbols.Insert(index, symbol);
     internal void AddCurve(LayoutCurve curve) => _curves.Add(curve);
 }

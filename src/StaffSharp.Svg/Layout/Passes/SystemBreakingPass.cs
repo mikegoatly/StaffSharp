@@ -2,6 +2,7 @@ namespace StaffSharp.Svg.Layout.Passes;
 
 using StaffSharp.Notation;
 using StaffSharp.Svg;
+using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Pass to break measures into multiple systems when they exceed the maximum width.
@@ -59,15 +60,19 @@ public class SystemBreakingPass : ILayoutPass
     private static List<LayoutStaff> BreakStaffIntoSystems(LayoutStaff staff, SvgContext context)
     {
         var result = new List<LayoutStaff>();
-        var currentStaff = new LayoutStaff();
+        var currentStaff = new LayoutStaff
+        {
+            CurrentClef = staff.CurrentClef,
+            CurrentKeySignature = staff.CurrentKeySignature
+        };
         result.Add(currentStaff);
 
         double currentWidth = context.Margins.Left;
         var firstMeasureInSystem = true;
 
-        // Reserve space for initial clef on each system
-        var initialWidth = firstMeasureInSystem ? 3.0 * context.StaffSpace : 0;
-        currentWidth += initialWidth;
+        // Calculate width for system-start symbols (clef + key signature + time signature)
+        var systemStartWidth = CalculateSystemStartWidth(staff, context);
+        currentWidth += systemStartWidth;
 
         foreach (var measure in staff.Measures)
         {
@@ -77,9 +82,13 @@ public class SystemBreakingPass : ILayoutPass
             if (currentWidth + measureWidth > context.MaxWidth && !firstMeasureInSystem)
             {
                 // Start a new system
-                currentStaff = new LayoutStaff();
+                currentStaff = new LayoutStaff
+                {
+                    CurrentClef = staff.CurrentClef,
+                    CurrentKeySignature = staff.CurrentKeySignature
+                };
                 result.Add(currentStaff);
-                currentWidth = context.Margins.Left + 3.0 * context.StaffSpace; // Reset with clef width
+                currentWidth = context.Margins.Left + systemStartWidth;
                 firstMeasureInSystem = true;
             }
 
@@ -91,5 +100,24 @@ public class SystemBreakingPass : ILayoutPass
         }
 
         return result;
+    }
+
+    private static double CalculateSystemStartWidth(LayoutStaff staff, SvgContext context)
+    {
+        double width = 0;
+
+        // Clef width
+        width += 3.0 * context.StaffSpace;
+
+        // Key signature width
+        if (staff.CurrentKeySignature != KeySignature.C)
+        {
+            width += KeySignatureService.CalculateWidth(staff.CurrentKeySignature, context.StaffSpace);
+        }
+
+        // Time signature width
+        width += 2.0 * context.StaffSpace;
+
+        return width;
     }
 }

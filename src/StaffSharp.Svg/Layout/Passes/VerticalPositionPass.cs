@@ -141,8 +141,9 @@ public class VerticalPositionPass : ILayoutPass
                 break;
 
             case BarlineLayoutSymbol:
-                // Position at top of staff
+                // Position at top of staff, spanning full staff height
                 symbol.Y = 0;
+                symbol.Height = 4 * context.StaffSpace;  // 5 lines = 4 spaces
                 break;
         }
     }
