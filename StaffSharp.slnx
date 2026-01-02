@@ -22,4 +22,8 @@
     <Project Path="test/StaffSharp.Svg.Tests/StaffSharp.Svg.Tests.csproj" />
     <Project Path="test/StaffSharp.TestHelpers/StaffSharp.TestHelpers.csproj" Id="597094f3-6468-45cb-86cc-386bd6188d79" />
   </Folder>
+  <Folder Name="/tools/">
+    <File Path="tools/.editorconfig" />
+    <Project Path="tools/StaffSharp.SvgRenderDebug/StaffSharp.SvgRenderDebug.csproj" Id="ef879355-bdfd-43ad-b817-c068e79de1ef" />
+  </Folder>
 </Solution>

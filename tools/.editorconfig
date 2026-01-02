@@ -1,0 +1,7 @@
+root = false
+
+# C# files
+[*.cs]
+
+# CA1515: Consider making public types internal - not necessary for tools. More of an annoyance with Avalonia code.
+dotnet_diagnostic.CA1515.severity = none
