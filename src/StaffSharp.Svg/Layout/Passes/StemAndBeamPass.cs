@@ -136,7 +136,12 @@ public class StemAndBeamPass : ILayoutPass
 
         // Calculate stem position
         var stemLength = StemLength * context.StaffSpace;
-        symbol.StemX = symbol.X;
+
+        // Stem X position: fixed offset from notehead
+        // These match the rendering offsets: right edge for stem up, left edge for stem down
+        symbol.StemX = stemUp
+            ? symbol.X + (context.StaffSpace + 1)  // Right edge for stem up
+            : symbol.X + 1; // Left edge for stem down
 
         if (stemUp)
         {
@@ -168,7 +173,10 @@ public class StemAndBeamPass : ILayoutPass
         else
         {
             // Single voice: based on position relative to middle line
-            return noteheadY < staffBaseline;
+            // In SVG coordinates, Y increases downward
+            // Notes below middle line (higher Y) → stems up
+            // Notes above middle line (lower Y) → stems down
+            return noteheadY > staffBaseline;
         }
     }
 
@@ -224,12 +232,15 @@ public class StemAndBeamPass : ILayoutPass
             }
             avgY /= group.Count;
 
-            stemUp = avgY < staffBaseline;
+            // In SVG coordinates, Y increases downward
+            // Notes below middle line (higher Y) → stems up
+            // Notes above middle line (lower Y) → stems down
+            stemUp = avgY > staffBaseline;
         }
 
-        // Assign beam group IDs
+        // Assign beam group IDs and calculate stem attachment points
         var beamGroupId = group[0].GetHashCode();
-        
+
         for (int i = 0; i < group.Count; i++)
         {
             var symbol = group[i];
@@ -237,43 +248,44 @@ public class StemAndBeamPass : ILayoutPass
             symbol.IsFirstInBeamGroup = (i == 0);
             symbol.IsLastInBeamGroup = (i == group.Count - 1);
             symbol.BeamCount = GetBeamCount(symbol);
-        }
-
-        // Calculate stems for all notes in the group
-        foreach (var symbol in group)
-        {
             symbol.StemUp = stemUp;
-            var stemLength = StemLength * context.StaffSpace;
-            symbol.StemX = symbol.X;
 
+            // Stem X position: fixed offset from notehead
+            // These match the rendering offsets: right edge for stem up, left edge for stem down
+            symbol.StemX = stemUp
+                ? symbol.X + (context.StaffSpace + 1)  // Right edge for stem up
+                : symbol.X + 1; // Left edge for stem down
+
+            // Calculate stem attachment point (where stem meets notehead)
             var noteheadY = symbol.Y;
             if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
             {
                 noteheadY = stemUp ? chordSymbol.NoteheadYPositions.Max() : chordSymbol.NoteheadYPositions.Min();
             }
-
-            if (stemUp)
-            {
-                symbol.StemY1 = noteheadY;
-                symbol.StemY2 = noteheadY - stemLength;
-            }
-            else
-            {
-                symbol.StemY1 = noteheadY;
-                symbol.StemY2 = noteheadY + stemLength;
-            }
+            symbol.StemY1 = noteheadY;
         }
 
-        // Adjust stem endpoints to meet a horizontal beam
-        // The beam position is at the average of all stem ends, adjusted for minimum stem length
-        var stemEndYs = group.Select(s => s.StemY2).ToList();
-        var beamY = stemUp 
-            ? stemEndYs.Min()  // For stems up, beam is at the highest (most negative Y) point
-            : stemEndYs.Max(); // For stems down, beam is at the lowest point
+        // Calculate slanted beam position based on melodic contour
+        var firstSymbol = group[0];
+        var lastSymbol = group[^1];
 
+        // Get notehead Y positions for first and last notes
+        var firstNoteheadY = firstSymbol.StemY1; // Already set above
+        var lastNoteheadY = lastSymbol.StemY1;
+
+        // Calculate beam endpoints based on standard stem length
+        var stemLength = StemLength * context.StaffSpace;
+        var beamY1 = stemUp ? firstNoteheadY - stemLength : firstNoteheadY + stemLength;
+        var beamY2 = stemUp ? lastNoteheadY - stemLength : lastNoteheadY + stemLength;
+
+        // Calculate beam slope based on stem X positions (not notehead centers)
+        var beamSlope = (beamY2 - beamY1) / (lastSymbol.StemX - firstSymbol.StemX);
+
+        // Set StemY2 for each note to meet the slanted beam at its stem X position
         foreach (var symbol in group)
         {
-            symbol.StemY2 = beamY;
+            var beamYAtThisNote = beamY1 + (symbol.StemX - firstSymbol.StemX) * beamSlope;
+            symbol.StemY2 = beamYAtThisNote;
         }
     }
 
