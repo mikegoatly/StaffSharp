@@ -118,50 +118,72 @@ public class StemAndBeamPass : ILayoutPass
 
     private static void CalculateStem(LayoutSymbol symbol, double staffBaseline, SvgContext context, bool? forceStemDirection = null)
     {
-        // Determine stem direction:
-        // 1. If forced (for beam groups), use that
-        // 2. If multi-voice (voice > 1), use voice-based direction (voice 1 up, voice 2+ down)
-        // 3. Otherwise, based on notehead position relative to staff center
+        // Determine stem direction based on average position (for chords) or notehead position (for single notes)
         var noteheadY = symbol.Y;
+        var avgY = noteheadY;
 
         if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
         {
-            // For chords, use the average position
-            noteheadY = chordSymbol.NoteheadYPositions.Average();
+            // For chords, use the average position to determine direction
+            avgY = chordSymbol.NoteheadYPositions.Average();
         }
 
-        bool stemUp;
-        if (forceStemDirection.HasValue)
+        bool stemUp = DetermineStemDirection(avgY, staffBaseline, symbol.VoiceNumber, forceStemDirection);
+        symbol.StemUp = stemUp;
+
+        // Get stem attachment point (outermost notehead for chords)
+        var stemAttachmentY = GetStemAttachmentY(symbol, stemUp);
+
+        // Calculate stem position
+        var stemLength = StemLength * context.StaffSpace;
+        symbol.StemX = symbol.X;
+
+        if (stemUp)
         {
-            stemUp = forceStemDirection.Value;
+            symbol.StemY1 = stemAttachmentY;
+            symbol.StemY2 = stemAttachmentY - stemLength;
         }
-        else if (symbol.VoiceNumber > 1)
+        else
+        {
+            symbol.StemY1 = stemAttachmentY;
+            symbol.StemY2 = stemAttachmentY + stemLength;
+        }
+    }
+
+    private static bool DetermineStemDirection(double noteheadY, double staffBaseline, int voiceNumber, bool? forcedDirection)
+    {
+        // Stem direction logic:
+        // 1. If forced (for beam groups), use that
+        // 2. If multi-voice (voice > 1), use voice-based direction (voice 1 up, voice 2+ down)
+        // 3. Otherwise, based on notehead position relative to staff center
+        if (forcedDirection.HasValue)
+        {
+            return forcedDirection.Value;
+        }
+        else if (voiceNumber > 1)
         {
             // In multi-voice: voice 1 stems up, voice 2+ stems down
-            stemUp = symbol.VoiceNumber == 1;
+            return voiceNumber == 1;
         }
         else
         {
             // Single voice: based on position relative to middle line
-            stemUp = noteheadY < staffBaseline;
+            return noteheadY < staffBaseline;
         }
+    }
 
-        symbol.StemUp = stemUp;
-
-        // Calculate stem position
-        var stemLength = StemLength * context.StaffSpace;
-        symbol.StemX = symbol.X; // Stems attach to the right side of noteheads for up stems, left for down
-
-        if (stemUp)
+    private static double GetStemAttachmentY(LayoutSymbol symbol, bool stemUp)
+    {
+        // For single notes, use the notehead Y position
+        // For chords, use the outermost notehead (bottom note for stem up, top note for stem down)
+        if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
         {
-            symbol.StemY1 = noteheadY;
-            symbol.StemY2 = noteheadY - stemLength;
+            return stemUp
+                ? chordSymbol.NoteheadYPositions.Max()  // Bottom note (highest Y) for stem up
+                : chordSymbol.NoteheadYPositions.Min(); // Top note (lowest Y) for stem down
         }
-        else
-        {
-            symbol.StemY1 = noteheadY;
-            symbol.StemY2 = noteheadY + stemLength;
-        }
+
+        return symbol.Y;
     }
 
     private static void CalculateBeamedGroup(List<LayoutSymbol> group, double staffBaseline, SvgContext context)
