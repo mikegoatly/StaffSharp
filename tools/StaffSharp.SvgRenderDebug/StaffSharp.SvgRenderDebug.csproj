@@ -20,5 +20,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\src\StaffSharp.Svg\StaffSharp.Svg.csproj" />
+	  <ProjectReference Include="..\..\src\StaffSharp.Importers\StaffSharp.Importers.csproj" />
 	</ItemGroup>
 </Project>
