@@ -48,6 +48,7 @@ public class SystemSymbolInsertionPass : ILayoutPass
             var keySymbol = new KeySignatureLayoutSymbol
             {
                 KeySignature = staff.CurrentKeySignature,
+                Clef = staff.CurrentClef,
                 TimePosition = -2.0,
                 Y = 0  // Position at top of staff
             };

@@ -116,6 +116,12 @@ internal static class KeySignatureService
 
     /// <summary>
     /// Calculates the horizontal width required to render a key signature.
+    /// Standard spacing between accidentals in key signatures.
+    /// </summary>
+    public const double AccidentalSpacing = 0.7;
+
+    /// <summary>
+    /// Calculates the horizontal width required to render a key signature.
     /// </summary>
     public static double CalculateWidth(KeySignature keySignature, double staffSpace)
     {
@@ -125,8 +131,9 @@ internal static class KeySignatureService
         }
 
         var accidentalCount = Math.Abs(keySignature.Sharps);
-        // Each accidental is approximately 1.0 staff spaces wide
-        return accidentalCount * 1.0 * staffSpace;
+        // Each accidental takes AccidentalSpacing staff spaces
+        // Last accidental doesn't need trailing space, so (n-1) spacings
+        return (accidentalCount - 1) * AccidentalSpacing * staffSpace + (1.0 * staffSpace);
     }
 
     /// <summary>

@@ -65,10 +65,12 @@ public static class SvgRenderer
         for (int i = 0; i < 5; i++)
         {
             var y = i * context.StaffSpace;
+            var x1 = staff.X;
+            var x2 = staff.X + staff.Width;
             group.Add(new XElement(SvgNamespace + "line",
-                new XAttribute("x1", context.Margins.Left),
+                new XAttribute("x1", x1.ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("y1", y.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("x2", (staff.Width > 0 ? staff.Width : context.MaxWidth).ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("x2", x2.ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("y2", y.ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("stroke", "black"),
                 new XAttribute("stroke-width", "1")
@@ -362,33 +364,34 @@ public static class SvgRenderer
             new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
         );
 
-        // Staff position offsets for sharps and flats in treble clef
-        // These are measured in half-staff-spaces from the top line (0 = top line)
-        // Order of sharps: F C G D A E B
-        // Order of flats:  B E A D G C F
-        int[] sharpPositions = [0, 3, -1, 2, 5, 1, 4]; // F#, C#, G#, D#, A#, E#, B#
-        int[] flatPositions = [4, 1, 5, 2, 6, 3, 7];   // Bb, Eb, Ab, Db, Gb, Cb, Fb
+        // Get accidental positions from service (handles all clef types)
+        var positions = Layout.Services.KeySignatureService.GetAccidentalPositions(
+            symbol.KeySignature,
+            symbol.Clef,
+            context.StaffSpace);
 
-        var glyph = symbol.KeySignature.HasSharps ? MusicGlyphs.Sharp : MusicGlyphs.Flat;
-        var positions = symbol.KeySignature.HasSharps ? sharpPositions : flatPositions;
-        var count = Math.Abs(symbol.KeySignature.Sharps);
-
-        var xSpacing = 1.2 * context.StaffSpace;
+        var xSpacing = Layout.Services.KeySignatureService.AccidentalSpacing * context.StaffSpace;
         var currentX = 0.0;
 
-        for (int i = 0; i < count; i++)
+        foreach (var (accidental, yPosition) in positions)
         {
-            var staffPosition = positions[i];
-            var y = staffPosition * 0.5 * context.StaffSpace;
-
-            var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
-            var accidentalElement = RenderGlyph(glyph, 1.0, transform, context);
-            if (accidentalElement != null)
+            var glyph = accidental switch
             {
-                group.Add(accidentalElement);
-            }
+                Accidental.Sharp => MusicGlyphs.Sharp,
+                Accidental.Flat => MusicGlyphs.Flat,
+                _ => default(GlyphInfo?)
+            };
 
-            currentX += xSpacing;
+            if (glyph != null)
+            {
+                var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{yPosition.ToString(CultureInfo.InvariantCulture)})";
+                var glyphElement = RenderGlyph(glyph.Value, 1.0, transform, context);
+                if (glyphElement != null)
+                {
+                    group.Add(glyphElement);
+                }
+                currentX += xSpacing;
+            }
         }
 
         return group;
@@ -401,40 +404,74 @@ public static class SvgRenderer
             new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
         );
 
-        // For MVP: render common time as simple text
+        // Handle special time signatures with dedicated glyphs
         if (symbol.TimeSignature == TimeSignature.CommonTime)
         {
-            group.Add(new XElement(SvgNamespace + "text",
-                new XAttribute("x", 0),
-                new XAttribute("y", (2 * context.StaffSpace).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("font-family", "serif"),
-                new XAttribute("font-size", (2 * context.StaffSpace).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("text-anchor", "middle"),
-                "C"
-            ));
+            var glyph = RenderGlyph(MusicGlyphs.CommonTime, 1.0, $"translate(0,{(2 * context.StaffSpace).ToString(CultureInfo.InvariantCulture)})", context);
+            if (glyph != null)
+            {
+                group.Add(glyph);
+            }
+        }
+        else if (symbol.TimeSignature.Numerator == 2 && symbol.TimeSignature.Denominator == 2)
+        {
+            // Cut time (2/2)
+            var glyph = RenderGlyph(MusicGlyphs.CutTime, 1.0, $"translate(0,{(2 * context.StaffSpace).ToString(CultureInfo.InvariantCulture)})", context);
+            if (glyph != null)
+            {
+                group.Add(glyph);
+            }
         }
         else
         {
-            // Render numerator and denominator as text (simplified)
-            group.Add(new XElement(SvgNamespace + "text",
-                new XAttribute("x", 0),
-                new XAttribute("y", context.StaffSpace.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("font-family", "serif"),
-                new XAttribute("font-size", context.StaffSpace.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("text-anchor", "middle"),
-                "4" // TODO: extract from TimeSignature
-            ));
-            group.Add(new XElement(SvgNamespace + "text",
-                new XAttribute("x", 0),
-                new XAttribute("y", (3 * context.StaffSpace).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("font-family", "serif"),
-                new XAttribute("font-size", context.StaffSpace.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("text-anchor", "middle"),
-                "4" // TODO: extract from TimeSignature
-            ));
+            // Render numerator and denominator as digit glyphs
+            var numerator = symbol.TimeSignature.Numerator;
+            var denominator = symbol.TimeSignature.Denominator;
+
+            RenderDigits(group, numerator.ToString(CultureInfo.InvariantCulture), 0, context.StaffSpace, context);
+            RenderDigits(group, denominator.ToString(CultureInfo.InvariantCulture), 0, 3 * context.StaffSpace, context);
         }
 
         return group;
+    }
+
+    private static void RenderDigits(XElement parent, string digits, double x, double y, SvgContext context)
+    {
+        double currentX = x;
+        var digitWidth = 0.8 * context.StaffSpace; // Approximate width for digit spacing
+
+        foreach (var digit in digits)
+        {
+            var glyph = GetDigitGlyph(digit);
+            if (glyph != null)
+            {
+                var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+                var glyphElement = RenderGlyph(glyph.Value, 1.0, transform, context);
+                if (glyphElement != null)
+                {
+                    parent.Add(glyphElement);
+                }
+                currentX += digitWidth;
+            }
+        }
+    }
+
+    private static GlyphInfo? GetDigitGlyph(char digit)
+    {
+        return digit switch
+        {
+            '0' => MusicGlyphs.Digit0,
+            '1' => MusicGlyphs.Digit1,
+            '2' => MusicGlyphs.Digit2,
+            '3' => MusicGlyphs.Digit3,
+            '4' => MusicGlyphs.Digit4,
+            '5' => MusicGlyphs.Digit5,
+            '6' => MusicGlyphs.Digit6,
+            '7' => MusicGlyphs.Digit7,
+            '8' => MusicGlyphs.Digit8,
+            '9' => MusicGlyphs.Digit9,
+            _ => null
+        };
     }
 
     private static XElement RenderBarline(BarlineLayoutSymbol symbol, SvgContext context)
@@ -522,10 +559,10 @@ public static class SvgRenderer
 
     private static void RenderStem(XElement group, LayoutSymbol symbol, SvgContext context)
     {
-        // Render a simple stem line
-        // For now, stems are centered on the notehead at X=0 (in the note's coordinate system)
-        // TODO: Offset stems to attach to the edge of noteheads (right for stem-up, left for stem-down)
-        var stemX = 0.0;
+        // Calculate stem X offset based on direction
+        var stemX = symbol.StemUp
+            ? context.StaffSpace + 1  // Right edge for stem up
+            : 1; // Left edge for stem down
 
         group.Add(new XElement(SvgNamespace + "line",
             new XAttribute("x1", stemX.ToString(CultureInfo.InvariantCulture)),
@@ -544,7 +581,7 @@ public static class SvgRenderer
             Accidental.Sharp => MusicGlyphs.Sharp,
             Accidental.Flat => MusicGlyphs.Flat,
             Accidental.Natural => MusicGlyphs.Natural,
-            _ => default(GlyphInfo)
+            _ => default
         };
 
         var transform = $"translate({x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
