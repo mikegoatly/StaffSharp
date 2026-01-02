@@ -9,6 +9,7 @@ public class SvgContext
     public double Scale { get; set; }
     public Margins Margins { get; set; } = new();
     public int StaffSpace { get; set; }
+    public string? BailAfterPass { get; set; }
 }
 
 /// <summary>

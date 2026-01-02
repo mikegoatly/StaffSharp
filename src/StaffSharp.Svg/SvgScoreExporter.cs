@@ -48,13 +48,15 @@ public class SvgScoreExporter : IScoreExporter
         var marginsStr = options?.GetValueOrDefault("margins") ?? "40,40,40,40";
         var margins = marginsStr.Split(',').Select(s => int.Parse(s, CultureInfo.InvariantCulture)).ToArray();
         var staffSpace = int.Parse(options?.GetValueOrDefault("staffSpace") ?? "10", CultureInfo.InvariantCulture);
+        var bailAfterPass = options?.GetValueOrDefault("bailAfterPass");
 
         return new SvgContext
         {
             MaxWidth = maxWidth,
             Scale = scale,
             Margins = new Margins(margins[0], margins[1], margins[2], margins[3]),
-            StaffSpace = staffSpace
+            StaffSpace = staffSpace,
+            BailAfterPass = bailAfterPass
         };
     }
 }

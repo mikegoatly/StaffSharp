@@ -1,9 +1,110 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="StaffSharp.SvgRenderDebug.MainWindow"
-        Title="StaffSharp.SvgRenderDebug">
-    Welcome to Avalonia!
+<Window
+    x:Class="StaffSharp.SvgRenderDebug.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:StaffSharp.SvgRenderDebug.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:StaffSharp.SvgRenderDebug.ViewModels"
+    Title="StaffSharp SVG Render Debugger"
+    Width="1200"
+    Height="800"
+    d:DesignHeight="800"
+    d:DesignWidth="1200"
+    x:DataType="vm:MainWindowViewModel"
+    mc:Ignorable="d">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Grid ColumnDefinitions="350,*" RowDefinitions="Auto,*,Auto">
+        <!--  Left Panel: Input and Controls  -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.Column="0"
+            Margin="10"
+            RowDefinitions="Auto,Auto,*,Auto">
+            <!--  Examples Dropdown  -->
+            <StackPanel
+                Grid.Row="0"
+                Margin="0,0,0,10"
+                Spacing="5">
+                <TextBlock FontWeight="Bold" Text="Load Example:" />
+                <ComboBox
+                    x:Name="ExamplesComboBox"
+                    DisplayMemberBinding="{Binding Name}"
+                    ItemsSource="{Binding Examples}"
+                    SelectionChanged="OnExampleSelected" />
+            </StackPanel>
+
+            <!--  ABC Text Input  -->
+            <StackPanel Grid.Row="1" Spacing="5">
+                <TextBlock FontWeight="Bold" Text="ABC Notation:" />
+                <TextBox
+                    Height="200"
+                    AcceptsReturn="True"
+                    FontFamily="Consolas,Courier New,monospace"
+                    Text="{Binding AbcText, Mode=TwoWay}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!--  Layout Pass Selector  -->
+            <StackPanel
+                Grid.Row="3"
+                Margin="0,10,0,0"
+                Spacing="5">
+                <TextBlock FontWeight="Bold" Text="Stop after layout pass:" />
+                <ListBox
+                    Height="200"
+                    ItemsSource="{Binding LayoutPasses}"
+                    SelectedItem="{Binding SelectedLayoutPass, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                FontFamily="Consolas,Courier New,monospace"
+                                FontSize="11"
+                                Text="{Binding}" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock
+                    FontSize="10"
+                    Foreground="Gray"
+                    Text="Select the last pass in the list to run all passes"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+
+        <!--  Right Panel: SVG Viewer  -->
+        <Border
+            x:Name="SvgViewerBorder"
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Grid.Column="1"
+            Margin="10"
+            BorderBrush="Gray"
+            BorderThickness="1"
+            SizeChanged="OnSvgViewerSizeChanged">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
+            </ScrollViewer>
+        </Border>
+
+        <!--  Status Bar  -->
+        <Border
+            Grid.Row="2"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            Padding="10,5"
+            Background="#F0F0F0"
+            BorderBrush="Gray"
+            BorderThickness="0,1,0,0">
+            <TextBlock
+                Foreground="Red"
+                Text="{Binding ErrorMessage}"
+                TextWrapping="Wrap" />
+        </Border>
+    </Grid>
 </Window>

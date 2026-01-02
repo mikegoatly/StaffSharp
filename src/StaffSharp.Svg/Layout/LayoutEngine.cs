@@ -9,6 +9,21 @@ using StaffSharp.Svg.Layout.Passes;
 /// </summary>
 public static class LayoutEngine
 {
+    internal static ILayoutPass[] LayoutPasses { get; } =
+    [
+        new VerticalPositionPass(), // Y positions relative to staff
+        new AccidentalPlacementPass(),  // Which accidentals to show
+        new HeadShiftPass(),           // Chord notehead shifts
+        new StemAndBeamPass(),         // Stems and beams
+        new HorizontalSpacingPass(),  // Horizontal spacing between elements
+        new SystemBreakingPass(),     // Breaks systems based on content
+        new SystemSymbolInsertionPass(), // Inserts system symbols (clefs, keys, etc.)
+        new HorizontalSpacingPass(),  // Recalculates horizontal spacing
+        new SystemGenerationPass(),   // Generates system layout
+        new TieAndSlurPass(),        // Creates tie/slur curves (needs final positions)
+        new BoundsCalculationPass()   // Calculates accurate bounds (MUST be last)
+    ];
+
     public static LayoutModel Layout(NotationScore score, SvgContext context)
     {
         ArgumentNullException.ThrowIfNull(score);
@@ -22,25 +37,15 @@ public static class LayoutEngine
         // Convert notation structure to layout structure
         ConvertScoreToLayout(score, model, context);
 
-        // Run layout passes in dependency order:
-        // Phase 1: Symbol-level layout (independent of system structure)
-        new VerticalPositionPass().Run(model, context);      // Y positions relative to staff
-        new AccidentalPlacementPass().Run(model, context);   // Which accidentals to show
-        new HeadShiftPass().Run(model, context);             // Chord notehead shifts
-        new StemAndBeamPass().Run(model, context);           // Stems and beams
+        foreach (var pass in LayoutPasses)
+        {
+            pass.Run(model, context);
 
-        // Phase 2: Calculate measure widths (needed for system breaking)
-        new HorizontalSpacingPass().Run(model, context);     // Sets widths (X positions will be recalculated)
-
-        // Phase 3: Break into multiple systems based on widths
-        new SystemBreakingPass().Run(model, context);
-        new SystemSymbolInsertionPass().Run(model, context); // Insert clef/key/time at start of each system
-
-        // Phase 4: Final positioning after system structure is finalized
-        new HorizontalSpacingPass().Run(model, context);     // Recalculate X positions per system
-        new SystemGenerationPass().Run(model, context);      // Final Y positions for all systems
-        new TieAndSlurPass().Run(model, context);            // Create tie/slur curves (needs final positions)
-        new BoundsCalculationPass().Run(model, context);     // Calculate accurate bounds (MUST be last)
+            if (context.BailAfterPass is not null && context.BailAfterPass == pass.GetType().Name)
+            {
+                break;
+            }
+        }
 
         return model;
     }
