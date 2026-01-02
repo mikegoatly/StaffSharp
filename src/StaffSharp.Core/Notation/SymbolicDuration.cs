@@ -32,17 +32,17 @@ public readonly record struct SymbolicDuration
 
             for (int i = 0; i < Dots; i++)
             {
-                multiplier = multiplier + dotValue;
-                dotValue = dotValue * Rational.Create(1, 2);
+                multiplier += dotValue;
+                dotValue *= Rational.Create(1, 2);
             }
 
-            baseBeats = baseBeats * multiplier;
+            baseBeats *= multiplier;
         }
 
         // Apply tuplet (e.g., triplet = 2/3 of normal duration)
         if (Tuplet != null)
         {
-            baseBeats = baseBeats * Rational.Create(Tuplet.NormalNotes, Tuplet.ActualNotes);
+            baseBeats *= Rational.Create(Tuplet.NormalNotes, Tuplet.ActualNotes);
         }
 
         return baseBeats;

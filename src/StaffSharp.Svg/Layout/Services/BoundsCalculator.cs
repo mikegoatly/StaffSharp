@@ -1,0 +1,132 @@
+namespace StaffSharp.Svg.Layout.Services;
+
+using StaffSharp.Svg.Layout;
+
+/// <summary>
+/// Service for calculating accurate bounds including stems, beams, ledger lines, and other visual elements.
+/// </summary>
+internal static class BoundsCalculator
+{
+    /// <summary>
+    /// Calculates the minimum and maximum Y coordinates for a symbol, including all visual elements
+    /// (noteheads, stems, ledger lines, etc.).
+    /// </summary>
+    /// <param name="symbol">The symbol to calculate bounds for</param>
+    /// <param name="staffSpace">The staff space unit for calculating ledger line extents</param>
+    /// <returns>Tuple of (MinY, MaxY) coordinates</returns>
+    public static (double MinY, double MaxY) CalculateSymbolBounds(LayoutSymbol symbol, double staffSpace)
+    {
+        var minY = symbol.Y;
+        var maxY = symbol.Y;
+
+        // Include stem bounds
+        if (symbol.StemY1 != 0 || symbol.StemY2 != 0)
+        {
+            minY = Math.Min(minY, Math.Min(symbol.StemY1, symbol.StemY2));
+            maxY = Math.Max(maxY, Math.Max(symbol.StemY1, symbol.StemY2));
+        }
+
+        // Include ledger lines
+        if (symbol.LedgerLineCount > 0)
+        {
+            var ledgerExtent = symbol.LedgerLineCount * staffSpace;
+            if (symbol.LedgerLinesAbove)
+            {
+                minY = Math.Min(minY, symbol.Y - ledgerExtent);
+            }
+            else
+            {
+                maxY = Math.Max(maxY, symbol.Y + ledgerExtent);
+            }
+        }
+
+        // Include chord notehead extents
+        if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
+        {
+            minY = Math.Min(minY, chordSymbol.NoteheadYPositions.Min());
+            maxY = Math.Max(maxY, chordSymbol.NoteheadYPositions.Max());
+        }
+
+        // Add some padding for the symbol itself (noteheads have height)
+        maxY = Math.Max(maxY, symbol.Y + staffSpace);
+
+        return (minY, maxY);
+    }
+
+    /// <summary>
+    /// Calculates bounds for an entire staff by examining all symbols within all measures.
+    /// </summary>
+    /// <param name="staff">The staff to calculate bounds for</param>
+    /// <param name="staffY">The Y position of the staff origin</param>
+    /// <param name="staffSpace">The staff space unit</param>
+    /// <returns>Tuple of (MinY, MaxY, Height)</returns>
+    public static (double MinY, double MaxY, double Height) CalculateStaffBounds(
+        LayoutStaff staff,
+        double staffY,
+        double staffSpace)
+    {
+        // Start with the staff lines themselves (5 lines = 4 spaces)
+        var minY = staffY;
+        var maxY = staffY + (4 * staffSpace);
+
+        // Examine all symbols in all measures
+        foreach (var measure in staff.Measures)
+        {
+            foreach (var symbol in measure.Symbols)
+            {
+                var (symbolMinY, symbolMaxY) = CalculateSymbolBounds(symbol, staffSpace);
+
+                // Convert symbol-relative coordinates to absolute coordinates
+                var absoluteMinY = staffY + symbolMinY;
+                var absoluteMaxY = staffY + symbolMaxY;
+
+                minY = Math.Min(minY, absoluteMinY);
+                maxY = Math.Max(maxY, absoluteMaxY);
+            }
+
+            // TODO: Include curves (ties, slurs) when that infrastructure is ready
+            // foreach (var curve in measure.Curves)
+            // {
+            //     var curveMinY = CalculateCurveBounds(curve);
+            //     minY = Math.Min(minY, curveMinY);
+            //     maxY = Math.Max(maxY, curveMaxY);
+            // }
+        }
+
+        var height = maxY - minY;
+        return (minY, maxY, height);
+    }
+
+    /// <summary>
+    /// Calculates the total height of a system by summing staff heights and inter-staff spacing.
+    /// </summary>
+    /// <param name="system">The system to calculate height for</param>
+    /// <param name="staffSpace">The staff space unit</param>
+    /// <param name="interStaffSpacing">Space between staves (typically 2-3 staff spaces)</param>
+    /// <returns>Total system height</returns>
+    public static double CalculateSystemHeight(
+        LayoutSystem system,
+        double staffSpace,
+        double interStaffSpacing)
+    {
+        if (system.Staves.Count == 0)
+        {
+            return 0;
+        }
+
+        double totalHeight = 0;
+        for (int i = 0; i < system.Staves.Count; i++)
+        {
+            var staff = system.Staves[i];
+            totalHeight += staff.Height;
+
+            // Add inter-staff spacing (except after last staff)
+            if (i < system.Staves.Count - 1)
+            {
+                totalHeight += interStaffSpacing;
+            }
+        }
+
+        return totalHeight;
+    }
+}

@@ -63,7 +63,11 @@ public static class LayoutEngine
 
     private static LayoutStaff ConvertStaff(Staff staff, ScoreMetadata metadata, SvgContext context)
     {
-        var layoutStaff = new LayoutStaff();
+        var layoutStaff = new LayoutStaff
+        {
+            CurrentClef = staff.Clef,
+            CurrentKeySignature = metadata.KeySignature
+        };
 
         if (staff.Voices.Count == 0)
         {
