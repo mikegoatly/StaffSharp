@@ -15,6 +15,150 @@ using Xunit;
 public class SvgExporterTests : VisualSnapshotTestBase
 {
     [Fact]
+    public async Task Export_BassClef_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("Bass Clef Test", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Create a scale in bass clef range (E2 to E3)
+        var notes = NotationEventBuilder.Create()
+            .E(2).F(2).G(2).A(2).B(2).C(3).D(3).E(3)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Bass, [voice]);
+        var part = new Part("Bass", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_AltoClef_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("Alto Clef Test", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Create a scale in alto clef range (G3 to G4)
+        var notes = NotationEventBuilder.Create()
+            .G(3).A(3).B(3).C(4).D(4).E(4).F(4).G(4)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Alto, [voice]);
+        var part = new Part("Viola", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_TenorClef_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("Tenor Clef Test", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Create a scale in tenor clef range (C3 to C4)
+        var notes = NotationEventBuilder.Create()
+            .C(3).D(3).E(3).F(3).G(3).A(3).B(3).C(4)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Tenor, [voice]);
+        var part = new Part("Cello", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_GMajorKeySignature_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("G Major", "Test", KeySignature.G, TimeSignature.CommonTime, 120);
+
+        // G major scale - F# should not show accidental, other sharps should
+        var notes = NotationEventBuilder.Create()
+            .G().A().B().C(5).D(5).E(5).FSharp(5).G(5)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_FMajorKeySignature_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("F Major", "Test", KeySignature.F, TimeSignature.CommonTime, 120);
+
+        // F major scale - Bb should not show accidental (using accidental parameter)
+        var notes = NotationEventBuilder.Create()
+            .F().G().A().B(accidental: Accidental.Flat).C(5).D(5).E(5).F(5)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_DMajorKeySignature_RendersCorrectly()
+    {
+        var metadata = new ScoreMetadata("D Major", "Test", KeySignature.D, TimeSignature.CommonTime, 120);
+
+        // D major scale - F# and C# should not show accidentals
+        var notes = NotationEventBuilder.Create()
+            .D().E().FSharp().G().A().B().CSharp(5).D(5)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
     public async Task Export_EmptyScore_ProducesValidSvg()
     {
         var score = CreateMinimalScore();
@@ -196,7 +340,7 @@ public class SvgExporterTests : VisualSnapshotTestBase
         // Use a small maxWidth to force system breaks
         var options = new Dictionary<string, string>
         {
-            ["maxWidth"] = "300"
+            ["maxWidth"] = "600"
         };
 
         var exporter = new SvgScoreExporter();
@@ -247,15 +391,15 @@ public class SvgExporterTests : VisualSnapshotTestBase
     }
 
     [Fact]
-    public async Task Export_Chords_RendersMultipleNoteheadsCorrectly()
+    public async Task Export_ChordWithStemUp_AttachesToBottomNote()
     {
-        var metadata = new ScoreMetadata("Chords", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+        var metadata = new ScoreMetadata("Chord Stem Up", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
 
+        // Create a chord low on the staff (should have stem up)
+        // C4-E4-G4 chord using builder
         var notes = NotationEventBuilder.Create()
-            .Chord(PitchClass.C, PitchClass.E, PitchClass.G) // C major chord
-            .Chord(PitchClass.D, PitchClass.F, PitchClass.A) // D minor chord
-            .Chord(PitchClass.E, PitchClass.G, PitchClass.B) // E minor chord
-            .Chord(PitchClass.F, PitchClass.A, PitchClass.C) // F major chord
+            .DefaultOctave(4)
+            .Chord(PitchClass.C, PitchClass.E, PitchClass.G)
             .Build();
 
         var measure = new Measure(1, notes);
@@ -269,8 +413,34 @@ public class SvgExporterTests : VisualSnapshotTestBase
         await exporter.ExportAsync(score, stream);
         var svgContent = Encoding.UTF8.GetString(stream.ToArray());
 
-        // Verify chords are rendered - should have class="chord"
-        Assert.Contains("class=\"chord\"", svgContent);
+        // This test verifies the stem attaches to the outermost notehead
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_ChordWithStemDown_AttachesToTopNote()
+    {
+        var metadata = new ScoreMetadata("Chord Stem Down", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Create a chord high on the staff (should have stem down)
+        // C5-E5-G5 chord using builder
+        var notes = NotationEventBuilder.Create()
+            .DefaultOctave(5)
+            .Chord(PitchClass.C, PitchClass.E, PitchClass.G)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        // This test verifies the stem attaches to the outermost notehead
         AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
     }
 

@@ -14,7 +14,10 @@ public static class LayoutEngine
         ArgumentNullException.ThrowIfNull(score);
         ArgumentNullException.ThrowIfNull(context);
 
-        var model = new LayoutModel();
+        var model = new LayoutModel
+        {
+            Metadata = score.Metadata
+        };
 
         // Convert notation structure to layout structure
         ConvertScoreToLayout(score, model, context);
@@ -31,11 +34,13 @@ public static class LayoutEngine
 
         // Phase 3: Break into multiple systems based on widths
         new SystemBreakingPass().Run(model, context);
+        new SystemSymbolInsertionPass().Run(model, context); // Insert clef/key/time at start of each system
 
         // Phase 4: Final positioning after system structure is finalized
         new HorizontalSpacingPass().Run(model, context);     // Recalculate X positions per system
         new SystemGenerationPass().Run(model, context);      // Final Y positions for all systems
         new TieAndSlurPass().Run(model, context);            // Create tie/slur curves (needs final positions)
+        new BoundsCalculationPass().Run(model, context);     // Calculate accurate bounds (MUST be last)
 
         return model;
     }
@@ -198,9 +203,14 @@ public class LayoutModel
     /// <summary>
     /// Gets the total height of all content, calculated from system bounds.
     /// </summary>
-    public double TotalHeight => Systems.Count > 0 
-        ? Systems.Max(s => s.Y + s.Height) 
+    public double TotalHeight => Systems.Count > 0
+        ? Systems.Max(s => s.Y + s.Height)
         : 0;
+
+    /// <summary>
+    /// Score metadata needed for system symbol insertion (time signature, etc.)
+    /// </summary>
+    public ScoreMetadata? Metadata { get; set; }
 
     internal void AddSystem(LayoutSystem system) => _systems.Add(system);
 
