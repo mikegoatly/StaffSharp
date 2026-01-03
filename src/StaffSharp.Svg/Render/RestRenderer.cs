@@ -25,6 +25,9 @@ internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
             group.Add(restElement);
         }
 
+        // Render augmentation dots if present
+        RenderDots(group, symbol, context);
+
         return group;
     }
 

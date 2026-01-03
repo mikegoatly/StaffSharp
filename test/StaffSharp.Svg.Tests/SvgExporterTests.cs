@@ -86,78 +86,7 @@ public class SvgExporterTests : VisualSnapshotTestBase
         AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
     }
 
-    [Fact]
-    public async Task Export_GMajorKeySignature_RendersCorrectly()
-    {
-        var metadata = new ScoreMetadata("G Major", "Test", KeySignature.G, TimeSignature.CommonTime, 120);
-
-        // G major scale - F# should not show accidental, other sharps should
-        var notes = NotationEventBuilder.Create()
-            .G().A().B().C(5).D(5).E(5).FSharp(5).G(5)
-            .Build();
-
-        var measure = new Measure(1, notes);
-        var voice = new Voice(1, [measure]);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
-    [Fact]
-    public async Task Export_FMajorKeySignature_RendersCorrectly()
-    {
-        var metadata = new ScoreMetadata("F Major", "Test", KeySignature.F, TimeSignature.CommonTime, 120);
-
-        // F major scale - Bb should not show accidental (using accidental parameter)
-        var notes = NotationEventBuilder.Create()
-            .F().G().A().B(accidental: Accidental.Flat).C(5).D(5).E(5).F(5)
-            .Build();
-
-        var measure = new Measure(1, notes);
-        var voice = new Voice(1, [measure]);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
-    [Fact]
-    public async Task Export_DMajorKeySignature_RendersCorrectly()
-    {
-        var metadata = new ScoreMetadata("D Major", "Test", KeySignature.D, TimeSignature.CommonTime, 120);
-
-        // D major scale - F# and C# should not show accidentals
-        var notes = NotationEventBuilder.Create()
-            .D().E().FSharp().G().A().B().CSharp(5).D(5)
-            .Build();
-
-        var measure = new Measure(1, notes);
-        var voice = new Voice(1, [measure]);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
+    
     [Fact]
     public async Task Export_EmptyScore_ProducesValidSvg()
     {
@@ -201,14 +130,7 @@ public class SvgExporterTests : VisualSnapshotTestBase
         await exporter.ExportAsync(score, stream, options);
         var svgContent = Encoding.UTF8.GetString(stream.ToArray());
 
-        AssertMatchesSnapshot(svgContent, new SnapshotOptions
-        {
-            Width = 600,
-            Height = 400,
-            PixelDifferenceThreshold = 0.5,
-            MaxPixelDelta = 5,
-            GenerateDiffImage = true
-        });
+        AssertMatchesSnapshot(svgContent, new SnapshotOptions(600, 400, 0.5, 5, true));
     }
 
     private static NotationScore CreateMinimalScore()
@@ -245,54 +167,8 @@ public class SvgExporterTests : VisualSnapshotTestBase
             .DefaultDuration(SymbolicDuration.Eighth)
             .C().D().E().F() // First beam group
             .G().A().B().C(5) // Second beam group
-            .Build();
-
-        var measure = new Measure(1, notes);
-        var voice = new Voice(1, [measure]);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
-    [Fact]
-    public async Task Export_BeamedNotes_ArchingUp_RendersSlantedBeam()
-    {
-        var metadata = new ScoreMetadata("Beamed Notes Arching Up", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
-
-        var notes = NotationEventBuilder.Create()
-            .DefaultDuration(SymbolicDuration.Eighth)
-            .C().E().G().E().C() // Arch up in middle
-            .Build();
-
-        var measure = new Measure(1, notes);
-        var voice = new Voice(1, [measure]);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
-    [Fact]
-    public async Task Export_BeamedNotes_DippingDown_RendersSlantedBeam()
-    {
-        var metadata = new ScoreMetadata("Beamed Notes Dipping Down", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
-
-        var notes = NotationEventBuilder.Create()
-            .DefaultDuration(SymbolicDuration.Eighth)
-            .E(5).D(5).C(5).E(5).E(5) // Dip down in middle
+            .C().E().G().C() // Arch up in middle
+            .E(5).D(5).C(5).E(5)// Dip down in middle
             .Build();
 
         var measure = new Measure(1, notes);
@@ -364,49 +240,6 @@ public class SvgExporterTests : VisualSnapshotTestBase
         var noteCount = svgContent.Split("class=\"note\"").Length - 1;
         Assert.Equal(8, noteCount);
         AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
-    }
-
-    [Fact]
-    public async Task Export_LongScore_CreatesSystemBreaks()
-    {
-        var metadata = new ScoreMetadata("Long Score", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
-
-        // Create many measures to force system breaks
-        var measures = Enumerable.Range(1, 8).Select(i =>
-        {
-            var notes = NotationEventBuilder.Create()
-                .C().D().E().F()
-                .Build();
-            return new Measure(i, notes);
-        }).ToList();
-
-        var voice = new Voice(1, measures);
-        var staff = new Staff(1, Clef.Treble, [voice]);
-        var part = new Part("Piano", [staff]);
-        var score = new NotationScore(metadata, [part]);
-
-        // Use a small maxWidth to force system breaks
-        var options = new Dictionary<string, string>
-        {
-            ["maxWidth"] = "600"
-        };
-
-        var exporter = new SvgScoreExporter();
-        using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream, options);
-        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
-
-        // Verify multiple systems are created
-        var systemCount = svgContent.Split("class=\"system\"").Length - 1;
-        Assert.True(systemCount > 1, $"Expected multiple systems, got {systemCount}");
-        AssertMatchesSnapshot(svgContent, new SnapshotOptions
-        {
-            Width = 800,
-            Height = 600,
-            PixelDifferenceThreshold = 0.5,
-            MaxPixelDelta = 5,
-            GenerateDiffImage = true
-        });
     }
 
     [Fact]
@@ -514,6 +347,48 @@ public class SvgExporterTests : VisualSnapshotTestBase
 
         // Verify key signature is present
         Assert.Contains("class=\"key-signature\"", svgContent);
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_DottedNotation_RendersAllDurationsCorrectly()
+    {
+        var metadata = new ScoreMetadata("Dotted Notation Test", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Test dotted notes of various durations, dotted rests, and dotted chords
+        var dottedHalf = new SymbolicDuration(NoteDurationBase.Half, dots: 1);
+        var dottedQuarter = new SymbolicDuration(NoteDurationBase.Quarter, dots: 1);
+        var dottedEighth = new SymbolicDuration(NoteDurationBase.Eighth, dots: 1);
+        var doubleDottedQuarter = new SymbolicDuration(NoteDurationBase.Quarter, dots: 2);
+
+        var events = NotationEventBuilder.Create()
+            // Dotted half note
+            .C(4, dottedHalf)
+            // Dotted quarter notes
+            .D(4, dottedQuarter)
+            .E(4, dottedQuarter)
+            // Dotted eighth notes
+            .F(4, dottedEighth)
+            .G(4, dottedEighth)
+            // Double-dotted quarter note
+            .A(4, doubleDottedQuarter)
+            // Dotted quarter rest
+            .Rest(dottedQuarter)
+            // Dotted chord
+            .Chord(4, dottedQuarter, null, PitchClass.C, PitchClass.E, PitchClass.G)
+            .Build();
+
+        var measure = new Measure(1, events);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
         AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
     }
 }

@@ -54,6 +54,9 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
             RenderLedgerLines(group, symbol, context);
         }
 
+        // Render augmentation dots if present
+        RenderDots(group, symbol, context);
+
         return group;
     }
 }

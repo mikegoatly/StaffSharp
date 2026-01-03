@@ -2,4 +2,6 @@
 Artifacts/
 
 # Snapshots are checked in as the golden baseline
-# Do NOT ignore Snapshots/
+# SVGs are produced during tests for comparison
+# Do NOT ignore Snapshots/*.png
+Snapshots/*.svg

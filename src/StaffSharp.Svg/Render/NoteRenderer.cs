@@ -43,6 +43,9 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
             RenderLedgerLines(group, symbol, context);
         }
 
+        // Render augmentation dots if present
+        RenderDots(group, symbol, context);
+
         return group;
     }
 }

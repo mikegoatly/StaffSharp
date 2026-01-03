@@ -183,4 +183,31 @@ internal abstract class LayoutElementRenderer<T>
             }
         }
     }
+
+    /// <summary>
+    /// Renders augmentation dots for a symbol.
+    /// </summary>
+    protected static void RenderDots(XElement group, AugmentationDottedLayoutSymbol symbol, SvgContext context)
+    {
+        if (symbol.DotCount <= 0) return;
+
+        var dotY = symbol.DotY;
+
+        for (int i = 0; i < symbol.DotCount; i++)
+        {
+            var dotX = symbol.DotXPositions[i] - symbol.X; // Relative to symbol position
+            var dotYRelative = dotY - symbol.Y;      // Relative to symbol position
+
+            var dotElement = RenderGlyph(
+                MusicGlyphs.AugmentationDot,
+                0.25,  // Small dot height
+                $"translate({dotX.ToString(CultureInfo.InvariantCulture)},{dotYRelative.ToString(CultureInfo.InvariantCulture)})",
+                context);
+
+            if (dotElement != null)
+            {
+                group.Add(dotElement);
+            }
+        }
+    }
 }

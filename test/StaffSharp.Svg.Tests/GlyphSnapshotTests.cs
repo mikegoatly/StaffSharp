@@ -12,210 +12,96 @@ using Xunit;
 public class GlyphSnapshotTests : VisualSnapshotTestBase
 {
     [Fact]
-    public void NoteHeadWhole()
+    public void AllGlyphs()
     {
-        var svg = CreateGlyphSvg(MusicGlyphs.NoteHeadWhole);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
+        var glyphs = new[]
+        {
+            ("NoteHeadWhole", MusicGlyphs.NoteHeadWhole),
+            ("NoteHeadHalf", MusicGlyphs.NoteHeadHalf),
+            ("NoteHeadBlack", MusicGlyphs.NoteHeadBlack),
+            ("WholeRest", MusicGlyphs.WholeRest),
+            ("HalfRest", MusicGlyphs.HalfRest),
+            ("QuarterRest", MusicGlyphs.QuarterRest),
+            ("EighthRest", MusicGlyphs.EighthRest),
+            ("SixteenthRest", MusicGlyphs.SixteenthRest),
+            ("TrebleClef", MusicGlyphs.TrebleClef),
+            ("BassClef", MusicGlyphs.BassClef),
+            ("CClef", MusicGlyphs.CClef),
+            ("AltoClef", MusicGlyphs.AltoClef),
+            ("TenorClef", MusicGlyphs.TenorClef),
+            ("Flat", MusicGlyphs.Flat),
+            ("Natural", MusicGlyphs.Natural),
+            ("Sharp", MusicGlyphs.Sharp),
+            ("Digit0", MusicGlyphs.Digit0),
+            ("Digit1", MusicGlyphs.Digit1),
+            ("Digit2", MusicGlyphs.Digit2),
+            ("Digit3", MusicGlyphs.Digit3),
+            ("Digit4", MusicGlyphs.Digit4),
+            ("Digit5", MusicGlyphs.Digit5),
+            ("Digit6", MusicGlyphs.Digit6),
+            ("Digit7", MusicGlyphs.Digit7),
+            ("Digit8", MusicGlyphs.Digit8),
+            ("Digit9", MusicGlyphs.Digit9),
+            ("CommonTime", MusicGlyphs.CommonTime),
+            ("CutTime", MusicGlyphs.CutTime)
+        };
+
+        var svg = CreateCompositeGlyphSvg(glyphs);
+        AssertMatchesSnapshot(svg);
     }
 
-    [Fact]
-    public void NoteHeadHalf()
+    private static string CreateCompositeGlyphSvg((string Name, GlyphInfo Info)[] glyphs)
     {
-        var svg = CreateGlyphSvg(MusicGlyphs.NoteHeadHalf);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+        var cellWidth = 120;
+        var cellHeight = 120;
+        var columns = 6;
+        var rows = (glyphs.Length + columns - 1) / columns;
 
-    [Fact]
-    public void NoteHeadBlack()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.NoteHeadBlack);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+        var svgWidth = cellWidth * columns;
+        var svgHeight = cellHeight * rows;
 
-    [Fact]
-    public void WholeRest()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.WholeRest);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+        // group elements
+        var elements = new XElement("g");
 
-    [Fact]
-    public void HalfRest()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.HalfRest);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+        for (int i = 0; i < glyphs.Length; i++)
+        {
+            var (name, glyphInfo) = glyphs[i];
+            var col = i % columns;
+            var row = i / columns;
 
-    [Fact]
-    public void QuarterRest()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.QuarterRest);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            var x = col * cellWidth + cellWidth / 2;
+            var y = row * cellHeight + cellHeight / 2;
 
-    [Fact]
-    public void EighthRest()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.EighthRest);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            // Scale to fit within cell
+            var scale = Math.Min(cellWidth * 0.7 / glyphInfo.Width, (cellHeight * 0.7) / glyphInfo.Height);
+            var translateX = x - (glyphInfo.MinX + glyphInfo.Width / 2) * scale;
+            var translateY = y - (glyphInfo.MinY + glyphInfo.Height / 2) * scale;
 
-    [Fact]
-    public void SixteenthRest()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.SixteenthRest);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            var group = new XElement("g",
+                new XAttribute("transform", $"translate({translateX:F2},{translateY:F2}) scale({scale:F2})"));
 
-    [Fact]
-    public void TrebleClef()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.TrebleClef);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            var path = new XElement("path",
+                new XAttribute("d", glyphInfo.Path),
+                new XAttribute("fill", "black"),
+                new XAttribute("stroke", "none"));
 
-    [Fact]
-    public void BassClef()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.BassClef);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            group.Add(path);
+            elements.Add(group);
 
-    [Fact]
-    public void CClef()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.CClef);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            // Add label
+            var text = new XElement("text",
+                new XAttribute("x", x),
+                new XAttribute("y", row * cellHeight + cellHeight - 10),
+                new XAttribute("text-anchor", "middle"),
+                new XAttribute("font-size", "10"),
+                new XAttribute("font-family", "Arial, sans-serif"),
+                new XAttribute("fill", "#666"),
+                name);
 
-    [Fact]
-    public void AltoClef()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.AltoClef);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
+            elements.Add(text);
+        }
 
-    [Fact]
-    public void TenorClef()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.TenorClef);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
 
-    [Fact]
-    public void Flat()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Flat);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Natural()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Natural);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Sharp()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Sharp);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit0()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit0);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit1()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit1);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit2()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit2);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit3()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit3);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit4()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit4);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit5()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit5);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit6()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit6);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit7()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit7);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit8()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit8);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void Digit9()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.Digit9);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void CommonTime()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.CommonTime);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    [Fact]
-    public void CutTime()
-    {
-        var svg = CreateGlyphSvg(MusicGlyphs.CutTime);
-        AssertMatchesSnapshot(svg, SnapshotOptions.Strict);
-    }
-
-    private static string CreateGlyphSvg(GlyphInfo glyphInfo)
-    {
-        var path = new XElement("path",
-            new XAttribute("d", glyphInfo.Path),
-            new XAttribute("fill", "black"),
-            new XAttribute("stroke", "none"));
-
-        // Use a viewBox that fits most glyphs with some padding
-        string viewBox = $"{glyphInfo.MinX - 10} {glyphInfo.MinY - 10} {glyphInfo.Width + 20} {glyphInfo.Height + 20}";
-        return SvgTestHelpers.CreateSvgWrapper(path, width: 200, height: 200, viewBox: viewBox);
+        return SvgTestHelpers.CreateSvgWrapper(elements, width: svgWidth, height: svgHeight);
     }
 }

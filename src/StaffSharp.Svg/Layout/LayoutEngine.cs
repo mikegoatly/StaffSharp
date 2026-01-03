@@ -17,6 +17,7 @@ public static class LayoutEngine
         new MeasureWidthCalculationPass(),          // Calculate measure widths (for breaking decisions)
         new SystemBreakingPass(),                   // Breaks systems and inserts system symbols (clefs, keys, etc.)
         new HorizontalPositionPass(),               // Assigns final X positions
+        new DotPositioningPass(),                   // Position augmentation dots (needs X positions)
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
         new TieAndSlurPass(),                       // Creates tie/slur curves (needs final positions)
         new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
@@ -171,9 +172,24 @@ public static class LayoutEngine
     {
         return notationEvent switch
         {
-            NotationNote note => new NoteLayoutSymbol { Note = note, TimePosition = timePosition },
-            Rest rest => new RestLayoutSymbol { Rest = rest, TimePosition = timePosition },
-            Chord chord => new ChordLayoutSymbol { Chord = chord, TimePosition = timePosition },
+            NotationNote note => new NoteLayoutSymbol
+            {
+                Note = note,
+                TimePosition = timePosition,
+                DotCount = note.Duration.Dots
+            },
+            Rest rest => new RestLayoutSymbol
+            {
+                Rest = rest,
+                TimePosition = timePosition,
+                DotCount = rest.Duration.Dots
+            },
+            Chord chord => new ChordLayoutSymbol
+            {
+                Chord = chord,
+                TimePosition = timePosition,
+                DotCount = chord.Duration.Dots
+            },
             _ => throw new NotSupportedException($"Event type {notationEvent.GetType().Name} is not supported")
         };
     }
