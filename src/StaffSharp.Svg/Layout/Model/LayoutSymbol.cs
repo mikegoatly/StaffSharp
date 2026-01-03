@@ -31,11 +31,6 @@ public abstract class LayoutSymbol : LayoutElement
 
     public int LedgerLineCount { get; set; }
     public bool LedgerLinesAbove { get; set; }
-
-    // Accidental information (for Phase 2)
-    public Accidental? Accidental { get; set; }
-    public double AccidentalX { get; set; }
-    public double AccidentalY { get; set; }
 }
 
 /// <summary>
@@ -44,6 +39,10 @@ public abstract class LayoutSymbol : LayoutElement
 public sealed class NoteLayoutSymbol : LayoutSymbol
 {
     public required NotationNote Note { get; init; }
+
+    public Accidental? Accidental { get; set; }
+    public double AccidentalX { get; set; }
+    public double AccidentalY { get; set; }
 }
 
 /// <summary>
