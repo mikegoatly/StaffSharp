@@ -21,19 +21,17 @@ public class SystemGenerationPass : ILayoutPass
             system.Y = currentY;
             system.X = context.Margins.Left;
 
-            // Calculate system height based on staves
+            // Calculate system height based on actual staff heights
             double systemHeight = 0;
             foreach (var staff in system.Staves)
             {
-                // Each staff is 4 staff spaces tall (5 lines)
-                // Plus spacing between staves
-                systemHeight += 4 * context.StaffSpace;
+                // Use the actual calculated staff height
+                systemHeight += staff.Height;
                 if (staff != system.Staves[^1]) // Not the last staff
                 {
                     systemHeight += 2 * context.StaffSpace; // Inter-staff spacing
                 }
             }
-            system.Height = systemHeight;
             
             currentY += systemHeight + (3 * context.StaffSpace); // System spacing
         }

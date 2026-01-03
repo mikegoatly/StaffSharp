@@ -4,11 +4,11 @@ using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
-/// Calculates accurate bounds for all layout elements including stems, beams, ledger lines, and other visual elements.
-/// MUST run after all other layout passes that set positions (stems, beams, etc.).
-/// This pass sets the Height property on symbols, staves, and systems based on their actual rendered extents.
+/// Calculates accurate bounds for individual layout elements (staves) including stems, beams, ledger lines, curves, and other visual elements.
+/// MUST run after stems, beams, and curves have been positioned.
+/// This pass sets the Height property on staves based on their actual rendered extents.
 /// </summary>
-public class BoundsCalculationPass : ILayoutPass
+public class LayoutElementBoundsCalculationPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
@@ -21,7 +21,6 @@ public class BoundsCalculationPass : ILayoutPass
             {
                 CalculateStaffBounds(staff, context);
             }
-            CalculateSystemBounds(system, context);
         }
     }
 
@@ -33,14 +32,5 @@ public class BoundsCalculationPass : ILayoutPass
             context.StaffSpace);
 
         staff.Height = height;
-    }
-
-    private static void CalculateSystemBounds(LayoutSystem system, SvgContext context)
-    {
-        var interStaffSpacing = 2 * context.StaffSpace;
-        system.Height = BoundsCalculator.CalculateSystemHeight(
-            system,
-            context.StaffSpace,
-            interStaffSpacing);
     }
 }
