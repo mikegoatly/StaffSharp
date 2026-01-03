@@ -14,10 +14,6 @@ public class SystemGenerationPass : ILayoutPass
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(context);
 
-        // This pass runs BEFORE HorizontalSpacingPass, so we need to estimate widths
-        // or run after and reorganize. For now, we'll just set Y positions.
-        // TODO: Move this to run AFTER HorizontalSpacingPass so we have actual widths
-        
         double currentY = context.Margins.Top;
 
         foreach (var system in model.Systems)
