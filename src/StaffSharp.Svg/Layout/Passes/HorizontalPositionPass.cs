@@ -43,7 +43,9 @@ public class HorizontalPositionPass : ILayoutPass
                             symbol.X = currentX;
                         }
 
-                        currentX += maxWidth + (0.3 * context.StaffSpace); // Fixed gap between elements
+                        // Professional spacing: minimum 1.0 staff space between notes
+                        // This provides enough room for accidentals without special handling
+                        currentX += maxWidth + (1.0 * context.StaffSpace);
                     }
 
                     // Recalculate measure width based on actual positions

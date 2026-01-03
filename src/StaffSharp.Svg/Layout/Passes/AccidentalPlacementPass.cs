@@ -61,7 +61,7 @@ public class AccidentalPlacementPass : ILayoutPass
         {
             var accidental = KeySignatureService.GetAccidental(pitch);
             noteSymbol.Accidental = accidental;
-            noteSymbol.AccidentalX = -1.5 * context.StaffSpace; // Position to the left of notehead
+            noteSymbol.AccidentalX = -context.StaffSpace; // Position to the left of notehead
             noteSymbol.AccidentalY = noteSymbol.Y;
 
             // Update measure tracking
@@ -90,7 +90,7 @@ public class AccidentalPlacementPass : ILayoutPass
                 chordSymbol.Accidentals.Add(accidental);
 
                 // Position accidentals to the left, stagger if needed
-                var xOffset = -1.5 * context.StaffSpace - accidentalColumnOffset;
+                var xOffset = -context.StaffSpace - accidentalColumnOffset;
                 chordSymbol.AccidentalXOffsets.Add(xOffset);
                 chordSymbol.AccidentalYPositions.Add(yPositions[i]);
 

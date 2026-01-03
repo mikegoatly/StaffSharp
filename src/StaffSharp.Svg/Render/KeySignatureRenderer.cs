@@ -43,7 +43,7 @@ internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureL
             if (glyph != null)
             {
                 var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{yPosition.ToString(CultureInfo.InvariantCulture)})";
-                var glyphElement = RenderGlyph(glyph.Value, 1.0, transform, context);
+                var glyphElement = RenderGlyph(glyph.Value, 2.0, transform, context);
                 if (glyphElement != null)
                 {
                     group.Add(glyphElement);

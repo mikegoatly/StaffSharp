@@ -58,7 +58,7 @@ public class MeasureWidthCalculationPass : ILayoutPass
 
     private static double GetSymbolWidth(LayoutSymbol symbol, SvgContext context)
     {
-        var baseWidth = symbol switch
+        return symbol switch
         {
             NoteLayoutSymbol noteSymbol => GetDurationWidth(noteSymbol.Note.Duration, context),
             RestLayoutSymbol restSymbol => GetDurationWidth(restSymbol.Rest.Duration, context),
@@ -69,23 +69,6 @@ public class MeasureWidthCalculationPass : ILayoutPass
             BarlineLayoutSymbol => 0.5 * context.StaffSpace,
             _ => context.StaffSpace
         };
-
-        // Add extra width for accidentals
-        var accidentalWidth = 0.0;
-        if (symbol.Accidental.HasValue)
-        {
-            accidentalWidth = 1.5 * context.StaffSpace;
-        }
-        else if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.Accidentals.Count > 0)
-        {
-            // Account for multiple accidentals in chords
-            var maxOffset = chordSymbol.AccidentalXOffsets.Count > 0
-                ? Math.Abs(chordSymbol.AccidentalXOffsets.Min())
-                : 0;
-            accidentalWidth = maxOffset + (1.0 * context.StaffSpace);
-        }
-
-        return baseWidth + accidentalWidth;
     }
 
     private static double GetDurationWidth(SymbolicDuration duration, SvgContext context)

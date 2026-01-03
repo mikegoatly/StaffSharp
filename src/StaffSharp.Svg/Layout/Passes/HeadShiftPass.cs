@@ -1,6 +1,5 @@
 namespace StaffSharp.Svg.Layout.Passes;
 
-using StaffSharp.Notation;
 using StaffSharp.Svg;
 
 /// <summary>
@@ -19,12 +18,9 @@ public class HeadShiftPass : ILayoutPass
             {
                 foreach (var measure in staff.Measures)
                 {
-                    foreach (var symbol in measure.Symbols)
+                    foreach (var symbol in measure.Symbols.OfType<ChordLayoutSymbol>())
                     {
-                        if (symbol is ChordLayoutSymbol chordSymbol)
-                        {
-                            ProcessChord(chordSymbol, context);
-                        }
+                        ProcessChord(symbol, context);
                     }
                 }
             }

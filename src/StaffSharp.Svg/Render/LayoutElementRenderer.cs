@@ -41,7 +41,7 @@ internal abstract class LayoutElementRenderer<T>
         };
 
         var transform = $"translate({x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
-        var accidentalElement = RenderGlyph(accidentalGlyph, 1.0, transform, context);
+        var accidentalElement = RenderGlyph(accidentalGlyph, 2.0, transform, context);
         return accidentalElement!;
     }
 
