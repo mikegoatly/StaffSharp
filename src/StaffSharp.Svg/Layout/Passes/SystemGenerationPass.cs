@@ -29,11 +29,11 @@ public class SystemGenerationPass : ILayoutPass
                 systemHeight += staff.Height;
                 if (staff != system.Staves[^1]) // Not the last staff
                 {
-                    systemHeight += 2 * context.StaffSpace; // Inter-staff spacing
+                    systemHeight += 2.0 * context.StaffSpace; // Inter-staff spacing
                 }
             }
             
-            currentY += systemHeight + (3 * context.StaffSpace); // System spacing
+            currentY += systemHeight + (3.0 * context.StaffSpace); // System spacing
         }
     }
 }
