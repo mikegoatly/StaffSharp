@@ -205,15 +205,12 @@ L:1/8
 K:C
 [C2E2G2] [D2F2A2] | [E2G2B2] [F2A2c2] | [G,2B,2D2] [A,2C2E2] | [C4E4G4] |]" },
 
-            new() { Name = "Long Score (System Breaks)", AbcContent = @"X:12
-T:Long Melody
+            new() { Name = "Rests of all sorts", AbcContent = @"X:12
+T:Rests Test
 M:4/4
-L:1/8
+L:1/4
 K:C
-C2 D2 E2 F2 | G2 A2 B2 c2 | d2 e2 f2 g2 | a2 g2 f2 e2 |
-d2 c2 B2 A2 | G2 F2 E2 D2 | C2 D2 E2 F2 | G4 E4 |
-c2 B2 A2 G2 | F2 E2 D2 C2 | D2 E2 F2 G2 | A4 F4 |
-G2 A2 B2 c2 | d2 c2 B2 A2 | G2 F2 E2 D2 | C8 |]" }
+C2 z2 | D2 D1 z1| E2 z2 | z4 | G1 z3 |]" }
         };
         Examples = new ReadOnlyCollection<AbcExample>(examples);
 

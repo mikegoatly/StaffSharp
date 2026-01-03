@@ -249,71 +249,30 @@ public abstract class VisualSnapshotTestBase
         Path.Combine(ArtifactsDir, $"{testName}_{suffix}.png");
 }
 
+
+
+
+
+
 /// <summary>
 /// Options for snapshot comparison behavior.
 /// </summary>
-public class SnapshotOptions
+/// <param name="Width"> Width of rendered image in pixels. </param>
+/// <param name="Height"> Height of rendered image in pixels. </param>
+/// <param name="PixelDifferenceThreshold"> Maximum percentage of pixels that can differ (0-100). </param>
+/// <param name="MaxPixelDelta"> Maximum delta per color channel (0-255) to consider pixels equal. </param>
+/// <param name="GenerateDiffImage"> Whether to generate a diff image showing differences. </param>
+public record SnapshotOptions(int Width, int Height, double PixelDifferenceThreshold, int MaxPixelDelta, bool GenerateDiffImage)
 {
     /// <summary>
     /// Default options: 800x600, 0.5% pixel difference threshold, max delta of 5 per channel.
     /// </summary>
-    public static readonly SnapshotOptions Default = new()
-    {
-        Width = 800,
-        Height = 600,
-        PixelDifferenceThreshold = 0.5, // 0.5% of pixels can differ
-        MaxPixelDelta = 5, // Max difference per color channel
-        GenerateDiffImage = true
-    };
-
-    /// <summary>
-    /// Strict options for glyph testing: exact pixel match required.
-    /// </summary>
-    public static readonly SnapshotOptions Strict = new()
-    {
-        Width = 200,
-        Height = 200,
-        PixelDifferenceThreshold = 0.0,
-        MaxPixelDelta = 0,
-        GenerateDiffImage = true
-    };
-
-    /// <summary>
-    /// Relaxed options for complex scores: allow more variation.
-    /// </summary>
-    public static readonly SnapshotOptions Relaxed = new()
-    {
-        Width = 1200,
-        Height = 800,
-        PixelDifferenceThreshold = 1.0, // 1% of pixels can differ
-        MaxPixelDelta = 10,
-        GenerateDiffImage = true
-    };
-
-    /// <summary>
-    /// Width of rendered image in pixels.
-    /// </summary>
-    public int Width { get; init; }
-
-    /// <summary>
-    /// Height of rendered image in pixels.
-    /// </summary>
-    public int Height { get; init; }
-
-    /// <summary>
-    /// Maximum percentage of pixels that can differ (0-100).
-    /// </summary>
-    public double PixelDifferenceThreshold { get; init; }
-
-    /// <summary>
-    /// Maximum delta per color channel (0-255) to consider pixels equal.
-    /// </summary>
-    public int MaxPixelDelta { get; init; }
-
-    /// <summary>
-    /// Whether to generate a diff image showing differences.
-    /// </summary>
-    public bool GenerateDiffImage { get; init; }
+    public static readonly SnapshotOptions Default = new(
+        Width: 800,
+        Height: 600,
+        PixelDifferenceThreshold: 0.5, // 0.5% of pixels can differ
+        MaxPixelDelta: 5, // Max difference per color channel
+        GenerateDiffImage: true);
 }
 
 /// <summary>

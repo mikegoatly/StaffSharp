@@ -46,10 +46,18 @@ public abstract class LayoutSymbol : LayoutElement
     public bool LedgerLinesAbove { get; set; }
 }
 
+public abstract class AugmentationDottedLayoutSymbol : LayoutSymbol
+{
+    // Augmentation dots
+    public int DotCount { get; set; }
+    public IList<double> DotXPositions { get; } = [];
+    public double DotY { get; set; }
+}
+
 /// <summary>
 /// Represents a positioned note.
 /// </summary>
-public sealed class NoteLayoutSymbol : LayoutSymbol
+public sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol
 {
     public required NotationNote Note { get; init; }
 
@@ -61,7 +69,7 @@ public sealed class NoteLayoutSymbol : LayoutSymbol
 /// <summary>
 /// Represents a positioned rest.
 /// </summary>
-public sealed class RestLayoutSymbol : LayoutSymbol
+public sealed class RestLayoutSymbol : AugmentationDottedLayoutSymbol
 {
     public required Rest Rest { get; init; }
 }
@@ -69,7 +77,7 @@ public sealed class RestLayoutSymbol : LayoutSymbol
 /// <summary>
 /// Represents a positioned chord.
 /// </summary>
-public sealed class ChordLayoutSymbol : LayoutSymbol
+public sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol
 {
     public required Chord Chord { get; init; }
     public IList<double> NoteheadYPositions { get; } = [];
