@@ -90,9 +90,13 @@ public static class LayoutEngine
         for (int measureIndex = 0; measureIndex < measureCount; measureIndex++)
         {
             var layoutMeasure = new LayoutMeasure();
-            
-            // Get the measure number (1-based)
-            var measureNumber = staff.Voices[0].Measures[measureIndex].Number;
+
+            // Get the measure number (1-based) and time signature
+            var firstMeasure = staff.Voices[0].Measures[measureIndex];
+            var measureNumber = firstMeasure.Number;
+
+            // Set time signature (use measure-specific or fall back to score default)
+            layoutMeasure.TimeSignature = firstMeasure.TimeSignature ?? metadata.TimeSignature;
             
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)

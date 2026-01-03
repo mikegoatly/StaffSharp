@@ -1,5 +1,7 @@
 namespace StaffSharp.Svg.Layout;
 
+using StaffSharp.Notation;
+
 /// <summary>
 /// Represents a measure within a staff.
 /// </summary>
@@ -10,6 +12,11 @@ public class LayoutMeasure : LayoutElement
 
     public IReadOnlyList<LayoutCurve> Curves => _curves;
     private readonly List<LayoutCurve> _curves = new();
+
+    /// <summary>
+    /// The time signature for this measure, if it differs from the score's default.
+    /// </summary>
+    public TimeSignature? TimeSignature { get; set; }
 
     internal void AddSymbol(LayoutSymbol symbol) => _symbols.Add(symbol);
     internal void InsertSymbol(int index, LayoutSymbol symbol) => _symbols.Insert(index, symbol);
