@@ -20,7 +20,7 @@ public class StemAndBeamPass : ILayoutPass
             foreach (var staff in system.Staves)
             {
                 // Staff baseline (middle line)
-                var staffBaseline = staff.Y + (2 * context.StaffSpace);
+                var staffBaseline = staff.Y + (2.0 * context.StaffSpace);
 
                 foreach (var measure in staff.Measures)
                 {
