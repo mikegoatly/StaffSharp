@@ -11,17 +11,18 @@ public static class LayoutEngine
 {
     internal static ILayoutPass[] LayoutPasses { get; } =
     [
-        new VerticalPositionPass(),          // Y positions relative to staff
-        new AccidentalPlacementPass(),       // Which accidentals to show
-        new HeadShiftPass(),                 // Chord notehead shifts
-        new MeasureWidthCalculationPass(),   // Calculate measure widths (for breaking decisions)
-        new SystemBreakingPass(),            // Breaks systems based on measure widths
-        new SystemSymbolInsertionPass(),     // Inserts system symbols (clefs, keys, etc.)
-        new HorizontalPositionPass(),        // Assigns final X positions
-        new SystemGenerationPass(),          // Generates system layout
-        new StemAndBeamPass(),               // Stems and beams (needs X positions for slanted beams)
-        new TieAndSlurPass(),                // Creates tie/slur curves (needs final positions)
-        new BoundsCalculationPass()          // Calculates accurate bounds (MUST be last)
+        new VerticalPositionPass(),                 // Y positions relative to staff
+        new AccidentalPlacementPass(),              // Which accidentals to show
+        new HeadShiftPass(),                        // Chord notehead shifts
+        new MeasureWidthCalculationPass(),          // Calculate measure widths (for breaking decisions)
+        new SystemBreakingPass(),                   // Breaks systems based on measure widths
+        new SystemSymbolInsertionPass(),            // Inserts system symbols (clefs, keys, etc.)
+        new HorizontalPositionPass(),               // Assigns final X positions
+        new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
+        new TieAndSlurPass(),                       // Creates tie/slur curves (needs final positions)
+        new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
+        new SystemGenerationPass(),                 // Positions systems vertically using actual staff heights
+        new LayoutBoundsCalculationPass()           // Calculates final system bounds
     ];
 
     public static LayoutModel Layout(NotationScore score, SvgContext context)
