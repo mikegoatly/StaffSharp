@@ -8,6 +8,7 @@ using StaffSharp.Notation;
 public static class StemCalculator
 {
     private const double StemLength = 3.5; // In staff spaces
+    private const double MaxBeamSlopeInSpaces = 1.0; // Maximum beam slope in staff spaces
 
     /// <summary>
     /// Calculates stem properties for a single note or chord (not part of a beam group).
@@ -212,6 +213,58 @@ public static class StemCalculator
 
         // Calculate beam slope based on stem X positions (not notehead centers)
         var beamSlope = (beamY2 - beamY1) / (lastSymbol.StemX - firstSymbol.StemX);
+
+        // Limit beam slope to maximum angle (standard engraving practice)
+        var maxSlopeInPixels = MaxBeamSlopeInSpaces * context.StaffSpace;
+        var beamWidth = lastSymbol.StemX - firstSymbol.StemX;
+        var maxSlope = maxSlopeInPixels / beamWidth;
+
+        if (Math.Abs(beamSlope) > maxSlope)
+        {
+            // Limit the slope and adjust beam endpoints symmetrically
+            var limitedSlope = Math.Sign(beamSlope) * maxSlope;
+            var beamMidY = (beamY1 + beamY2) / 2;
+            var halfWidth = beamWidth / 2;
+
+            beamY1 = beamMidY - (limitedSlope * halfWidth);
+            beamY2 = beamMidY + (limitedSlope * halfWidth);
+            beamSlope = limitedSlope;
+        }
+
+        // Check if all notes meet minimum stem length with this beam position
+        // Find the maximum shortfall across all notes
+        var maxShortfall = 0.0;
+        foreach (var symbol in group)
+        {
+            var beamYAtThisNote = beamY1 + (symbol.StemX - firstSymbol.StemX) * beamSlope;
+            var actualStemLength = Math.Abs(beamYAtThisNote - symbol.StemY1);
+
+            if (actualStemLength < stemLength)
+            {
+                var shortfall = stemLength - actualStemLength;
+                maxShortfall = Math.Max(maxShortfall, shortfall);
+            }
+        }
+
+        // If any note has insufficient stem length, shift the entire beam
+        if (maxShortfall > 0)
+        {
+            if (stemUp)
+            {
+                // Beam is above noteheads, shift it up (decrease Y)
+                beamY1 -= maxShortfall;
+                beamY2 -= maxShortfall;
+            }
+            else
+            {
+                // Beam is below noteheads, shift it down (increase Y)
+                beamY1 += maxShortfall;
+                beamY2 += maxShortfall;
+            }
+
+            // Recalculate slope with adjusted beam position
+            beamSlope = (beamY2 - beamY1) / (lastSymbol.StemX - firstSymbol.StemX);
+        }
 
         // Set StemY2 for each note to meet the slanted beam at its stem X position
         foreach (var symbol in group)
