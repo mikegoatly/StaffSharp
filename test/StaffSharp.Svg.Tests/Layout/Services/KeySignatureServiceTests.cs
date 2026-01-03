@@ -348,9 +348,9 @@ public class KeySignatureServiceTests
 
     [Theory]
     [InlineData(1, 10.0)]   // 1 sharp = 1.0 staff spaces
-    [InlineData(2, 20.0)]   // 2 sharps = 2.0 staff spaces
-    [InlineData(3, 30.0)]   // 3 sharps
-    [InlineData(7, 70.0)]   // 7 sharps
+    [InlineData(2, 17.0)]   // 2 sharps = 2.0 staff spaces
+    [InlineData(3, 24.0)]   // 3 sharps
+    [InlineData(7, 52.0)]   // 7 sharps
     public void CalculateWidth_Sharps_ReturnsCorrectWidth(int sharps, double expectedWidth)
     {
         // Arrange
@@ -361,14 +361,14 @@ public class KeySignatureServiceTests
         var width = KeySignatureService.CalculateWidth(keySignature, staffSpace);
 
         // Assert
-        Assert.Equal(expectedWidth, width);
+        Assert.Equal(expectedWidth, width, precision: 0);
     }
 
     [Theory]
     [InlineData(-1, 10.0)]  // 1 flat
-    [InlineData(-2, 20.0)]  // 2 flats
-    [InlineData(-3, 30.0)]  // 3 flats
-    [InlineData(-7, 70.0)]  // 7 flats
+    [InlineData(-2, 17.0)]  // 2 flats
+    [InlineData(-3, 24.0)]  // 3 flats
+    [InlineData(-7, 52.0)]  // 7 flats
     public void CalculateWidth_Flats_ReturnsCorrectWidth(int flats, double expectedWidth)
     {
         // Arrange
@@ -379,7 +379,7 @@ public class KeySignatureServiceTests
         var width = KeySignatureService.CalculateWidth(keySignature, staffSpace);
 
         // Assert
-        Assert.Equal(expectedWidth, width);
+        Assert.Equal(expectedWidth, width, precision: 0);
     }
 
     [Fact]

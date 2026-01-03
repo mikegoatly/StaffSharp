@@ -20,7 +20,8 @@ public static class LayoutTestHelpers
         double x = 10.0,
         double y = 50.0,
         double width = 5.0,
-        double height = 10.0)
+        double height = 10.0,
+        int voice = 1)
     {
         return new NoteLayoutSymbol
         {
@@ -28,7 +29,8 @@ public static class LayoutTestHelpers
             X = x,
             Y = y,
             Width = width,
-            Height = height
+            Height = height,
+            VoiceNumber = voice
         };
     }
 
