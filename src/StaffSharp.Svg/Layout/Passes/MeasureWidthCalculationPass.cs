@@ -1,6 +1,5 @@
 namespace StaffSharp.Svg.Layout.Passes;
 
-using StaffSharp.Notation;
 using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
 
@@ -41,52 +40,25 @@ public class MeasureWidthCalculationPass : ILayoutPass
         foreach (var timeGroup in symbolsByTime)
         {
             // Find the maximum width needed for symbols at this time
-            var maxWidth = timeGroup.Max(s => GetSymbolWidth(s, context));
+            var maxWidth = timeGroup.Max(s => SymbolWidthCalculator.CalculateSymbolWidth(s, context));
 
-            // Set individual symbol widths
+            // Set individual symbol widths and spacing
             foreach (var symbol in timeGroup)
             {
-                symbol.Width = GetSymbolWidth(symbol, context);
+                symbol.Width = SymbolWidthCalculator.CalculateSymbolWidth(symbol, context);
+                symbol.Spacing = SymbolWidthCalculator.CalculateSpacing(symbol, symbol.Width, context);
             }
 
-            // Add to total width with spacing
-            totalWidth += maxWidth + (0.3 * context.StaffSpace); // Fixed gap between elements
+            // Calculate total width for this time position (use max width for spacing calculation)
+            var spacing = SymbolWidthCalculator.CalculateSpacing(
+                timeGroup.First(),
+                maxWidth,
+                context);
+
+            // Total width = left padding + symbol width + right padding
+            totalWidth += spacing.Left + maxWidth + spacing.Right;
         }
 
         measure.Width = totalWidth;
-    }
-
-    private static double GetSymbolWidth(LayoutSymbol symbol, SvgContext context)
-    {
-        return symbol switch
-        {
-            NoteLayoutSymbol noteSymbol => GetDurationWidth(noteSymbol.Note.Duration, context),
-            RestLayoutSymbol restSymbol => GetDurationWidth(restSymbol.Rest.Duration, context),
-            ChordLayoutSymbol chordSymbol => GetDurationWidth(chordSymbol.Chord.Duration, context),
-            ClefLayoutSymbol => 2.2 * context.StaffSpace,
-            KeySignatureLayoutSymbol keySymbol => GetKeySignatureWidth(keySymbol.KeySignature, context),
-            TimeSignatureLayoutSymbol => 1.8 * context.StaffSpace,
-            BarlineLayoutSymbol => 0.5 * context.StaffSpace,
-            _ => context.StaffSpace
-        };
-    }
-
-    private static double GetDurationWidth(SymbolicDuration duration, SvgContext context)
-    {
-        // Get duration in beats (quarter note = 1.0)
-        var rational = duration.ToBeats();
-        var beats = (double)rational.Numerator / rational.Denominator;
-
-        // Scale width based on duration (more duration = more space)
-        // Quarter note gets 2.0 staff spaces
-        var baseWidth = beats * 2.0 * context.StaffSpace;
-
-        // Minimum width for readability
-        return Math.Max(baseWidth, 1.5 * context.StaffSpace);
-    }
-
-    private static double GetKeySignatureWidth(KeySignature keySignature, SvgContext context)
-    {
-        return KeySignatureService.CalculateWidth(keySignature, context.StaffSpace);
     }
 }

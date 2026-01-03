@@ -3,9 +3,9 @@ namespace StaffSharp.Svg.Layout.Passes;
 using StaffSharp.Svg;
 
 /// <summary>
-/// Assigns horizontal positions (X coordinates) to all symbols, measures, and staves.
-/// This pass runs AFTER SystemSymbolInsertionPass to calculate final positions.
-/// It assumes that symbol widths have already been calculated by MeasureWidthCalculationPass.
+/// Assigns horizontal positions (X coordinates) to all symbols.
+/// This pass runs AFTER SystemBreakingPass to assign final X positions.
+/// It uses pre-calculated symbol widths from MeasureWidthCalculationPass and does NOT recalculate measure widths.
 /// </summary>
 public class HorizontalPositionPass : ILayoutPass
 {
@@ -34,22 +34,23 @@ public class HorizontalPositionPass : ILayoutPass
 
                     foreach (var timeGroup in symbolsByTime)
                     {
-                        // Find the maximum width from already-calculated symbol widths
+                        // Use pre-calculated spacing from MeasureWidthCalculationPass (NO recalculation!)
+                        var firstSymbol = timeGroup.First();
+                        var spacing = firstSymbol.Spacing;
                         var maxWidth = timeGroup.Max(s => s.Width);
+
+                        // Position symbol: currentX + left spacing
+                        var symbolX = currentX + spacing.Left;
 
                         // All symbols at this time get the same X position
                         foreach (var symbol in timeGroup)
                         {
-                            symbol.X = currentX;
+                            symbol.X = symbolX;
                         }
 
-                        // Professional spacing: minimum 1.0 staff space between notes
-                        // This provides enough room for accidentals without special handling
-                        currentX += maxWidth + (1.0 * context.StaffSpace);
+                        // Advance by total width: left padding + symbol width + right padding
+                        currentX += spacing.Left + maxWidth + spacing.Right;
                     }
-
-                    // Recalculate measure width based on actual positions
-                    measure.Width = currentX - measureStartX;
                 }
 
                 staff.Width = currentX - staff.X;

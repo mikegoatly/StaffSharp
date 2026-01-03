@@ -3,6 +3,13 @@ namespace StaffSharp.Svg.Layout;
 using StaffSharp.Notation;
 
 /// <summary>
+/// Represents spacing (padding) around a layout symbol.
+/// </summary>
+/// <param name="Left">Left padding in units.</param>
+/// <param name="Right">Right padding in units.</param>
+public readonly record struct LayoutSpacing(double Left, double Right);
+
+/// <summary>
 /// Base class for positioned musical symbols.
 /// </summary>
 public abstract class LayoutSymbol : LayoutElement
@@ -16,6 +23,12 @@ public abstract class LayoutSymbol : LayoutElement
     /// Voice number this symbol belongs to (1-based). 0 for non-voice elements like clefs/barlines.
     /// </summary>
     public int VoiceNumber { get; set; }
+
+    /// <summary>
+    /// Spacing (padding) around this symbol, calculated during MeasureWidthCalculationPass.
+    /// Left and Right padding are used by HorizontalPositionPass for positioning.
+    /// </summary>
+    public LayoutSpacing Spacing { get; set; }
 
     // Stem and beam information (for Phase 2)
     public double StemX { get; set; }

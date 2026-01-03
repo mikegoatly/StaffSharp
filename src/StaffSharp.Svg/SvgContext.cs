@@ -9,6 +9,11 @@ public class SvgContext
     public double Scale { get; set; }
     public Margins Margins { get; set; } = new();
     public int StaffSpace { get; set; }
+
+    /// <summary>
+    /// Horizontal spacing between notes in staff spaces.
+    /// </summary>
+    public double NoteSpacing { get; set; } = 2;
     public string? BailAfterPass { get; set; }
 }
 
