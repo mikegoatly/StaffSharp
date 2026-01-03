@@ -54,6 +54,19 @@ internal static class BoundsCalculator
     }
 
     /// <summary>
+    /// Calculates the minimum and maximum Y coordinates for a curve.
+    /// </summary>
+    /// <param name="curve">The curve to calculate bounds for</param>
+    /// <returns>Tuple of (MinY, MaxY) coordinates</returns>
+    public static (double MinY, double MaxY) CalculateCurveBounds(LayoutCurve curve)
+    {
+        // For a Bézier curve, extrema can occur at start, end, or control points
+        var minY = Math.Min(Math.Min(curve.StartY, curve.EndY), Math.Min(curve.ControlY1, curve.ControlY2));
+        var maxY = Math.Max(Math.Max(curve.StartY, curve.EndY), Math.Max(curve.ControlY1, curve.ControlY2));
+        return (minY, maxY);
+    }
+
+    /// <summary>
     /// Calculates bounds for an entire staff by examining all symbols within all measures.
     /// </summary>
     /// <param name="staff">The staff to calculate bounds for</param>
@@ -84,13 +97,15 @@ internal static class BoundsCalculator
                 maxY = Math.Max(maxY, absoluteMaxY);
             }
 
-            // TODO: Include curves (ties, slurs) when that infrastructure is ready
-            // foreach (var curve in measure.Curves)
-            // {
-            //     var curveMinY = CalculateCurveBounds(curve);
-            //     minY = Math.Min(minY, curveMinY);
-            //     maxY = Math.Max(maxY, curveMaxY);
-            // }
+            // Include curves (ties, slurs)
+            foreach (var curve in measure.Curves)
+            {
+                var (curveMinY, curveMaxY) = CalculateCurveBounds(curve);
+                var absoluteCurveMinY = staffY + curveMinY;
+                var absoluteCurveMaxY = staffY + curveMaxY;
+                minY = Math.Min(minY, absoluteCurveMinY);
+                maxY = Math.Max(maxY, absoluteCurveMaxY);
+            }
         }
 
         var height = maxY - minY;
