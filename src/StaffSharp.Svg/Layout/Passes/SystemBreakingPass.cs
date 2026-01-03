@@ -66,6 +66,7 @@ public class SystemBreakingPass : ILayoutPass
             CurrentClef = staff.CurrentClef,
             CurrentKeySignature = staff.CurrentKeySignature
         };
+
         result.Add(currentStaff);
 
         double currentWidth = context.Margins.Left;
@@ -73,7 +74,8 @@ public class SystemBreakingPass : ILayoutPass
         var isFirstSystem = true;
 
         // Calculate width for system-start symbols (clef + key signature + time signature)
-        var systemStartWidth = CalculateSystemStartWidth(staff, context);
+        var systemStartWidth = SymbolWidthCalculator.CalculateSystemStartWidth(staff, context);
+
         currentWidth += systemStartWidth;
 
         foreach (var measure in staff.Measures)
@@ -112,24 +114,6 @@ public class SystemBreakingPass : ILayoutPass
         return result;
     }
 
-    private static double CalculateSystemStartWidth(LayoutStaff staff, SvgContext context)
-    {
-        double width = 0;
-
-        // Clef width
-        width += 3.0 * context.StaffSpace;
-
-        // Key signature width
-        if (staff.CurrentKeySignature != KeySignature.C)
-        {
-            width += KeySignatureService.CalculateWidth(staff.CurrentKeySignature, context.StaffSpace);
-        }
-
-        // Time signature width
-        width += 2.0 * context.StaffSpace;
-
-        return width;
-    }
 
     private static void InsertSystemStartSymbols(LayoutStaff staff, LayoutMeasure measure, ScoreMetadata? metadata, SvgContext context)
     {
@@ -140,7 +124,7 @@ public class SystemBreakingPass : ILayoutPass
         {
             Clef = staff.CurrentClef,
             TimePosition = -3.0,  // Negative time positions sort before measure content
-            Width = 2.2 * context.StaffSpace
+            Width = SymbolWidthCalculator.CalculateSymbolWidth(new ClefLayoutSymbol { Clef = staff.CurrentClef }, context)
         };
         
         SetClefYPosition(clefSymbol, staff.CurrentClef, context);
@@ -169,7 +153,7 @@ public class SystemBreakingPass : ILayoutPass
                 TimeSignature = metadata.TimeSignature,
                 TimePosition = -1.0,
                 Y = 0,  // Position at top of staff
-                Width = 1.8 * context.StaffSpace
+                Width = SymbolWidthCalculator.CalculateSymbolWidth(new TimeSignatureLayoutSymbol { TimeSignature = metadata.TimeSignature }, context)
             };
 
             symbolsToInsert.Add(timeSymbol);
