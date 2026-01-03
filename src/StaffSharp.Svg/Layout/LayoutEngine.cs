@@ -15,8 +15,7 @@ public static class LayoutEngine
         new AccidentalPlacementPass(),              // Which accidentals to show
         new HeadShiftPass(),                        // Chord notehead shifts
         new MeasureWidthCalculationPass(),          // Calculate measure widths (for breaking decisions)
-        new SystemBreakingPass(),                   // Breaks systems based on measure widths
-        new SystemSymbolInsertionPass(),            // Inserts system symbols (clefs, keys, etc.)
+        new SystemBreakingPass(),                   // Breaks systems and inserts system symbols (clefs, keys, etc.)
         new HorizontalPositionPass(),               // Assigns final X positions
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
         new TieAndSlurPass(),                       // Creates tie/slur curves (needs final positions)
