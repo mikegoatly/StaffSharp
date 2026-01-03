@@ -3,6 +3,7 @@ namespace StaffSharp.Svg;
 using System.Globalization;
 using System.Xml.Linq;
 
+using StaffSharp.Notation;
 using StaffSharp.Svg.Layout;
 
 internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
@@ -17,12 +18,30 @@ internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
         );
 
         var restGlyph = GetRestGlyph(symbol.Rest.Duration);
-        var restElement = RenderGlyph(restGlyph, 1.0, null, context);
+        var targetHeight = GetRestTargetHeight(symbol.Rest.Duration);
+        var restElement = RenderGlyph(restGlyph, targetHeight, null, context);
         if (restElement != null)
         {
             group.Add(restElement);
         }
 
         return group;
+    }
+
+    /// <summary>
+    /// Gets the target height in staff spaces for a rest based on its duration.
+    /// Different rest types have different visual heights in standard music notation.
+    /// </summary>
+    private static double GetRestTargetHeight(SymbolicDuration duration)
+    {
+        return duration.Base switch
+        {
+            NoteDurationBase.Whole => 0.5,      // Small block
+            NoteDurationBase.Half => 0.5,       // Small block
+            NoteDurationBase.Quarter => 2.5,    // Tall flowing shape
+            NoteDurationBase.Eighth => 2.0,     // Medium height
+            NoteDurationBase.Sixteenth => 3.0,  // Taller shape
+            _ => 3.5                             // Default to quarter rest size
+        };
     }
 }
