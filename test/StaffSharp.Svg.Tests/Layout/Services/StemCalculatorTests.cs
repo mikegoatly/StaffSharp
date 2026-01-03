@@ -294,4 +294,133 @@ public class StemCalculatorTests
         // Assert
         Assert.All(group, symbol => Assert.False(symbol.StemUp));
     }
+
+    [Fact]
+    public void CalculateBeamedGroupStems_SteepSlope_LimitsBeamAngle()
+    {
+        // Arrange - notes with large pitch difference that would create steep beam
+        var group = new List<LayoutSymbol>
+        {
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 70.0, x: 10.0),  // Low note
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 30.0, x: 50.0)   // High note
+        };
+
+        // Set StemY1 to simulate notehead positions
+        group[0].StemY1 = 70.0;
+        group[1].StemY1 = 30.0;
+
+        var staffBaseline = 50.0;
+
+        // Act
+        StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
+
+        // Assert - beam slope should be limited to max 1 staff space
+        var beamSlope = (group[1].StemY2 - group[0].StemY2) / (group[1].StemX - group[0].StemX);
+        var maxSlopeInPixels = 1.0 * StaffSpace; // MaxBeamSlopeInSpaces = 1.0
+        var beamWidth = group[1].StemX - group[0].StemX;
+        var maxSlope = maxSlopeInPixels / beamWidth;
+
+        Assert.True(Math.Abs(beamSlope) <= maxSlope + 0.01, // Small tolerance for floating point
+            $"Beam slope {Math.Abs(beamSlope)} should not exceed max slope {maxSlope}");
+    }
+
+    [Fact]
+    public void CalculateBeamedGroupStems_AllNotesHaveMinimumStemLength()
+    {
+        // Arrange - beamed group with notes at different pitches
+        // This tests that middle notes also get minimum stem length, not just endpoints
+        var group = new List<LayoutSymbol>
+        {
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 10.0),  // C
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 45.0, x: 30.0),  // D (higher)
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 40.0, x: 50.0),  // E (even higher)
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 70.0)   // C (back down)
+        };
+
+        // Set StemY1 to simulate notehead positions
+        for (int i = 0; i < group.Count; i++)
+        {
+            group[i].StemY1 = group[i].Y;
+        }
+
+        var staffBaseline = 50.0;
+        var minStemLength = 3.5 * StaffSpace; // StemLength constant
+
+        // Act
+        StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
+
+        // Assert - all notes should have at least minimum stem length
+        foreach (var symbol in group)
+        {
+            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            Assert.True(actualStemLength >= minStemLength - 0.01, // Small tolerance
+                $"Stem length {actualStemLength} should be at least {minStemLength}");
+        }
+    }
+
+    [Fact]
+    public void CalculateBeamedGroupStems_ArchingMelody_MaintainsMinStemLengthForMiddleNotes()
+    {
+        // Arrange - arching melody pattern (low-high-low) where middle note might have short stem
+        var group = new List<LayoutSymbol>
+        {
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),  // Low
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 30.0),  // Middle (higher)
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 55.0, x: 50.0),  // Middle-high
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 70.0)   // Low again
+        };
+
+        // Set StemY1 to simulate notehead positions
+        for (int i = 0; i < group.Count; i++)
+        {
+            group[i].StemY1 = group[i].Y;
+        }
+
+        var staffBaseline = 50.0;
+        var minStemLength = 3.5 * StaffSpace;
+
+        // Act
+        StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
+
+        // Assert - the middle notes (especially the highest one) should still have minimum stem length
+        foreach (var symbol in group)
+        {
+            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            Assert.True(actualStemLength >= minStemLength - 0.01,
+                $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
+        }
+    }
+
+    [Fact]
+    public void CalculateBeamedGroupStems_DippingMelody_MaintainsMinStemLengthForMiddleNotes()
+    {
+        // Arrange - dipping melody pattern (high-low-high) where middle note might have short stem
+        var group = new List<LayoutSymbol>
+        {
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 40.0, x: 10.0),  // High
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 30.0),  // Middle (lower)
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 45.0, x: 50.0),  // Middle-low
+            LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 40.0, x: 70.0)   // High again
+        };
+
+        // Set StemY1 to simulate notehead positions
+        for (int i = 0; i < group.Count; i++)
+        {
+            group[i].StemY1 = group[i].Y;
+        }
+
+        var staffBaseline = 50.0;
+        var minStemLength = 3.5 * StaffSpace;
+
+        // Act
+        StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
+
+        // Assert - the middle notes (especially the lowest one) should still have minimum stem length
+        foreach (var symbol in group)
+        {
+            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            Assert.True(actualStemLength >= minStemLength - 0.01,
+                $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
+        }
+    }
 }
