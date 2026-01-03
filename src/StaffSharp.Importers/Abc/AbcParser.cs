@@ -439,6 +439,9 @@ public static partial class AbcParser
             }
         }
 
+        // Post-process: resolve tie endings
+        TieTracker.ResolveTieEndings(events);
+
         return (events, slurs);
     }
 

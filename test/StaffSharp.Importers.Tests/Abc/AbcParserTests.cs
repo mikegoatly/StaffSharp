@@ -418,7 +418,7 @@ public class AbcParserTests : ScoreTestBase
 
         score.AssertSequence()
             .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.C, SymbolicDuration.Quarter)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)
             .Note(PitchClass.D, SymbolicDuration.Quarter)
             .Note(PitchClass.E, SymbolicDuration.Quarter)
             .AndNoMore();
@@ -440,9 +440,9 @@ public class AbcParserTests : ScoreTestBase
 
         score.AssertSequence()
             .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.A, SymbolicDuration.Quarter)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Both)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Both)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.End)
             .AndNoMore();
     }
 
@@ -462,7 +462,7 @@ public class AbcParserTests : ScoreTestBase
 
         score.AssertSequence()
             .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieType.Start)
-            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieType.End)
             .AndNoMore();
     }
 
@@ -482,8 +482,48 @@ public class AbcParserTests : ScoreTestBase
 
         score.AssertSequence()
             .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)  // C2 (quarter note, tied)
-            .Note(PitchClass.C, SymbolicDuration.Quarter)                      // C2 (quarter note, not tied)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)    // C2 (quarter note, end of tie)
             .Note(PitchClass.D, SymbolicDuration.Half)                         // D4 (half note, not tied)
+            .AndNoMore();
+    }
+
+    [Fact]
+    public void Parse_TiedNotesWithDifferentDurations_ParsesCorrectly()
+    {
+        var abc = """
+            X:3
+            T:Tied Notes
+            M:4/4
+            L:1/4
+            K:C
+            C2-C D | E2-E F | G2-G2 | c4 |]
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        // Measure 1: C2-C D (half tied to quarter, quarter)
+        score.AssertSequence(measureIndex: 0)
+            .Note(PitchClass.C, SymbolicDuration.Half, tie: TieType.Start)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .AndNoMore();
+
+        // Measure 2: E2-E F (half tied to quarter, quarter)
+        score.AssertSequence(measureIndex: 1)
+            .Note(PitchClass.E, SymbolicDuration.Half, tie: TieType.Start)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.F, SymbolicDuration.Quarter)
+            .AndNoMore();
+
+        // Measure 3: G2-G2 (half tied to half)
+        score.AssertSequence(measureIndex: 2)
+            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieType.Start)
+            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieType.End)
+            .AndNoMore();
+
+        // Measure 4: c4 (whole note)
+        score.AssertSequence(measureIndex: 3)
+            .Note(PitchClass.C, SymbolicDuration.Whole, octave: 5)
             .AndNoMore();
     }
 
