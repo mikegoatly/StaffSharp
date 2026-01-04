@@ -28,7 +28,7 @@ internal static class SymbolWidthCalculator
             ClefLayoutSymbol => 2.2 * context.StaffSpace,
             KeySignatureLayoutSymbol keySymbol => GetKeySignatureWidth(keySymbol.KeySignature, context),
             TimeSignatureLayoutSymbol => 1.8 * context.StaffSpace,
-            BarlineLayoutSymbol => 0.5 * context.StaffSpace,
+            BarlineLayoutSymbol barline => GetBarlineWidth(barline.BarlineType, context),
             _ => context.StaffSpace
         };
 
@@ -162,5 +162,22 @@ internal static class SymbolWidthCalculator
         }
 
         return maxWidth;
+    }
+
+    /// <summary>
+    /// Gets the horizontal width for a barline based on its type.
+    /// </summary>
+    private static double GetBarlineWidth(BarlineType barlineType, SvgContext context)
+    {
+        return barlineType switch
+        {
+            BarlineType.Normal => 0.5 * context.StaffSpace,
+            BarlineType.DoubleBar => 0.6 * context.StaffSpace,
+            BarlineType.Final => 0.8 * context.StaffSpace,
+            BarlineType.RepeatStart => 1.5 * context.StaffSpace,  // Needs space for dots
+            BarlineType.RepeatEnd => 1.5 * context.StaffSpace,    // Needs space for dots
+            BarlineType.RepeatBoth => 2.0 * context.StaffSpace,   // Needs space for dots on both sides
+            _ => 0.5 * context.StaffSpace
+        };
     }
 }
