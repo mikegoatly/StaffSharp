@@ -1,0 +1,11 @@
+﻿namespace StaffSharp.Svg.Layout
+{
+    public interface ILayoutSymbol : ILayoutElement
+    {
+        int LedgerLineCount { get; set; }
+        bool LedgerLinesAbove { get; set; }
+        LayoutSpacing Spacing { get; set; }
+        double TimePosition { get; set; }
+        int VoiceNumber { get; set; }
+    }
+}

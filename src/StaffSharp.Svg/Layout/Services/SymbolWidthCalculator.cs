@@ -20,7 +20,7 @@ internal static class SymbolWidthCalculator
         ArgumentNullException.ThrowIfNull(symbol);
         ArgumentNullException.ThrowIfNull(context);
 
-        return symbol switch
+        var baseWidth = symbol switch
         {
             NoteLayoutSymbol note => GetDurationWidth(note.Note.Duration, context),
             RestLayoutSymbol rest => GetDurationWidth(rest.Rest.Duration, context),
@@ -31,6 +31,20 @@ internal static class SymbolWidthCalculator
             BarlineLayoutSymbol => 0.5 * context.StaffSpace,
             _ => context.StaffSpace
         };
+
+        // Account for wide decorations (e.g., fermata, trill)
+        if (symbol is NoteLayoutSymbol noteSymbol && noteSymbol.Note.Decorations.Count > 0)
+        {
+            var decorationWidth = GetDecorationWidth(noteSymbol.Note.Decorations, context);
+            baseWidth = Math.Max(baseWidth, decorationWidth);
+        }
+        else if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.Chord.Decorations.Count > 0)
+        {
+            var decorationWidth = GetDecorationWidth(chordSymbol.Chord.Decorations, context);
+            baseWidth = Math.Max(baseWidth, decorationWidth);
+        }
+
+        return baseWidth;
     }
 
     /// <summary>
@@ -125,5 +139,28 @@ internal static class SymbolWidthCalculator
     private static double GetKeySignatureWidth(KeySignature keySignature, SvgContext context)
     {
         return KeySignatureService.CalculateWidth(keySignature, context.StaffSpace);
+    }
+
+    /// <summary>
+    /// Gets the horizontal width required for decorations.
+    /// Most articulations are centered and don't affect width, but some (like fermata) are wide.
+    /// </summary>
+    private static double GetDecorationWidth(IReadOnlyList<Decoration> decorations, SvgContext context)
+    {
+        var maxWidth = 0.0;
+
+        foreach (var decoration in decorations)
+        {
+            var width = decoration switch
+            {
+                Decoration.Fermata => 3.0 * context.StaffSpace,  // Fermata is wide
+                Decoration.Trill => 2.5 * context.StaffSpace,    // Trill can be wide
+                _ => 0.0  // Most articulations don't add horizontal width
+            };
+
+            maxWidth = Math.Max(maxWidth, width);
+        }
+
+        return maxWidth;
     }
 }

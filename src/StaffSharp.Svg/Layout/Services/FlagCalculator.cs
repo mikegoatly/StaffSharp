@@ -1,5 +1,6 @@
 namespace StaffSharp.Svg.Layout.Services;
 
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -11,8 +12,10 @@ internal static class FlagCalculator
     /// Calculates whether a symbol requires flags and how many.
     /// Flags are needed for eighth notes and shorter that are not part of a beam group.
     /// </summary>
-    public static void CalculateFlag(LayoutSymbol symbol, SvgContext context)
+    public static void CalculateFlag(IStemmedSymbol stemmedSymbol, SvgContext context)
     {
+        var symbol = (LayoutSymbol)stemmedSymbol;
+
         // Get the duration from the symbol
         var duration = GetDuration(symbol);
         if (!duration.HasValue)
@@ -21,15 +24,30 @@ internal static class FlagCalculator
         }
 
         // Only apply flags to eighth notes and shorter that are NOT in a beam group
-        if (duration.Value.Base >= NoteDurationBase.Eighth && !symbol.BeamGroupId.HasValue)
+        if (duration.Value.Base >= NoteDurationBase.Eighth && !stemmedSymbol.Beam.IsBeamed)
         {
-            symbol.RequiresFlag = true;
-            symbol.FlagCount = GetFlagCount(duration.Value.Base);
-        }
-        else
-        {
-            symbol.RequiresFlag = false;
-            symbol.FlagCount = 0;
+            var flagCount = GetFlagCount(duration.Value.Base);
+            var currentStem = stemmedSymbol.Stem;
+            var currentBeam = stemmedSymbol.Beam;
+
+            // Update beam info with flag requirements
+            var newBeam = new BeamInfo(
+                currentBeam.GroupId,
+                currentBeam.IsFirstInGroup,
+                currentBeam.IsLastInGroup,
+                currentBeam.BeamCount,
+                true, // RequiresFlag
+                flagCount
+            );
+
+            if (stemmedSymbol is NoteLayoutSymbol note)
+            {
+                note.Beam = newBeam;
+            }
+            else if (stemmedSymbol is ChordLayoutSymbol chord)
+            {
+                chord.Beam = newBeam;
+            }
         }
     }
 
@@ -46,6 +64,7 @@ internal static class FlagCalculator
     {
         return symbol switch
         {
+            // TODO Move this to an interface implemented by NoteLayoutSymbol and ChordLayoutSymbol?
             NoteLayoutSymbol noteSymbol => noteSymbol.Note.Duration,
             ChordLayoutSymbol chordSymbol => chordSymbol.Chord.Duration,
             RestLayoutSymbol => null, // Rests don't have flags

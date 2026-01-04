@@ -59,7 +59,7 @@ public class TieAndSlurPass : ILayoutPass
     {
         // Determine curve direction based on stem direction
         // If stems are up, curve goes below; if stems are down, curve goes above
-        var curveAbove = !startNote.StemUp;
+        var curveAbove = !startNote.Stem.Up;
 
         // Calculate notehead width (scaled from SMuFL units)
         // NoteHeadBlack height: 279 units, width: 330 units, scaled to 1.0 staff spaces height

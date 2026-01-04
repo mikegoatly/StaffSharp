@@ -30,9 +30,7 @@ public class BoundsCalculatorTests
     {
         // Arrange
         var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 4, SymbolicDuration.Quarter, 10.0, 50.0, 5.0, 10.0);
-        symbol.StemY1 = 50.0;
-        symbol.StemY2 = 20.0; // Stem goes up
-        symbol.StemUp = true;
+        symbol.Stem = symbol.Stem with { Y1 = 50.0, Y2 = 20.0, Up = true };
 
         // Act
         var (minY, maxY) = BoundsCalculator.CalculateSymbolBounds(symbol, staffSpace);
@@ -47,9 +45,7 @@ public class BoundsCalculatorTests
     {
         // Arrange
         var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 4, SymbolicDuration.Quarter, 10.0, 50.0, 5.0, 10.0);
-        symbol.StemY1 = 50.0;
-        symbol.StemY2 = 80.0; // Stem goes down
-        symbol.StemUp = false;
+        symbol.Stem = symbol.Stem with { Y1 = 50.0, Y2 = 80.0, Up = false };
 
         // Act
         var (minY, maxY) = BoundsCalculator.CalculateSymbolBounds(symbol, staffSpace);
@@ -127,9 +123,7 @@ public class BoundsCalculatorTests
             ],
             SymbolicDuration.Quarter,
             y: 50.0);
-        symbol.StemY1 = 50.0;
-        symbol.StemY2 = 20.0;
-        symbol.StemUp = true;
+        symbol.Stem = symbol.Stem with { Y1 = 50.0, Y2 = 20.0, Up = true };
         symbol.LedgerLineCount = 1;
         symbol.LedgerLinesAbove = false;
         symbol.NoteheadYPositions.Add(50.0);
@@ -208,8 +202,7 @@ public class BoundsCalculatorTests
         var measure = LayoutTestHelpers.CreateMeasure();
         var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6);
         symbol.Y = 0.0; // Relative to staff
-        symbol.StemY1 = 0.0;
-        symbol.StemY2 = -30.0; // Extends above staff
+        symbol.Stem = symbol.Stem with { Y1 = 0.0, Y2 = -30.0 }; // Extends above staff
         measure.AddSymbol(symbol);
         staff.AddMeasure(measure);
         var staffY = 100.0;
@@ -308,7 +301,7 @@ public class BoundsCalculatorTests
         var interStaffSpacing = 20.0;
 
         // Act
-        var height = BoundsCalculator.CalculateSystemHeight(system, staffSpace, interStaffSpacing);
+        var height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing);
 
         // Assert
         Assert.Equal(0, height);
@@ -325,7 +318,7 @@ public class BoundsCalculatorTests
         var interStaffSpacing = 20.0;
 
         // Act
-        var height = BoundsCalculator.CalculateSystemHeight(system, staffSpace, interStaffSpacing);
+        var height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing);
 
         // Assert
         Assert.Equal(50.0, height);
@@ -344,7 +337,7 @@ public class BoundsCalculatorTests
         var interStaffSpacing = 20.0;
 
         // Act
-        var height = BoundsCalculator.CalculateSystemHeight(system, staffSpace, interStaffSpacing);
+        var height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing);
 
         // Assert
         Assert.Equal(100.0, height); // 40 + 20 + 40
@@ -365,7 +358,7 @@ public class BoundsCalculatorTests
         var interStaffSpacing = 20.0;
 
         // Act
-        var height = BoundsCalculator.CalculateSystemHeight(system, staffSpace, interStaffSpacing);
+        var height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing);
 
         // Assert
         Assert.Equal(160.0, height); // 40 + 20 + 40 + 20 + 40
@@ -384,7 +377,7 @@ public class BoundsCalculatorTests
         var interStaffSpacing = 30.0;
 
         // Act
-        var height = BoundsCalculator.CalculateSystemHeight(system, staffSpace, interStaffSpacing);
+        var height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing);
 
         // Assert
         Assert.Equal(110.0, height); // 50 + 30 + 30
@@ -404,8 +397,8 @@ public class BoundsCalculatorTests
         var largeSpacing = 40.0;
 
         // Act
-        var heightSmall = BoundsCalculator.CalculateSystemHeight(system, staffSpace, smallSpacing);
-        var heightLarge = BoundsCalculator.CalculateSystemHeight(system, staffSpace, largeSpacing);
+        var heightSmall = BoundsCalculator.CalculateSystemHeight(system, smallSpacing);
+        var heightLarge = BoundsCalculator.CalculateSystemHeight(system, largeSpacing);
 
         // Assert
         Assert.Equal(90.0, heightSmall);   // 40 + 10 + 40

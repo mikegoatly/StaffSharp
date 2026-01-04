@@ -53,7 +53,7 @@ public class HeadShiftPass : ILayoutPass
             if (interval <= 2)
             {
                 // Notes are close together, need to shift one
-                if (chordSymbol.StemUp)
+                if (chordSymbol.Stem.Up)
                 {
                     // Shift upper note right
                     headShifts[i + 1] = context.StaffSpace * 0.6;

@@ -21,6 +21,7 @@ public static class LayoutEngine
         new HorizontalPositionPass(),               // Assigns final X positions
         new DotPositioningPass(),                   // Position augmentation dots (needs X positions)
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
+        new ArticulationPlacementPass(),            // Position articulations/decorations (needs stem direction)
         new TieAndSlurPass(),                       // Creates tie/slur curves (needs final positions)
         new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
         new SystemGenerationPass(),                 // Positions systems vertically using actual staff heights

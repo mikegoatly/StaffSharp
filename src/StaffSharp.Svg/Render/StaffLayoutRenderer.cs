@@ -3,6 +3,7 @@ namespace StaffSharp.Svg;
 using System.Globalization;
 using System.Xml.Linq;
 
+using StaffSharp.Layout.Model;
 using StaffSharp.Svg.Layout;
 
 internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
@@ -39,8 +40,9 @@ internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
 
             // Render beams for this measure (after symbols so they appear on top)
             foreach (var beamGroup in measure.Symbols
-                .Where(s => s.BeamGroupId.HasValue)
-                .GroupBy(s => s.BeamGroupId!.Value)
+                .OfType<IStemmedSymbol>()
+                .Where(s => s.Beam.GroupId.HasValue)
+                .GroupBy(s => s.Beam.GroupId!.Value)
                 .ToList())
             {
                 group.Add(BeamRenderer.Instance.Render(beamGroup, context));

@@ -1,5 +1,6 @@
 namespace StaffSharp.Svg.Tests.Layout.Services;
 
+using System.Linq;
 using StaffSharp.Notation;
 using StaffSharp.Svg;
 using StaffSharp.Svg.Layout;
@@ -31,7 +32,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.True(symbol.StemUp);
+        Assert.True(symbol.Stem.Up);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.False(symbol.StemUp);
+        Assert.False(symbol.Stem.Up);
     }
 
     [Fact]
@@ -69,7 +70,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.True(symbol.StemUp);
+        Assert.True(symbol.Stem.Up);
     }
 
     [Fact]
@@ -88,7 +89,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.False(symbol.StemUp);
+        Assert.False(symbol.Stem.Up);
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.True(symbol.StemUp);
+        Assert.True(symbol.Stem.Up);
     }
 
     [Fact]
@@ -130,7 +131,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateStem(symbol, staffBaseline, _context);
 
         // Assert
-        Assert.False(symbol.StemUp);
+        Assert.False(symbol.Stem.Up);
     }
 
     [Fact]
@@ -167,7 +168,7 @@ public class StemCalculatorTests
     public void CalculateBeamedGroupStems_BelowMiddle_StemsUp()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 65.0, x: 20.0),
@@ -179,14 +180,14 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.All(group, symbol => Assert.True(symbol.StemUp));
+        Assert.All(group, symbol => Assert.True(symbol.Stem.Up));
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_AboveMiddle_StemsDown()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 30.0, x: 10.0),
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 35.0, x: 20.0),
@@ -198,14 +199,14 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.All(group, symbol => Assert.False(symbol.StemUp));
+        Assert.All(group, symbol => Assert.False(symbol.Stem.Up));
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_AssignsBeamGroupId()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 65.0, x: 20.0)
@@ -216,15 +217,15 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.NotNull(group[0].BeamGroupId);
-        Assert.Equal(group[0].BeamGroupId, group[1].BeamGroupId);
+        Assert.NotNull(group[0].Beam.GroupId);
+        Assert.Equal(group[0].Beam.GroupId, group[1].Beam.GroupId);
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_SetsFirstAndLastFlags()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 65.0, x: 20.0),
@@ -236,19 +237,19 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.True(group[0].IsFirstInBeamGroup);
-        Assert.False(group[0].IsLastInBeamGroup);
-        Assert.False(group[1].IsFirstInBeamGroup);
-        Assert.False(group[1].IsLastInBeamGroup);
-        Assert.False(group[2].IsFirstInBeamGroup);
-        Assert.True(group[2].IsLastInBeamGroup);
+        Assert.True(group[0].Beam.IsFirstInGroup);
+        Assert.False(group[0].Beam.IsLastInGroup);
+        Assert.False(group[1].Beam.IsFirstInGroup);
+        Assert.False(group[1].Beam.IsLastInGroup);
+        Assert.False(group[2].Beam.IsFirstInGroup);
+        Assert.True(group[2].Beam.IsLastInGroup);
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_CalculatesBeamCount()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Sixteenth, y: 65.0, x: 20.0),
@@ -260,16 +261,16 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.Equal(1, group[0].BeamCount);
-        Assert.Equal(2, group[1].BeamCount);
-        Assert.Equal(2, group[2].BeamCount);
+        Assert.Equal(1, group[0].Beam.BeamCount);
+        Assert.Equal(2, group[1].Beam.BeamCount);
+        Assert.Equal(2, group[2].Beam.BeamCount);
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_Voice2_StemsDown()
     {
         // Arrange
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             new NoteLayoutSymbol
             {
@@ -292,22 +293,22 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert
-        Assert.All(group, symbol => Assert.False(symbol.StemUp));
+        Assert.All(group, symbol => Assert.False(symbol.Stem.Up));
     }
 
     [Fact]
     public void CalculateBeamedGroupStems_SteepSlope_LimitsBeamAngle()
     {
         // Arrange - notes with large pitch difference that would create steep beam
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 70.0, x: 10.0),  // Low note
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 30.0, x: 50.0)   // High note
         };
 
-        // Set StemY1 to simulate notehead positions
-        group[0].StemY1 = 70.0;
-        group[1].StemY1 = 30.0;
+        // Set Stem.Y1 to simulate notehead positions
+        group[0].Stem = group[0].Stem with { Y1 = 70.0 };
+        group[1].Stem = group[1].Stem with { Y1 = 30.0 };
 
         var staffBaseline = 50.0;
 
@@ -315,9 +316,9 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert - beam slope should be limited to max 1 staff space
-        var beamSlope = (group[1].StemY2 - group[0].StemY2) / (group[1].StemX - group[0].StemX);
+        var beamSlope = (group[1].Stem.Y2 - group[0].Stem.Y2) / (group[1].Stem.X - group[0].Stem.X);
         var maxSlopeInPixels = 1.0 * StaffSpace; // MaxBeamSlopeInSpaces = 1.0
-        var beamWidth = group[1].StemX - group[0].StemX;
+        var beamWidth = group[1].Stem.X - group[0].Stem.X;
         var maxSlope = maxSlopeInPixels / beamWidth;
 
         Assert.True(Math.Abs(beamSlope) <= maxSlope + 0.01, // Small tolerance for floating point
@@ -329,7 +330,7 @@ public class StemCalculatorTests
     {
         // Arrange - beamed group with notes at different pitches
         // This tests that middle notes also get minimum stem length, not just endpoints
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 10.0),  // C
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 45.0, x: 30.0),  // D (higher)
@@ -337,10 +338,10 @@ public class StemCalculatorTests
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 70.0)   // C (back down)
         };
 
-        // Set StemY1 to simulate notehead positions
+        // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].StemY1 = group[i].Y;
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
         }
 
         var staffBaseline = 50.0;
@@ -352,7 +353,7 @@ public class StemCalculatorTests
         // Assert - all notes should have at least minimum stem length
         foreach (var symbol in group)
         {
-            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
             Assert.True(actualStemLength >= minStemLength - 0.01, // Small tolerance
                 $"Stem length {actualStemLength} should be at least {minStemLength}");
         }
@@ -362,7 +363,7 @@ public class StemCalculatorTests
     public void CalculateBeamedGroupStems_ArchingMelody_MaintainsMinStemLengthForMiddleNotes()
     {
         // Arrange - arching melody pattern (low-high-low) where middle note might have short stem
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 10.0),  // Low
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 30.0),  // Middle (higher)
@@ -370,10 +371,10 @@ public class StemCalculatorTests
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 60.0, x: 70.0)   // Low again
         };
 
-        // Set StemY1 to simulate notehead positions
+        // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].StemY1 = group[i].Y;
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
         }
 
         var staffBaseline = 50.0;
@@ -385,7 +386,7 @@ public class StemCalculatorTests
         // Assert - the middle notes (especially the highest one) should still have minimum stem length
         foreach (var symbol in group)
         {
-            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
             Assert.True(actualStemLength >= minStemLength - 0.01,
                 $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
         }
@@ -395,7 +396,7 @@ public class StemCalculatorTests
     public void CalculateBeamedGroupStems_DippingMelody_MaintainsMinStemLengthForMiddleNotes()
     {
         // Arrange - dipping melody pattern (high-low-high) where middle note might have short stem
-        var group = new List<LayoutSymbol>
+        var group = new List<NoteLayoutSymbol>
         {
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 40.0, x: 10.0),  // High
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 50.0, x: 30.0),  // Middle (lower)
@@ -403,10 +404,10 @@ public class StemCalculatorTests
             LayoutTestHelpers.CreateNoteSymbol(duration: SymbolicDuration.Eighth, y: 40.0, x: 70.0)   // High again
         };
 
-        // Set StemY1 to simulate notehead positions
+        // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].StemY1 = group[i].Y;
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
         }
 
         var staffBaseline = 50.0;
@@ -418,7 +419,7 @@ public class StemCalculatorTests
         // Assert - the middle notes (especially the lowest one) should still have minimum stem length
         foreach (var symbol in group)
         {
-            var actualStemLength = Math.Abs(symbol.StemY2 - symbol.StemY1);
+            var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
             Assert.True(actualStemLength >= minStemLength - 0.01,
                 $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
         }
