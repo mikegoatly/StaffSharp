@@ -47,6 +47,9 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         // Render augmentation dots if present
         RenderDots(group, symbol, context);
 
+        // Render decorations/articulations
+        RenderDecorations(group, symbol, context);
+
         return group;
     }
 }

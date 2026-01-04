@@ -1,6 +1,6 @@
 namespace StaffSharp.Svg.Layout.Passes;
 
-using StaffSharp.Notation;
+using StaffSharp.Layout.Model;
 using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
 
@@ -40,22 +40,28 @@ public class StemAndBeamPass : ILayoutPass
         {
             if (!BeamGrouper.IsBeamable(symbol) && StemCalculator.RequiresStem(symbol))
             {
-                StemCalculator.CalculateStem(symbol, staffBaseline, context);
-                FlagCalculator.CalculateFlag(symbol, context);
+                if (symbol is IStemmedSymbol stemmedSymbol)
+                {
+                    StemCalculator.CalculateStem(stemmedSymbol, staffBaseline, context);
+                    FlagCalculator.CalculateFlag(stemmedSymbol, context);
+                }
             }
         }
 
         // Process beam groups
         foreach (var group in beamGroups)
         {
-            if (group.Count > 1)
+            // Cast to IStemmedSymbol since beam groups only contain stemmed symbols
+            var stemmedGroup = group.Cast<IStemmedSymbol>().ToList();
+
+            if (stemmedGroup.Count > 1)
             {
                 StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, context);
             }
-            else if (group.Count == 1)
+            else if (stemmedGroup.Count == 1)
             {
-                StemCalculator.CalculateStem(group[0], staffBaseline, context);
-                FlagCalculator.CalculateFlag(group[0], context);
+                StemCalculator.CalculateStem(stemmedGroup[0], staffBaseline, context);
+                FlagCalculator.CalculateFlag(stemmedGroup[0], context);
             }
         }
     }

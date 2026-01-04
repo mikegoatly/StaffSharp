@@ -23,10 +23,9 @@ public class LayoutBoundsCalculationPass : ILayoutPass
 
     private static void CalculateSystemBounds(LayoutSystem system, SvgContext context)
     {
-        var interStaffSpacing = 2 * context.StaffSpace;
+        var interStaffSpacing = 2.0 * context.StaffSpace;
         system.Height = BoundsCalculator.CalculateSystemHeight(
             system,
-            context.StaffSpace,
             interStaffSpacing);
     }
 }

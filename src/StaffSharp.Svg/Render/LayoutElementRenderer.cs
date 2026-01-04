@@ -2,6 +2,8 @@ namespace StaffSharp.Svg;
 
 using System.Globalization;
 using System.Xml.Linq;
+
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 using StaffSharp.Svg.Layout;
 using StaffSharp.Svg.Render;
@@ -70,35 +72,36 @@ internal abstract class LayoutElementRenderer<T>
     /// <summary>
     /// Renders a stem for a note or chord symbol.
     /// </summary>
-    protected static void RenderStem(XElement group, LayoutSymbol symbol, SvgContext context)
+    protected static void RenderStem(XElement group, IStemmedSymbol symbol, SvgContext context)
     {
-        // Stem X is calculated in layout pass and stored in symbol.StemX (absolute coordinates)
+        // Stem X is calculated in layout pass and stored in symbol.Stem (absolute coordinates)
         // Convert to relative coordinates (relative to the note/chord group's transform)
-        var stemX = symbol.StemX - symbol.X;
+        var layoutElement = (LayoutElement)symbol;
+        var stemX = symbol.Stem.X - layoutElement.X;
 
         group.Add(
             CreateLine(
                 stemX,
-                symbol.StemY1 - symbol.Y,
+                symbol.Stem.Y1 - layoutElement.Y,
                 stemX,
-                symbol.StemY2 - symbol.Y,
+                symbol.Stem.Y2 - layoutElement.Y,
                 strokeWidth: 1.5));
     }
 
     /// <summary>
     /// Renders flags for a note or chord symbol.
     /// </summary>
-    protected static void RenderFlag(XElement group, LayoutSymbol symbol, SvgContext context)
+    protected static void RenderFlag(XElement group, IStemmedSymbol symbol, SvgContext context)
     {
-        if (!symbol.RequiresFlag || symbol.FlagCount == 0)
+        if (!symbol.Beam.RequiresFlag || symbol.Beam.FlagCount == 0)
         {
             return;
         }
 
         // Build the flag path procedurally
         var flagPath = FlagPathBuilder.BuildFlagPath(
-            symbol.FlagCount,
-            symbol.StemUp,
+            symbol.Beam.FlagCount,
+            symbol.Stem.Up,
             isGraceNote: false,
             useStraightFlags: false);
 
@@ -108,8 +111,9 @@ internal abstract class LayoutElementRenderer<T>
         }
 
         // Position flag at the stem endpoint (relative to note/chord origin)
-        var flagX = symbol.StemX - symbol.X;
-        var flagY = symbol.StemY2 - symbol.Y;
+        var layoutElement = (LayoutElement)symbol;
+        var flagX = symbol.Stem.X - layoutElement.X;
+        var flagY = symbol.Stem.Y2 - layoutElement.Y;
 
         var flagElement = new XElement(SvgNamespace + "path",
             new XAttribute("d", flagPath),
@@ -141,6 +145,141 @@ internal abstract class LayoutElementRenderer<T>
                     lineY
             ));
         }
+    }
+
+    /// <summary>
+    /// Renders decorations/articulations for a note or chord.
+    /// </summary>
+    protected static void RenderDecorations(XElement group, AugmentationDottedLayoutSymbol symbol, SvgContext context)
+    {
+        if (symbol is NoteLayoutSymbol noteSymbol)
+        {
+            foreach (var (type, x, y) in noteSymbol.PositionedDecorations)
+            {
+                var decorationElement = RenderDecoration(type, x - symbol.X, y - symbol.Y, context);
+                if (decorationElement != null)
+                {
+                    group.Add(decorationElement);
+                }
+            }
+        }
+        else if (symbol is ChordLayoutSymbol chordSymbol)
+        {
+            foreach (var (type, x, y) in chordSymbol.PositionedDecorations)
+            {
+                var decorationElement = RenderDecoration(type, x - symbol.X, y - symbol.Y, context);
+                if (decorationElement != null)
+                {
+                    group.Add(decorationElement);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Renders a single decoration glyph.
+    /// </summary>
+    protected static XElement? RenderDecoration(Decoration decoration, double x, double y, SvgContext context)
+    {
+        var glyph = GetDecorationGlyph(decoration);
+        if (glyph.Path == null)
+        {
+            return null;
+        }
+
+        // Get articulation-specific scaling and horizontal offset
+        var targetHeight = GetDecorationTargetHeight(decoration);
+        var xOffset = GetDecorationXOffset(decoration, glyph, targetHeight, context);
+
+        var transform = $"translate({(x + xOffset).ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+        return RenderGlyph(glyph, targetHeight, transform, context);
+    }
+
+    /// <summary>
+    /// Gets the target height in staff spaces for a decoration glyph.
+    /// </summary>
+    protected static double GetDecorationTargetHeight(Decoration decoration)
+    {
+        return decoration switch
+        {
+            // Small articulations
+            Decoration.Staccato => 0.4,
+            
+            // Medium articulations
+            Decoration.Tenuto => 0.5,
+            Decoration.Accent => 0.7,
+            Decoration.Marcato => 0.7,
+            Decoration.UpBow => 0.6,
+            Decoration.DownBow => 0.6,
+            
+            // Large ornaments
+            Decoration.Trill => 0.8,
+            Decoration.Turn => 0.8,
+            Decoration.UpperMordent => 0.8,
+            Decoration.LowerMordent => 0.8,
+            Decoration.Mordent => 0.8,
+            Decoration.InvertedTurn => 0.8,
+            
+            // Fermata and breath marks
+            Decoration.Fermata => 1.0,
+            Decoration.Breath => 0.6,
+            
+            // Default for unspecified
+            _ => 0.7
+        };
+    }
+
+    /// <summary>
+    /// Gets the horizontal offset to center wide glyphs over the notehead.
+    /// </summary>
+    protected static double GetDecorationXOffset(Decoration decoration, GlyphInfo glyph, double targetHeight, SvgContext context)
+    {
+        // Calculate the rendered width of the glyph
+        var targetHeightPixels = targetHeight * context.StaffSpace;
+        var scale = glyph.Height > 0 ? targetHeightPixels / glyph.Height : 1.0;
+        var renderedWidth = glyph.Width * scale;
+        
+        // For wide glyphs, offset left to center them
+        // Noteheads are approximately 1.5 staff spaces wide, centered at x=0
+        var noteheadWidth = 1.5 * context.StaffSpace;
+        
+        return decoration switch
+        {
+            // Wide ornaments need centering adjustment
+            Decoration.Trill => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.Fermata => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.Turn => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.UpperMordent => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.LowerMordent => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.Mordent => -(renderedWidth - noteheadWidth) / 2,
+            Decoration.InvertedTurn => -(renderedWidth - noteheadWidth) / 2,
+            
+            // Other articulations are narrow enough to not need offset
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Maps a Decoration enum to its corresponding SMuFL glyph.
+    /// </summary>
+    protected static GlyphInfo GetDecorationGlyph(Decoration decoration)
+    {
+        return decoration switch
+        {
+            Decoration.Staccato => MusicGlyphs.Staccato,
+            Decoration.Tenuto => MusicGlyphs.Tenuto,
+            Decoration.Accent => MusicGlyphs.Accent,
+            Decoration.Marcato => MusicGlyphs.Marcato,
+            Decoration.Fermata => MusicGlyphs.Hold,
+            Decoration.Breath => MusicGlyphs.BreathMark,
+            Decoration.Trill => MusicGlyphs.Trill,
+            Decoration.Turn => MusicGlyphs.Turn,
+            Decoration.UpperMordent => MusicGlyphs.MordentUpper,
+            Decoration.LowerMordent => MusicGlyphs.MordentLower,
+            Decoration.UpBow => MusicGlyphs.Upbow,
+            // Note: Some decorations don't have glyphs yet or aren't rendered as symbols
+            _ => default
+        };
     }
 
     /// <summary>

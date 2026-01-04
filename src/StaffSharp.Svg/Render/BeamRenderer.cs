@@ -3,13 +3,13 @@ namespace StaffSharp.Svg;
 using System.Globalization;
 using System.Xml.Linq;
 
-using StaffSharp.Svg.Layout;
+using StaffSharp.Layout.Model;
 
-internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, LayoutSymbol>>
+internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, IStemmedSymbol>>
 {
     public static BeamRenderer Instance { get; } = new();
 
-    public override XElement Render(IGrouping<int, LayoutSymbol> beamGroup, SvgContext context)
+    public override XElement Render(IGrouping<int, IStemmedSymbol> beamGroup, SvgContext context)
     {
         var group = new XElement(SvgNamespace + "g",
             new XAttribute("class", "beam-group")
@@ -18,20 +18,20 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, Layout
         var symbols = beamGroup.OrderBy(s => s.TimePosition).ToList();
         if (symbols.Count < 2) return group;
 
-        var stemUp = symbols[0].StemUp;
+        var stemUp = symbols[0].Stem.Up;
         var beamThickness = 0.5 * context.StaffSpace;
         var beamGap = 0.25 * context.StaffSpace;
 
         // Use pre-calculated beam positions from layout (stored in StemY2 and StemX)
         var firstSymbol = symbols.First();
         var lastSymbol = symbols.Last();
-        var beamY1 = firstSymbol.StemY2;
-        var beamY2 = lastSymbol.StemY2;
-        var beamX1 = firstSymbol.StemX;
-        var beamX2 = lastSymbol.StemX;
+        var beamY1 = firstSymbol.Stem.Y2;
+        var beamY2 = lastSymbol.Stem.Y2;
+        var beamX1 = firstSymbol.Stem.X;
+        var beamX2 = lastSymbol.Stem.X;
 
         // Calculate the number of primary beams (shared by all notes in the group)
-        var primaryBeamCount = symbols.Min(s => s.BeamCount);
+        var primaryBeamCount = symbols.Min(s => s.Beam.BeamCount);
 
         // Render primary beams (those that connect all notes)
         for (int beamIndex = 0; beamIndex < primaryBeamCount; beamIndex++)
@@ -62,7 +62,7 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, Layout
 
     private static void RenderPartialBeams(
         XElement group,
-        List<LayoutSymbol> symbols,
+        List<IStemmedSymbol> symbols,
         int primaryBeamCount,
         double beamY1,
         double beamY2,
@@ -74,23 +74,23 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, Layout
         // Calculate the slope of the primary beam for interpolation
         var firstSymbol = symbols.First();
         var lastSymbol = symbols.Last();
-        var beamSlope = (beamY2 - beamY1) / (lastSymbol.StemX - firstSymbol.StemX);
+        var beamSlope = (beamY2 - beamY1) / (lastSymbol.Stem.X - firstSymbol.Stem.X);
 
         for (int i = 0; i < symbols.Count; i++)
         {
             var symbol = symbols[i];
-            if (symbol.BeamCount <= primaryBeamCount) continue;
+            if (symbol.Beam.BeamCount <= primaryBeamCount) continue;
 
             // This note needs additional partial beams
-            var partialBeamCount = symbol.BeamCount - primaryBeamCount;
+            var partialBeamCount = symbol.Beam.BeamCount - primaryBeamCount;
 
             // Determine the direction of the partial beam
             // Partial beams extend toward the center of the group, or toward the next/previous note
-            bool extendRight = i == 0 || (i < symbols.Count - 1 && symbols[i + 1].BeamCount > primaryBeamCount);
-            bool extendLeft = i == symbols.Count - 1 || (i > 0 && symbols[i - 1].BeamCount > primaryBeamCount);
+            bool extendRight = i == 0 || (i < symbols.Count - 1 && symbols[i + 1].Beam.BeamCount > primaryBeamCount);
+            bool extendLeft = i == symbols.Count - 1 || (i > 0 && symbols[i - 1].Beam.BeamCount > primaryBeamCount);
 
             // Interpolate the beam Y position at this note's stem X position
-            var symbolBeamY = beamY1 + (symbol.StemX - firstSymbol.StemX) * beamSlope;
+            var symbolBeamY = beamY1 + (symbol.Stem.X - firstSymbol.Stem.X) * beamSlope;
 
             for (int beamIndex = 0; beamIndex < partialBeamCount; beamIndex++)
             {
@@ -106,24 +106,24 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, Layout
                 if (extendRight && !extendLeft)
                 {
                     // Extend to the right only
-                    x1 = symbol.StemX;
-                    x2 = symbol.StemX + partialLength;
+                    x1 = symbol.Stem.X;
+                    x2 = symbol.Stem.X + partialLength;
                     y1 = y;
                     y2 = y + (partialLength * beamSlope);
                 }
                 else if (extendLeft && !extendRight)
                 {
                     // Extend to the left only
-                    x1 = symbol.StemX - partialLength;
-                    x2 = symbol.StemX;
+                    x1 = symbol.Stem.X - partialLength;
+                    x2 = symbol.Stem.X;
                     y1 = y - (partialLength * beamSlope);
                     y2 = y;
                 }
                 else
                 {
                     // Extend both ways (centered) or default to left
-                    x1 = symbol.StemX - partialLength / 2;
-                    x2 = symbol.StemX + partialLength / 2;
+                    x1 = symbol.Stem.X - partialLength / 2;
+                    x2 = symbol.Stem.X + partialLength / 2;
                     y1 = y - (partialLength / 2 * beamSlope);
                     y2 = y + (partialLength / 2 * beamSlope);
                 }

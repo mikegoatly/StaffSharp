@@ -1,5 +1,6 @@
 namespace StaffSharp.Svg.Layout.Services;
 
+using StaffSharp.Layout.Model;
 using StaffSharp.Svg.Layout;
 
 /// <summary>
@@ -20,10 +21,10 @@ internal static class BoundsCalculator
         var maxY = symbol.Y;
 
         // Include stem bounds
-        if (symbol.StemY1 != 0 || symbol.StemY2 != 0)
+        if (symbol is IStemmedSymbol stemmedSymbol && (stemmedSymbol.Stem.Y1 != 0 || stemmedSymbol.Stem.Y2 != 0))
         {
-            minY = Math.Min(minY, Math.Min(symbol.StemY1, symbol.StemY2));
-            maxY = Math.Max(maxY, Math.Max(symbol.StemY1, symbol.StemY2));
+            minY = Math.Min(minY, Math.Min(stemmedSymbol.Stem.Y1, stemmedSymbol.Stem.Y2));
+            maxY = Math.Max(maxY, Math.Max(stemmedSymbol.Stem.Y1, stemmedSymbol.Stem.Y2));
         }
 
         // Include ledger lines
@@ -116,12 +117,11 @@ internal static class BoundsCalculator
     /// Calculates the total height of a system by summing staff heights and inter-staff spacing.
     /// </summary>
     /// <param name="system">The system to calculate height for</param>
-    /// <param name="staffSpace">The staff space unit</param>
     /// <param name="interStaffSpacing">Space between staves (typically 2-3 staff spaces)</param>
+    /// 
     /// <returns>Total system height</returns>
     public static double CalculateSystemHeight(
         LayoutSystem system,
-        double staffSpace,
         double interStaffSpacing)
     {
         if (system.Staves.Count == 0)
