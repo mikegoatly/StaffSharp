@@ -76,14 +76,13 @@ internal abstract class LayoutElementRenderer<T>
         // Convert to relative coordinates (relative to the note/chord group's transform)
         var stemX = symbol.StemX - symbol.X;
 
-        group.Add(new XElement(SvgNamespace + "line",
-            new XAttribute("x1", stemX.ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("y1", (symbol.StemY1 - symbol.Y).ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("x2", stemX.ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("y2", (symbol.StemY2 - symbol.Y).ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("stroke", "black"),
-            new XAttribute("stroke-width", "1.5")
-        ));
+        group.Add(
+            CreateLine(
+                stemX,
+                symbol.StemY1 - symbol.Y,
+                stemX,
+                symbol.StemY2 - symbol.Y,
+                strokeWidth: 1.5));
     }
 
     /// <summary>
@@ -99,13 +98,12 @@ internal abstract class LayoutElementRenderer<T>
                 ? -i * lineSpacing
                 : i * lineSpacing;
 
-            group.Add(new XElement(SvgNamespace + "line",
-                new XAttribute("x1", (-context.StaffSpace * 0.4).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("y1", lineY.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("x2", (context.StaffSpace * 1.4).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("y2", lineY.ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("stroke", "black"),
-                new XAttribute("stroke-width", "1")
+            group.Add(
+                CreateLine(
+                    -context.StaffSpace * 0.4,
+                    lineY,
+                    context.StaffSpace * 1.4,
+                    lineY
             ));
         }
     }
