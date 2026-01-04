@@ -1,6 +1,6 @@
 namespace StaffSharp.Svg.Layout.Passes;
 
-using StaffSharp.Notation;
+using StaffSharp.Layout.Services;
 using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
 
@@ -108,26 +108,7 @@ public class VerticalPositionPass : ILayoutPass
                 }
 
             case ClefLayoutSymbol clefSymbol:
-                // Position clef symbol (Y is relative to staff origin)
-                // Treble clef: The spiral wraps around the G line (second line from bottom)
-                // G line is at staff position +2 from baseline, which is Y = baseline - 1 staff space
-                // Bass clef: The dots straddle the F line (fourth line from bottom, which is the baseline)
-                if (clefSymbol.Clef == Clef.Treble)
-                {
-                    // Position so the clef is centered vertically on the staff
-                    // Treble clef's defining point (where the spiral curl centers) should be at the G line
-                    // G line (second from bottom) is at Y = 30 (staff line index 3 * 10)
-                    symbol.Y = 3 * context.StaffSpace; // Position at G line
-                }
-                else if (clefSymbol.Clef == Clef.Bass)
-                {
-                    // Bass clef dots should straddle the F line (second from top = baseline)
-                    symbol.Y = 2 * context.StaffSpace; // Position at middle line (F)
-                }
-                else
-                {
-                    symbol.Y = 2 * context.StaffSpace; // Default to middle line
-                }
+                symbol.Y = ClefCalculator.GetClefYPosition(clefSymbol.Clef, context);
                 break;
 
             case KeySignatureLayoutSymbol:

@@ -7,7 +7,15 @@ using StaffSharp.Notation;
 /// </summary>
 /// <param name="Left">Left padding in units.</param>
 /// <param name="Right">Right padding in units.</param>
-public readonly record struct LayoutSpacing(double Left, double Right);
+public readonly record struct LayoutSpacing(double Left, double Right)
+{
+    /// <summary>
+    /// Creates a LayoutSpacing with equal left and right spacing.
+    /// </summary>
+    public LayoutSpacing(double spacing) : this(spacing, spacing)
+    {
+    }
+}
 
 /// <summary>
 /// Base class for positioned musical symbols.

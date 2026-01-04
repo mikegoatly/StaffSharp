@@ -1,5 +1,6 @@
 namespace StaffSharp.Svg.Layout.Services;
 
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -84,10 +85,10 @@ internal static class SymbolWidthCalculator
 
         double width = 0;
 
-        // Clef (use consistent width, not hardcoded 3.0)
+        // Clef
         var clefSymbol = new ClefLayoutSymbol { Clef = staff.CurrentClef };
         var clefWidth = CalculateSymbolWidth(clefSymbol, context);
-        var clefSpacing = CalculateSpacing(clefSymbol, clefWidth, context);
+        var clefSpacing = ClefCalculator.ClefSpacing(context);
         width += clefSpacing.Left + clefWidth + clefSpacing.Right;
 
         // Key signature (if not C major)
@@ -95,15 +96,14 @@ internal static class SymbolWidthCalculator
         {
             var keySymbol = new KeySignatureLayoutSymbol { KeySignature = staff.CurrentKeySignature };
             var keyWidth = CalculateSymbolWidth(keySymbol, context);
-            var keySpacing = CalculateSpacing(keySymbol, keyWidth, context);
+            var keySpacing = KeySignatureService.KeySignatureSpacing(context);
             width += keySpacing.Left + keyWidth + keySpacing.Right;
         }
 
         // Time signature
         var timeSymbol = new TimeSignatureLayoutSymbol { TimeSignature = new TimeSignature(4, 4) };
         var timeWidth = CalculateSymbolWidth(timeSymbol, context);
-        var timeSpacing = CalculateSpacing(timeSymbol, timeWidth, context);
-        width += timeSpacing.Left + timeWidth + timeSpacing.Right;
+        width += timeWidth;
 
         return width;
     }

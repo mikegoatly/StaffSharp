@@ -1,5 +1,6 @@
 namespace StaffSharp.Svg.Layout.Passes;
 
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 using StaffSharp.Svg;
 using StaffSharp.Svg.Layout.Services;
@@ -124,10 +125,11 @@ public class SystemBreakingPass : ILayoutPass
         {
             Clef = staff.CurrentClef,
             TimePosition = -3.0,  // Negative time positions sort before measure content
-            Width = SymbolWidthCalculator.CalculateSymbolWidth(new ClefLayoutSymbol { Clef = staff.CurrentClef }, context)
+            Width = SymbolWidthCalculator.CalculateSymbolWidth(new ClefLayoutSymbol { Clef = staff.CurrentClef }, context),
+            Y = ClefCalculator.GetClefYPosition(staff.CurrentClef, context),
+            Spacing = ClefCalculator.ClefSpacing(context)
         };
         
-        SetClefYPosition(clefSymbol, staff.CurrentClef, context);
         symbolsToInsert.Add(clefSymbol);
 
         // 2. Key signature (if not C major)
@@ -138,8 +140,8 @@ public class SystemBreakingPass : ILayoutPass
                 KeySignature = staff.CurrentKeySignature,
                 Clef = staff.CurrentClef,
                 TimePosition = -2.0,
-                Y = 0,  // Position at top of staff
-                Width = KeySignatureService.CalculateWidth(staff.CurrentKeySignature, context.StaffSpace)
+                Width = KeySignatureService.CalculateWidth(staff.CurrentKeySignature, context.StaffSpace),
+                Spacing = KeySignatureService.KeySignatureSpacing(context)
             };
 
             symbolsToInsert.Add(keySymbol);
@@ -152,8 +154,7 @@ public class SystemBreakingPass : ILayoutPass
             {
                 TimeSignature = metadata.TimeSignature,
                 TimePosition = -1.0,
-                Y = 0,  // Position at top of staff
-                Width = SymbolWidthCalculator.CalculateSymbolWidth(new TimeSignatureLayoutSymbol { TimeSignature = metadata.TimeSignature }, context)
+                Width = SymbolWidthCalculator.CalculateSymbolWidth(new TimeSignatureLayoutSymbol { TimeSignature = metadata.TimeSignature }, context),
             };
 
             symbolsToInsert.Add(timeSymbol);
@@ -165,16 +166,5 @@ public class SystemBreakingPass : ILayoutPass
         {
             measure.InsertSymbol(0, symbolsToInsert[i]);
         }
-    }
-
-    private static void SetClefYPosition(ClefLayoutSymbol symbol, Clef clef, SvgContext context)
-    {
-        // Match the Y positioning logic from VerticalPositionPass
-        symbol.Y = clef switch
-        {
-            Clef.Treble => 3 * context.StaffSpace,  // Position at G line
-            Clef.Bass => 2 * context.StaffSpace,    // Position at middle line (F)
-            _ => 2 * context.StaffSpace             // Default to middle line
-        };
     }
 }
