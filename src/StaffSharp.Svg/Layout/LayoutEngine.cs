@@ -174,8 +174,24 @@ public static class LayoutEngine
                 ? allEvents.Max(e => e.TimePosition + GetDurationValue(e.Event)) 
                 : 0.0;
 
+            // Add start barline if specified
+            if (firstMeasure.StartBarline.HasValue)
+            {
+                var startBarlineSymbol = new BarlineLayoutSymbol 
+                { 
+                    BarlineType = firstMeasure.StartBarline.Value, 
+                    TimePosition = -0.5 
+                };
+                layoutMeasure.AddSymbol(startBarlineSymbol);
+            }
+
             // Add barline at the end of the measure
-            var barlineSymbol = new BarlineLayoutSymbol { BarlineType = BarlineType.Normal, TimePosition = lastTimePosition };
+            var endBarlineType = firstMeasure.EndBarline ?? BarlineType.Normal;
+            var barlineSymbol = new BarlineLayoutSymbol 
+            { 
+                BarlineType = endBarlineType, 
+                TimePosition = lastTimePosition 
+            };
             layoutMeasure.AddSymbol(barlineSymbol);
 
             layoutStaff.AddMeasure(layoutMeasure);
