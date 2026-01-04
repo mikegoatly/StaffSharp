@@ -274,4 +274,9 @@ internal static class KeySignatureService
             _ => throw new ArgumentOutOfRangeException(nameof(clef), clef, null)
         };
     }
+
+    public static LayoutSpacing KeySignatureSpacing(SvgContext context)
+    {
+        return new LayoutSpacing(context.StaffSpace / 2.0);
+    }
 }

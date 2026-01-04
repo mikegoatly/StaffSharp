@@ -1,8 +1,10 @@
 namespace StaffSharp.Svg;
 
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 using StaffSharp.Svg.Layout;
 using StaffSharp.Svg.Layout.Passes;
+using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Engine for laying out musical elements.
@@ -102,14 +104,27 @@ public static class LayoutEngine
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)
             {
-                var clefSymbol = new ClefLayoutSymbol { Clef = staff.Clef, TimePosition = -3.0 };
+                var clefSymbol = new ClefLayoutSymbol 
+                { 
+                    Clef = staff.Clef, 
+                    TimePosition = -3.0,
+                    Spacing = ClefCalculator.ClefSpacing(context)
+                };
+
                 layoutMeasure.AddSymbol(clefSymbol);
             }
 
             // Add key signature at the start of the first measure (after clef)
             if (measureNumber == 1 && metadata.KeySignature != KeySignature.C)
             {
-                var keySymbol = new KeySignatureLayoutSymbol { KeySignature = metadata.KeySignature, Clef = staff.Clef, TimePosition = -2.0 };
+                var keySymbol = new KeySignatureLayoutSymbol 
+                { 
+                    KeySignature = metadata.KeySignature, 
+                    Clef = staff.Clef, 
+                    TimePosition = -2.0,
+                    Spacing = KeySignatureService.KeySignatureSpacing(context)
+                };
+
                 layoutMeasure.AddSymbol(keySymbol);
             }
 
