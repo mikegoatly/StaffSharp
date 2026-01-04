@@ -17,6 +17,8 @@ public readonly record struct LayoutSpacing(double Left, double Right)
     }
 }
 
+// TODO This feels too overloaded - separate stem/beam info into another class/interface/struct
+// and use it only on note/chord symbols?
 /// <summary>
 /// Base class for positioned musical symbols.
 /// </summary>
@@ -49,6 +51,10 @@ public abstract class LayoutSymbol : LayoutElement
     public bool IsFirstInBeamGroup { get; set; }
     public bool IsLastInBeamGroup { get; set; }
     public int BeamCount { get; set; } // Number of beams (1 for eighth, 2 for sixteenth, etc.)
+
+    // Flag information (for non-beamed notes)
+    public bool RequiresFlag { get; set; }
+    public int FlagCount { get; set; } // Number of flags (1 for eighth, 2 for sixteenth, etc.)
 
     public int LedgerLineCount { get; set; }
     public bool LedgerLinesAbove { get; set; }

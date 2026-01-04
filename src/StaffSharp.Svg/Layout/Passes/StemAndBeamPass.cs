@@ -41,6 +41,7 @@ public class StemAndBeamPass : ILayoutPass
             if (!BeamGrouper.IsBeamable(symbol) && StemCalculator.RequiresStem(symbol))
             {
                 StemCalculator.CalculateStem(symbol, staffBaseline, context);
+                FlagCalculator.CalculateFlag(symbol, context);
             }
         }
 
@@ -54,6 +55,7 @@ public class StemAndBeamPass : ILayoutPass
             else if (group.Count == 1)
             {
                 StemCalculator.CalculateStem(group[0], staffBaseline, context);
+                FlagCalculator.CalculateFlag(group[0], context);
             }
         }
     }

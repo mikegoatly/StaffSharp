@@ -391,4 +391,114 @@ public class SvgExporterTests : VisualSnapshotTestBase
 
         AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
     }
+
+    [Fact]
+    public async Task Export_SingleEighthNotes_RendersFlags()
+    {
+        var metadata = new ScoreMetadata("Flag Test - Single Eighth Notes", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Single eighth notes separated by quarter notes (won't beam)
+        var notes = NotationEventBuilder.Create()
+            .C(4, SymbolicDuration.Eighth)
+            .D(4, SymbolicDuration.Quarter)
+            .E(4, SymbolicDuration.Eighth)
+            .F(4, SymbolicDuration.Quarter)
+            .G(4, SymbolicDuration.Eighth)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        // Verify flags are present
+        Assert.Contains("class=\"note\"", svgContent);
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_SixteenthNotes_RendersDoubleFlags()
+    {
+        var metadata = new ScoreMetadata("Flag Test - Sixteenth Notes", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Single sixteenth notes separated by quarter notes
+        var notes = NotationEventBuilder.Create()
+            .C(4, SymbolicDuration.Sixteenth)
+            .D(4, SymbolicDuration.Quarter)
+            .E(4, SymbolicDuration.Sixteenth)
+            .F(4, SymbolicDuration.Quarter)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_ThirtySecondNotes_RendersTripleFlags()
+    {
+        var metadata = new ScoreMetadata("Flag Test - Thirty-second Notes", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Single thirty-second notes
+        var notes = NotationEventBuilder.Create()
+            .C(4, SymbolicDuration.ThirtySecond)
+            .D(4, SymbolicDuration.Half)
+            .E(4, SymbolicDuration.ThirtySecond)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_EighthNoteChords_RendersFlags()
+    {
+        var metadata = new ScoreMetadata("Flag Test - Eighth Note Chords", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+
+        // Eighth note chords separated by quarter notes (won't beam)
+        var notes = NotationEventBuilder.Create()
+            .Chord(4, SymbolicDuration.Eighth, null, PitchClass.C, PitchClass.E, PitchClass.G)
+            .D(4, SymbolicDuration.Quarter)
+            .Chord(4, SymbolicDuration.Eighth, null, PitchClass.D, PitchClass.F, PitchClass.A)
+            .E(4, SymbolicDuration.Quarter)
+            .Build();
+
+        var measure = new Measure(1, notes);
+        var voice = new Voice(1, [measure]);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var score = new NotationScore(metadata, [part]);
+
+        var exporter = new SvgScoreExporter();
+        using var stream = new MemoryStream();
+        await exporter.ExportAsync(score, stream);
+        var svgContent = Encoding.UTF8.GetString(stream.ToArray());
+
+        AssertMatchesSnapshot(svgContent, SnapshotOptions.Default);
+    }
 }

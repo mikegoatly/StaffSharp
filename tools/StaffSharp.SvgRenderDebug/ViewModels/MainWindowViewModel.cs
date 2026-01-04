@@ -210,7 +210,36 @@ T:Rests Test
 M:4/4
 L:1/4
 K:C
-C2 z2 | D2 D1 z1| E2 z2 | z4 | G1 z3 |]" }
+C2 z2 | D2 D1 z1| E2 z2 | z4 | G1 z3 |]" },
+
+            new() { Name = "Flags - Eighth Notes", AbcContent = @"X:13
+T:Flag Test - Eighth Notes
+M:4/4
+L:1/8
+K:C
+C D E F | G A B c | d e f g | a b c' d' |]" },
+
+            new() { Name = "Flags - Sixteenth Notes", AbcContent = @"X:14
+T:Flag Test - Sixteenth Notes
+M:4/4
+L:1/16
+K:C
+C D E F G A B c | d e f g a b c' d' |]" },
+
+            new() { Name = "Flags - Thirty-second Notes", AbcContent = @"X:15
+T:Flag Test - Thirty-second Notes
+M:4/4
+L:1/32
+K:C
+C D E F G A B c d e f g a b c' d' |]" },
+
+            new() { Name = "Flags - Mixed Durations", AbcContent = @"X:16
+T:Flag Test - Mixed Durations
+M:4/4
+L:1/16
+K:C
+C2 D E2 F | G4 A2 B c | d E2 F2 G2 A | B8 |]" },
+
         };
         Examples = new ReadOnlyCollection<AbcExample>(examples);
 
