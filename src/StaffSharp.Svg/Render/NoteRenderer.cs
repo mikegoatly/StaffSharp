@@ -35,6 +35,7 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         if (symbol.Note.Duration.Base != NoteDurationBase.Whole)
         {
             RenderStem(group, symbol, context);
+            RenderFlag(group, symbol, context);
         }
 
         // Render ledger lines if needed

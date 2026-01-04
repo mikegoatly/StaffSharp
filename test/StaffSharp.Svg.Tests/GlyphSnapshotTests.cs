@@ -14,43 +14,17 @@ public class GlyphSnapshotTests : VisualSnapshotTestBase
     [Fact]
     public void AllGlyphs()
     {
-        var glyphs = new[]
-        {
-            ("NoteHeadWhole", MusicGlyphs.NoteHeadWhole),
-            ("NoteHeadHalf", MusicGlyphs.NoteHeadHalf),
-            ("NoteHeadBlack", MusicGlyphs.NoteHeadBlack),
-            ("WholeRest", MusicGlyphs.WholeRest),
-            ("HalfRest", MusicGlyphs.HalfRest),
-            ("QuarterRest", MusicGlyphs.QuarterRest),
-            ("EighthRest", MusicGlyphs.EighthRest),
-            ("SixteenthRest", MusicGlyphs.SixteenthRest),
-            ("TrebleClef", MusicGlyphs.TrebleClef),
-            ("BassClef", MusicGlyphs.BassClef),
-            ("CClef", MusicGlyphs.CClef),
-            ("AltoClef", MusicGlyphs.AltoClef),
-            ("TenorClef", MusicGlyphs.TenorClef),
-            ("Flat", MusicGlyphs.Flat),
-            ("Natural", MusicGlyphs.Natural),
-            ("Sharp", MusicGlyphs.Sharp),
-            ("Digit0", MusicGlyphs.Digit0),
-            ("Digit1", MusicGlyphs.Digit1),
-            ("Digit2", MusicGlyphs.Digit2),
-            ("Digit3", MusicGlyphs.Digit3),
-            ("Digit4", MusicGlyphs.Digit4),
-            ("Digit5", MusicGlyphs.Digit5),
-            ("Digit6", MusicGlyphs.Digit6),
-            ("Digit7", MusicGlyphs.Digit7),
-            ("Digit8", MusicGlyphs.Digit8),
-            ("Digit9", MusicGlyphs.Digit9),
-            ("CommonTime", MusicGlyphs.CommonTime),
-            ("CutTime", MusicGlyphs.CutTime)
-        };
+        var glyphs = typeof(MusicGlyphs)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Select(prop => (prop.Name, (GlyphInfo)prop.GetValue(null)!))
+            .OrderBy(prop => prop.Name)
+            .ToArray();
 
-        var svg = CreateCompositeGlyphSvg(glyphs);
-        AssertMatchesSnapshot(svg);
+        var (svg, svgWidth, svgHeight) = CreateCompositeGlyphSvg(glyphs);
+        AssertMatchesSnapshot(svg, SnapshotOptions.Default with { Width = svgWidth, Height = svgHeight });
     }
 
-    private static string CreateCompositeGlyphSvg((string Name, GlyphInfo Info)[] glyphs)
+    private static (string, int, int) CreateCompositeGlyphSvg((string Name, GlyphInfo Info)[] glyphs)
     {
         var cellWidth = 120;
         var cellHeight = 120;
@@ -102,6 +76,9 @@ public class GlyphSnapshotTests : VisualSnapshotTestBase
         }
 
 
-        return SvgTestHelpers.CreateSvgWrapper(elements, width: svgWidth, height: svgHeight);
+        return (
+            SvgTestHelpers.CreateSvgWrapper(elements, width: svgWidth, height: svgHeight),
+            svgWidth,
+            svgHeight);
     }
 }

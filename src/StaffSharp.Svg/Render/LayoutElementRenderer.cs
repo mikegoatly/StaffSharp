@@ -86,6 +86,41 @@ internal abstract class LayoutElementRenderer<T>
     }
 
     /// <summary>
+    /// Renders flags for a note or chord symbol.
+    /// </summary>
+    protected static void RenderFlag(XElement group, LayoutSymbol symbol, SvgContext context)
+    {
+        if (!symbol.RequiresFlag || symbol.FlagCount == 0)
+        {
+            return;
+        }
+
+        // Build the flag path procedurally
+        var flagPath = FlagPathBuilder.BuildFlagPath(
+            symbol.FlagCount,
+            symbol.StemUp,
+            isGraceNote: false,
+            useStraightFlags: false);
+
+        if (string.IsNullOrEmpty(flagPath))
+        {
+            return;
+        }
+
+        // Position flag at the stem endpoint (relative to note/chord origin)
+        var flagX = symbol.StemX - symbol.X;
+        var flagY = symbol.StemY2 - symbol.Y;
+
+        var flagElement = new XElement(SvgNamespace + "path",
+            new XAttribute("d", flagPath),
+            new XAttribute("fill", "black"),
+            new XAttribute("transform", $"translate({flagX.ToString(System.Globalization.CultureInfo.InvariantCulture)},{flagY.ToString(System.Globalization.CultureInfo.InvariantCulture)})")
+        );
+
+        group.Add(flagElement);
+    }
+
+    /// <summary>
     /// Renders ledger lines for notes above or below the staff.
     /// </summary>
     protected static void RenderLedgerLines(XElement group, LayoutSymbol symbol, SvgContext context)

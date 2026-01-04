@@ -53,6 +53,7 @@ public readonly record struct SymbolicDuration
     public static readonly SymbolicDuration Whole = new(NoteDurationBase.Whole);
     public static readonly SymbolicDuration Eighth = new(NoteDurationBase.Eighth);
     public static readonly SymbolicDuration Sixteenth = new(NoteDurationBase.Sixteenth);
+    public static readonly SymbolicDuration ThirtySecond = new(NoteDurationBase.ThirtySecond);
 
     // Common tuplets
     public static readonly SymbolicDuration TripletEighth = new(NoteDurationBase.Eighth, 0, Tuplet.Triplet);
