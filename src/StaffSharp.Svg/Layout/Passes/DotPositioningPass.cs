@@ -9,7 +9,7 @@ using StaffSharp.Svg;
 /// </summary>
 public class DotPositioningPass : ILayoutPass
 {
-    private const double DotSpacing = 0.25; // Space between multiple dots (in staff spaces)
+    private const double DotSpacing = 0.5; // Space between multiple dots (in staff spaces)
     private const double DotOffset = 0.2;   // Offset from note head to first dot (in staff spaces)
 
     public void Run(LayoutModel model, SvgContext context)

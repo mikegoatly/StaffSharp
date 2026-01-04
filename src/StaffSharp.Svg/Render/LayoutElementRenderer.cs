@@ -198,7 +198,7 @@ internal abstract class LayoutElementRenderer<T>
 
             var dotElement = RenderGlyph(
                 MusicGlyphs.AugmentationDot,
-                0.25,  // Small dot height
+                0.5,
                 $"translate({dotX.ToString(CultureInfo.InvariantCulture)},{dotYRelative.ToString(CultureInfo.InvariantCulture)})",
                 context);
 
