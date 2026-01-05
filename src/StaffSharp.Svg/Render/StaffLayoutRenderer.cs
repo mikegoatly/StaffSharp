@@ -30,11 +30,7 @@ internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
         {
             foreach (var symbol in measure.Symbols)
             {
-                var rendered = SymbolRenderer.Instance.Render(symbol, context);
-                if (rendered != null)
-                {
-                    group.Add(rendered);
-                }
+                group.Add(SymbolRenderer.Instance.Render(symbol, context));
             }
 
             // Render beams for this measure (after symbols so they appear on top)
