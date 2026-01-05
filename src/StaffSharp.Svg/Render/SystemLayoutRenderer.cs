@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -13,7 +12,7 @@ internal class SystemLayoutRenderer : LayoutElementRenderer<LayoutSystem>
     {
         var group = new XElement(SvgNamespace + "g",
             new XAttribute("class", "system"),
-            new XAttribute("transform", $"translate(0,{system.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(0, system.Y))
         );
 
         foreach (var staff in system.Staves)

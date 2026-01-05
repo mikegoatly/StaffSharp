@@ -41,7 +41,7 @@ internal abstract class LayoutElementRenderer<T>
             _ => default
         };
 
-        var transform = $"translate({x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+        var transform = CreateTranslate(x, y);
         var accidentalElement = RenderGlyph(accidentalGlyph, 2.0, transform, context);
         return accidentalElement!;
     }
@@ -117,7 +117,7 @@ internal abstract class LayoutElementRenderer<T>
         var flagElement = new XElement(SvgNamespace + "path",
             new XAttribute("d", flagPath),
             new XAttribute("fill", "black"),
-            new XAttribute("transform", $"translate({flagX.ToString(System.Globalization.CultureInfo.InvariantCulture)},{flagY.ToString(System.Globalization.CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(flagX, flagY))
         );
 
         group.Add(flagElement);
@@ -190,7 +190,7 @@ internal abstract class LayoutElementRenderer<T>
         var targetHeight = GetDecorationTargetHeight(decoration);
         var xOffset = GetDecorationXOffset(decoration, glyph, targetHeight, context);
 
-        var transform = $"translate({(x + xOffset).ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+        var transform = CreateTranslate(x + xOffset, y);
         return RenderGlyph(glyph, targetHeight, transform, context);
     }
 
@@ -203,14 +203,14 @@ internal abstract class LayoutElementRenderer<T>
         {
             // Small articulations
             Decoration.Staccato => 0.4,
-            
+
             // Medium articulations
             Decoration.Tenuto => 0.5,
             Decoration.Accent => 0.7,
             Decoration.Marcato => 0.7,
             Decoration.UpBow => 0.6,
             Decoration.DownBow => 0.6,
-            
+
             // Large ornaments
             Decoration.Trill => 0.8,
             Decoration.Turn => 0.8,
@@ -218,11 +218,11 @@ internal abstract class LayoutElementRenderer<T>
             Decoration.LowerMordent => 0.8,
             Decoration.Mordent => 0.8,
             Decoration.InvertedTurn => 0.8,
-            
+
             // Fermata and breath marks
             Decoration.Fermata => 1.0,
             Decoration.Breath => 0.6,
-            
+
             // Default for unspecified
             _ => 0.7
         };
@@ -237,11 +237,11 @@ internal abstract class LayoutElementRenderer<T>
         var targetHeightPixels = targetHeight * context.StaffSpace;
         var scale = glyph.Height > 0 ? targetHeightPixels / glyph.Height : 1.0;
         var renderedWidth = glyph.Width * scale;
-        
+
         // For wide glyphs, offset left to center them
         // Noteheads are approximately 1.5 staff spaces wide, centered at x=0
         var noteheadWidth = 1.5 * context.StaffSpace;
-        
+
         return decoration switch
         {
             // Wide ornaments need centering adjustment
@@ -252,7 +252,7 @@ internal abstract class LayoutElementRenderer<T>
             Decoration.LowerMordent => -(renderedWidth - noteheadWidth) / 2,
             Decoration.Mordent => -(renderedWidth - noteheadWidth) / 2,
             Decoration.InvertedTurn => -(renderedWidth - noteheadWidth) / 2,
-            
+
             // Other articulations are narrow enough to not need offset
             _ => 0
         };
@@ -331,6 +331,11 @@ internal abstract class LayoutElementRenderer<T>
         };
     }
 
+    protected static string CreateTranslate(double x, double y)
+    {
+        return $"translate({x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+    }
+
     /// <summary>
     /// Renders a sequence of digit glyphs for time signatures.
     /// </summary>
@@ -339,12 +344,11 @@ internal abstract class LayoutElementRenderer<T>
         double currentX = x;
         var digitWidth = 0.8 * context.StaffSpace;
 
-        foreach (var digit in digits)
+        foreach (var glyph in digits.Select(GetDigitGlyph))
         {
-            var glyph = GetDigitGlyph(digit);
-            if (glyph != null)
+            if (glyph is not null)
             {
-                var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+                var transform = CreateTranslate(currentX, y);
                 var glyphElement = RenderGlyph(glyph.Value, 1.0, transform, context);
                 if (glyphElement != null)
                 {
@@ -372,7 +376,7 @@ internal abstract class LayoutElementRenderer<T>
             var dotElement = RenderGlyph(
                 MusicGlyphs.AugmentationDot,
                 0.5,
-                $"translate({dotX.ToString(CultureInfo.InvariantCulture)},{dotYRelative.ToString(CultureInfo.InvariantCulture)})",
+                CreateTranslate(dotX, dotYRelative),
                 context);
 
             if (dotElement != null)

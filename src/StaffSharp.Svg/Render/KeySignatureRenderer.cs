@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -21,7 +20,7 @@ internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureL
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "key-signature"),
-            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
         );
 
         // Get accidental positions from service (handles all clef types)
@@ -44,7 +43,7 @@ internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureL
 
             if (glyph != null)
             {
-                var transform = $"translate({currentX.ToString(CultureInfo.InvariantCulture)},{yPosition.ToString(CultureInfo.InvariantCulture)})";
+                var transform = CreateTranslate(currentX, yPosition);
                 var glyphElement = RenderGlyph(glyph.Value, 2.0, transform, context);
                 if (glyphElement != null)
                 {

@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -15,7 +14,7 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "note"),
-            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
         );
 
         // Render accidental if present

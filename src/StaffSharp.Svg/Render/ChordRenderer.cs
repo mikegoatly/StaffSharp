@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -15,7 +14,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "chord"),
-            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
         );
 
         // Render accidentals if present
@@ -34,7 +33,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         {
             var y = symbol.NoteheadYPositions[i] - symbol.Y;
             var xShift = symbol.NoteheadXShifts.Count > i ? symbol.NoteheadXShifts[i] : 0;
-            var transform = $"translate({xShift.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+            var transform = CreateTranslate(xShift, y);
 
             var noteheadElement = RenderGlyph(notehead, 1.0, transform, context);
             if (noteheadElement != null)
