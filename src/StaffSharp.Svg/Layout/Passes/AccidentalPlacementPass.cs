@@ -1,8 +1,10 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
 
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg;
-using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Determines which notes need accidentals and positions them to avoid collisions.

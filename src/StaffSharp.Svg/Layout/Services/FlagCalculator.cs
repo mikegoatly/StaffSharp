@@ -1,5 +1,6 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
+using StaffSharp;
 using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 

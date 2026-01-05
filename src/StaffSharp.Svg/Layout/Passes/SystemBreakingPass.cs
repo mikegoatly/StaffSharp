@@ -1,32 +1,29 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
+
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
 
 using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg;
-using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Pass to break measures into multiple systems when they exceed the maximum width.
 /// Also inserts clef, key signature, and time signature symbols at the start of each new system.
-/// Runs AFTER MeasureWidthCalculationPass so measure widths are known.
+/// Requires that widths are known, so the <see cref="MeasureWidthCalculationPass"/> must have been run.
 /// </summary>
-public class SystemBreakingPass : ILayoutPass
+internal class SystemBreakingPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(context);
-
         if (model.Systems.Count == 0)
         {
             return;
         }
 
         // Process each system (typically only one before breaking)
-        var originalSystems = model.Systems.ToList();
         var newSystems = new List<LayoutSystem>();
-
-        foreach (var system in originalSystems)
+        foreach (var system in model.Systems)
         {
             // Break each staff independently, then align them
             var brokenStaves = new List<List<LayoutStaff>>();
@@ -92,6 +89,7 @@ public class SystemBreakingPass : ILayoutPass
                     CurrentClef = staff.CurrentClef,
                     CurrentKeySignature = staff.CurrentKeySignature
                 };
+
                 result.Add(currentStaff);
                 currentWidth = context.Margins.Left + systemStartWidth;
                 firstMeasureInSystem = true;
@@ -118,53 +116,20 @@ public class SystemBreakingPass : ILayoutPass
 
     private static void InsertSystemStartSymbols(LayoutStaff staff, LayoutMeasure measure, ScoreMetadata? metadata, SvgContext context)
     {
-        var symbolsToInsert = new List<LayoutSymbol>();
-
-        // 1. Clef (always insert at start of new system)
-        var clefSymbol = new ClefLayoutSymbol
+        // Insert symbols in reverse order so they end up sorted correctly
+        // 3. Time signature (always show at start of new system)
+        if (metadata?.TimeSignature != null)
         {
-            Clef = staff.CurrentClef,
-            TimePosition = -3.0,  // Negative time positions sort before measure content
-            Width = SymbolWidthCalculator.CalculateSymbolWidth(new ClefLayoutSymbol { Clef = staff.CurrentClef }, context),
-            Y = ClefCalculator.GetClefYPosition(staff.CurrentClef, context),
-            Spacing = ClefCalculator.ClefSpacing(context)
-        };
-        
-        symbolsToInsert.Add(clefSymbol);
+            measure.InsertSymbol(0, TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
+        }
 
         // 2. Key signature (if not C major)
         if (staff.CurrentKeySignature != KeySignature.C)
         {
-            var keySymbol = new KeySignatureLayoutSymbol
-            {
-                KeySignature = staff.CurrentKeySignature,
-                Clef = staff.CurrentClef,
-                TimePosition = -2.0,
-                Width = KeySignatureService.CalculateWidth(staff.CurrentKeySignature, context.StaffSpace),
-                Spacing = KeySignatureService.KeySignatureSpacing(context)
-            };
-
-            symbolsToInsert.Add(keySymbol);
+            measure.InsertSymbol(0, KeySignatureLayoutSymbol.Create(staff.CurrentKeySignature, staff.CurrentClef, context));
         }
 
-        // 3. Time signature (always show at start of new system)
-        if (metadata?.TimeSignature != null)
-        {
-            var timeSymbol = new TimeSignatureLayoutSymbol
-            {
-                TimeSignature = metadata.TimeSignature,
-                TimePosition = -1.0,
-                Width = SymbolWidthCalculator.CalculateSymbolWidth(new TimeSignatureLayoutSymbol { TimeSignature = metadata.TimeSignature }, context),
-            };
-
-            symbolsToInsert.Add(timeSymbol);
-        }
-
-        // Insert symbols at the beginning of the measure
-        // Insert in reverse order to maintain correct ordering (clef, then key, then time)
-        for (int i = symbolsToInsert.Count - 1; i >= 0; i--)
-        {
-            measure.InsertSymbol(0, symbolsToInsert[i]);
-        }
+        // 1. Clef (always insert at start of new system)
+        measure.InsertSymbol(0, ClefLayoutSymbol.Create(staff.CurrentClef, context));
     }
 }

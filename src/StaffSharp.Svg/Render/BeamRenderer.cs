@@ -1,8 +1,9 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Globalization;
 using System.Xml.Linq;
 
+using StaffSharp;
 using StaffSharp.Layout.Model;
 
 internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, IStemmedSymbol>>

@@ -1,13 +1,13 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp;
 
 /// <summary>
 /// Context for SVG export operations.
 /// </summary>
-public class SvgContext
+public record SvgContext
 {
     public int MaxWidth { get; set; }
     public double Scale { get; set; }
-    public Margins Margins { get; set; } = new();
+    public Margins Margins { get; set; }
     public int StaffSpace { get; set; }
 
     /// <summary>
@@ -20,7 +20,7 @@ public class SvgContext
 /// <summary>
 /// Represents margins in pixels.
 /// </summary>
-public class Margins
+public readonly record struct Margins
 {
     public int Left { get; }
     public int Right { get; }

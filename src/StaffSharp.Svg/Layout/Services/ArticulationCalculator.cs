@@ -1,8 +1,8 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
+using StaffSharp;
 using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
-using StaffSharp.Svg;
 
 /// <summary>
 /// Calculates positions for articulations and decorations on notes and chords.

@@ -1,10 +1,11 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Globalization;
 using System.Xml.Linq;
 
+using StaffSharp;
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
 
 internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
 {

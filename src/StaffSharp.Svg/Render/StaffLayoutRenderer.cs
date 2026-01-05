@@ -1,10 +1,10 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Globalization;
 using System.Xml.Linq;
 
+using StaffSharp;
 using StaffSharp.Layout.Model;
-using StaffSharp.Svg.Layout;
 
 internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
 {

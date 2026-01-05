@@ -1,8 +1,9 @@
 namespace StaffSharp.Svg.Tests.Layout.Services;
 
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
-using StaffSharp.Svg.Layout.Services;
+
 using Xunit;
 
 public class BoundsCalculatorTests

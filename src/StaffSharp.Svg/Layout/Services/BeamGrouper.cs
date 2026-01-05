@@ -1,6 +1,8 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
 using System.Collections.ObjectModel;
+
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 
 /// <summary>

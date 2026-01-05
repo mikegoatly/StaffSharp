@@ -1,8 +1,7 @@
 namespace StaffSharp.Svg.Tests.Layout.Services;
 
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout.Services;
-using StaffSharp.TestHelpers;
 
 using Xunit;
 
@@ -282,22 +281,6 @@ public class KeySignatureServiceTests
     public void NeedsAccidental_NaturalCancelsPreviousSharp_ReturnsTrue()
     {
         // Arrange - C sharp then C natural in same measure
-        var pitchCNatural = new Pitch(PitchClass.C, 4, Accidental.Natural);
-        var midiNoteC = 60; // C4 natural
-        var measureAccidentals = new Dictionary<int, Accidental>
-        {
-            [midiNoteC] = Accidental.Sharp // Wait, this doesn't make sense...
-        };
-
-        // Actually, the measure accidentals track by actual MIDI note
-        // So if C#4 (MIDI 61) was played, it's stored at 61
-        // Then C4 (MIDI 60) is a different note
-        // Let me reconsider...
-
-        // Actually based on the code, measureAccidentals uses MIDI note as key
-        // So C4 (60) with sharp would be C#4 (61)
-        // Let me fix this test:
-
         var pitch = new Pitch(PitchClass.C, 4, Accidental.Natural);
         var previousAccidentals = new Dictionary<int, Accidental>
         {
@@ -333,14 +316,13 @@ public class KeySignatureServiceTests
 
     #region CalculateWidth Tests
 
+    private static readonly SvgContext _context = new() { StaffSpace = 10 };
+
     [Fact]
     public void CalculateWidth_CMajor_ReturnsZero()
     {
-        // Arrange
-        var staffSpace = 10.0;
-
         // Act
-        var width = KeySignatureService.CalculateWidth(KeySignature.C, staffSpace);
+        var width = KeySignatureService.CalculateWidth(KeySignature.C, _context);
 
         // Assert
         Assert.Equal(0, width);
@@ -355,10 +337,9 @@ public class KeySignatureServiceTests
     {
         // Arrange
         var keySignature = KeySignature.Create(sharps);
-        var staffSpace = 10.0;
 
         // Act
-        var width = KeySignatureService.CalculateWidth(keySignature, staffSpace);
+        var width = KeySignatureService.CalculateWidth(keySignature, _context);
 
         // Assert
         Assert.Equal(expectedWidth, width, precision: 0);
@@ -373,10 +354,9 @@ public class KeySignatureServiceTests
     {
         // Arrange
         var keySignature = KeySignature.Create(flats);
-        var staffSpace = 10.0;
 
         // Act
-        var width = KeySignatureService.CalculateWidth(keySignature, staffSpace);
+        var width = KeySignatureService.CalculateWidth(keySignature, _context);
 
         // Assert
         Assert.Equal(expectedWidth, width, precision: 0);
@@ -387,10 +367,9 @@ public class KeySignatureServiceTests
     {
         // Arrange
         var keySignature = KeySignature.G; // 1 sharp
-        var staffSpace = 5.0;
 
         // Act
-        var width = KeySignatureService.CalculateWidth(keySignature, staffSpace);
+        var width = KeySignatureService.CalculateWidth(keySignature, _context with { StaffSpace = 5 });
 
         // Assert - 1 sharp at 5.0 staff space = 5.0
         Assert.Equal(5.0, width);
@@ -400,46 +379,46 @@ public class KeySignatureServiceTests
 
     #region GetAccidentalPositions Tests
 
-    public static IEnumerable<object[]> GetAccidentalPositionsTestData()
+    public static TheoryData<KeySignature, Clef, (Accidental, double)[]> GetAccidentalPositionsTestData()
     {
-        return
-        [
+        return new TheoryData<KeySignature, Clef, (Accidental, double)[]>
+        {
             // C Major - no accidentals
-            [KeySignature.C, Clef.Treble, Array.Empty<(Accidental, double)>()],
-            [KeySignature.C, Clef.Bass, Array.Empty<(Accidental, double)>()],
-            [KeySignature.C, Clef.Alto, Array.Empty<(Accidental, double)>()],
-            [KeySignature.C, Clef.Tenor, Array.Empty<(Accidental, double)>()],
+            { KeySignature.C, Clef.Treble, []},
+            { KeySignature.C, Clef.Bass, [] },
+            { KeySignature.C, Clef.Alto, [] },
+            { KeySignature.C, Clef.Tenor, [] },
 
             // G Major - 1 sharp (F#)
-            [KeySignature.G, Clef.Treble, new[] { (Accidental.Sharp, 0.0) }],
-            [KeySignature.G, Clef.Bass, new[] { (Accidental.Sharp, 1.0) }],
-            [KeySignature.G, Clef.Alto, new[] { (Accidental.Sharp, 1.0) }],
-            [KeySignature.G, Clef.Tenor, new[] { (Accidental.Sharp, 0.0) }],
+            { KeySignature.G, Clef.Treble, new[] { (Accidental.Sharp, 0.0) } },
+            { KeySignature.G, Clef.Bass, new[] { (Accidental.Sharp, 1.0) } },
+            { KeySignature.G, Clef.Alto, new[] { (Accidental.Sharp, 1.0) } },
+            { KeySignature.G, Clef.Tenor, new[] { (Accidental.Sharp, 0.0) } },
 
             // D Major - 2 sharps (F#, C#)
-            [KeySignature.D, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5) }],
-            [KeySignature.D, Clef.Bass, new[] { (Accidental.Sharp, 1.0), (Accidental.Sharp, 2.5) }],
-            [KeySignature.D, Clef.Alto, new[] { (Accidental.Sharp, 1.0), (Accidental.Sharp, 3.0) }],
-            [KeySignature.D, Clef.Tenor, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 2.0) }],
+            { KeySignature.D, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5) } },
+            { KeySignature.D, Clef.Bass, new[] { (Accidental.Sharp, 1.0), (Accidental.Sharp, 2.5) } },
+            { KeySignature.D, Clef.Alto, new[] { (Accidental.Sharp, 1.0), (Accidental.Sharp, 3.0) } },
+            { KeySignature.D, Clef.Tenor, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 2.0) } },
 
             // A Major - 3 sharps (F#, C#, G#)
-            [KeySignature.A, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5), (Accidental.Sharp, -0.5) }],
+            { KeySignature.A, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5), (Accidental.Sharp, -0.5) } },
 
             // C# Major - 7 sharps (F#, C#, G#, D#, A#, E#, B#)
-            [KeySignature.CSharp, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5), (Accidental.Sharp, -0.5), (Accidental.Sharp, 1.0), (Accidental.Sharp, 2.5), (Accidental.Sharp, 0.5), (Accidental.Sharp, 2.0) }],
+            { KeySignature.CSharp, Clef.Treble, new[] { (Accidental.Sharp, 0.0), (Accidental.Sharp, 1.5), (Accidental.Sharp, -0.5), (Accidental.Sharp, 1.0), (Accidental.Sharp, 2.5), (Accidental.Sharp, 0.5), (Accidental.Sharp, 2.0) } },
 
             // F Major - 1 flat (Bb)
-            [KeySignature.F, Clef.Treble, new[] { (Accidental.Flat, 2.0) }],
-            [KeySignature.F, Clef.Bass, new[] { (Accidental.Flat, 3.0) }],
-            [KeySignature.F, Clef.Alto, new[] { (Accidental.Flat, 2.5) }],
-            [KeySignature.F, Clef.Tenor, new[] { (Accidental.Flat, 3.5) }],
+            { KeySignature.F, Clef.Treble, new[] { (Accidental.Flat, 2.0) } },
+            { KeySignature.F, Clef.Bass, new[] { (Accidental.Flat, 3.0) } },
+            { KeySignature.F, Clef.Alto, new[] { (Accidental.Flat, 2.5) } },
+            { KeySignature.F, Clef.Tenor, new[] { (Accidental.Flat, 3.5) } },
 
             // Bb Major - 2 flats (Bb, Eb)
-            [KeySignature.BFlat, Clef.Treble, new[] { (Accidental.Flat, 2.0), (Accidental.Flat, 0.5) }],
-            [KeySignature.BFlat, Clef.Bass, new[] { (Accidental.Flat, 3.0), (Accidental.Flat, 1.5) }],
-            [KeySignature.BFlat, Clef.Alto, new[] { (Accidental.Flat, 2.5), (Accidental.Flat, 1.0) }],
-            [KeySignature.BFlat, Clef.Tenor, new[] { (Accidental.Flat, 3.5), (Accidental.Flat, 2.0) }],
-        ];
+            { KeySignature.BFlat, Clef.Treble, new[] { (Accidental.Flat, 2.0), (Accidental.Flat, 0.5) } },
+            { KeySignature.BFlat, Clef.Bass, new[] { (Accidental.Flat, 3.0), (Accidental.Flat, 1.5) } },
+            { KeySignature.BFlat, Clef.Alto, new[] { (Accidental.Flat, 2.5), (Accidental.Flat, 1.0) } },
+            { KeySignature.BFlat, Clef.Tenor, new[] { (Accidental.Flat, 3.5), (Accidental.Flat, 2.0) } },
+        };
     }
 
     [Theory]

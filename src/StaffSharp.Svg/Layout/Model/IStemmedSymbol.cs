@@ -1,5 +1,3 @@
-using StaffSharp.Svg.Layout;
-
 namespace StaffSharp.Layout.Model;
 
 /// <summary>

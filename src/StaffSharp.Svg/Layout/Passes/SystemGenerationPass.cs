@@ -1,7 +1,8 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
 
+using StaffSharp;
+using StaffSharp.Layout;
 using StaffSharp.Notation;
-using StaffSharp.Svg;
 
 /// <summary>
 /// Pass to generate systems based on max width.

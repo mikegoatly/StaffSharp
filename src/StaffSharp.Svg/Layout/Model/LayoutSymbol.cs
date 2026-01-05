@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
 /// <summary>
 /// Base class for positioned musical symbols.

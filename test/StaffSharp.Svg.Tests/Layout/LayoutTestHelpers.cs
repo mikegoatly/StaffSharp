@@ -2,8 +2,8 @@ namespace StaffSharp.Svg.Tests.Layout;
 
 using System;
 
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
 
 /// <summary>
 /// Helper methods for creating layout objects in tests.

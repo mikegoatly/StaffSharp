@@ -1,5 +1,8 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
+using System;
+
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -8,4 +11,14 @@ using StaffSharp.Notation;
 public sealed class TimeSignatureLayoutSymbol : LayoutSymbol
 {
     public required TimeSignature TimeSignature { get; init; }
+
+    internal static TimeSignatureLayoutSymbol Create(TimeSignature timeSignature, SvgContext context)
+    {
+        return new TimeSignatureLayoutSymbol
+        {
+            TimeSignature = timeSignature,
+            TimePosition = -1.0,
+            Width = TimeSignatureCalculator.CalculateWidth(timeSignature, context),
+        };
+    }
 }
