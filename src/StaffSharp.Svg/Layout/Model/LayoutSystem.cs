@@ -5,8 +5,18 @@ namespace StaffSharp.Layout.Model;
 /// </summary>
 public class LayoutSystem : LayoutElement
 {
+    private readonly List<LayoutStaff> _staves = [];
+
+    public LayoutSystem()
+    {
+    }
+
+    internal LayoutSystem(List<LayoutStaff> staves)
+    {
+        _staves = staves;
+    }
+
     public IReadOnlyList<LayoutStaff> Staves => _staves;
-    private readonly List<LayoutStaff> _staves = new();
 
     internal void AddStaff(LayoutStaff staff) => _staves.Add(staff);
 }

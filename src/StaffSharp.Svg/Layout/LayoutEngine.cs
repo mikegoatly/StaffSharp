@@ -56,23 +56,13 @@ public static class LayoutEngine
 
     private static void ConvertScoreToLayout(NotationScore score, LayoutModel model, SvgContext context)
     {
-        // Create systems and staves but don't populate measures yet
-        // SystemGenerationPass will handle grouping measures into systems
-        foreach (var part in score.Parts)
-        {
-            foreach (var staff in part.Staves)
-            {
-                var layoutStaff = ConvertStaff(staff, score.Metadata, context);
+        // Store the staff temporarily - SystemGenerationPass will organize into systems
+        // For now, add to a single system (will be refactored by SystemGenerationPass)
+        var layoutStaffs = score.Parts.SelectMany(p => p. Staves)
+            .Select(staff => ConvertStaff(staff, score.Metadata, context))
+            .ToList();
 
-                // Store the staff temporarily - SystemGenerationPass will organize into systems
-                // For now, add to a single system (will be refactored by SystemGenerationPass)
-                if (model.Systems.Count == 0)
-                {
-                    model.AddSystem(new LayoutSystem());
-                }
-                model.Systems[0].AddStaff(layoutStaff);
-            }
-        }
+        model.AddSystem(new LayoutSystem(layoutStaffs));
     }
 
     private static LayoutStaff ConvertStaff(Staff staff, ScoreMetadata metadata, SvgContext context)
@@ -211,16 +201,8 @@ public static class LayoutEngine
 
     private static double GetDurationValue(INotationEvent notationEvent)
     {
-        var duration = notationEvent switch
-        {
-            NotationNote note => note.Duration,
-            Rest rest => rest.Duration,
-            Chord chord => chord.Duration,
-            _ => SymbolicDuration.Quarter
-        };
-
         // Convert duration to beats (quarter note = 1.0)
-        var rational = duration.ToBeats();
+        var rational = notationEvent.Duration.ToBeats();
         return (double)rational.Numerator / rational.Denominator;
     }
 }
