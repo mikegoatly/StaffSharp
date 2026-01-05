@@ -1,32 +1,37 @@
 <Project>
-	<PropertyGroup>
-		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-	</PropertyGroup>
-	<ItemGroup>
-	</ItemGroup>
-	<ItemGroup>
-		<PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
-		<PackageVersion Include="Melanchall.DryWetMidi" Version="7.2.0" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
-		<PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-		<PackageVersion Include="System.Numerics.Tensors" Version="9.0.0" />
-
-		<!-- Testing -->
-		<PackageVersion Include="xunit" Version="2.9.3" />
-		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
-		<PackageVersion Include="SkiaSharp" Version="2.88.8" />
-		<PackageVersion Include="Svg.Skia" Version="1.0.0.18" />
-		<PackageVersion Include="coverlet.collector" Version="6.0.4" />
-		<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-
-		<!--Avalonia-->
-		<PackageVersion Include="Avalonia" Version="11.3.9" />
-		<PackageVersion Include="Avalonia.Desktop" Version="11.3.9" />
-		<PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.9" />
-		<PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.9" />
-		<PackageVersion Include="Avalonia.Diagnostics" Version="11.3.9" />
-		<PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="11.3.6.2" />
-
-	</ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageVersion Include="Melanchall.DryWetMidi" Version="8.0.3" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.1" />
+    <PackageVersion Include="System.Numerics.Tensors" Version="10.0.1" />
+    <!-- Testing -->
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.1" />
+    <PackageVersion Include="Svg.Skia" Version="3.4.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <!-- Audio -->
+    <PackageVersion Include="PortAudioSharp2" Version="1.0.6" />
+    <!-- Avalonia packages -->
+    <!-- Important: keep version in sync! -->
+    <PackageVersion Include="Avalonia" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.iOS" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Browser" Version="11.3.10" />
+    <PackageVersion Include="Avalonia.Android" Version="11.3.10" />
+    <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="11.3.9.1" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0" />
+  </ItemGroup>
 </Project>

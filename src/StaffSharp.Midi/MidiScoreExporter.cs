@@ -8,17 +8,17 @@ using StaffSharp.Notation;
 /// </summary>
 public sealed class MidiScoreExporter : IScoreExporter
 {
-    public IReadOnlyList<string> SupportedExtensions { get; } = new[] { ".mid", ".midi" };
+    public IReadOnlyList<string> SupportedExtensions { get; } = [".mid", ".midi"];
 
     public string FormatName => "MIDI";
 
-    public IReadOnlyList<ExportOption> AvailableOptions { get; } = new[]
-    {
+    public IReadOnlyList<ExportOption> AvailableOptions { get; } =
+    [
         new ExportOption(
             "tpqn",
             "Ticks per quarter note (MIDI time division). Higher values = more precise timing. Common values: 96, 192, 384, 480, 960. (MIDI only)",
             "480")
-    };
+    ];
 
     public async Task ExportAsync(
         NotationScore score,

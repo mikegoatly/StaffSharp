@@ -1,18 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
-    <ProjectReference Include="..\StaffSharp.Importers\StaffSharp.Importers.csproj" />
-    <ProjectReference Include="..\StaffSharp.Midi\StaffSharp.Midi.csproj" />
-    <ProjectReference Include="..\StaffSharp.MusicXml\StaffSharp.MusicXml.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
+		<ProjectReference Include="..\StaffSharp.Importers\StaffSharp.Importers.csproj" />
+		<ProjectReference Include="..\StaffSharp.Midi\StaffSharp.Midi.csproj" />
+		<ProjectReference Include="..\StaffSharp.Svg\StaffSharp.Svg.csproj" />
+		<ProjectReference Include="..\StaffSharp.MusicXml\StaffSharp.MusicXml.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="System.CommandLine" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="System.CommandLine" />
+	</ItemGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
 
 </Project>

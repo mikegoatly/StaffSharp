@@ -37,6 +37,7 @@ internal static class FormatRegistry
         var exporters = new IScoreExporter[]
         {
             new MidiScoreExporter(),
+            new SvgScoreExporter()
         };
 
         var dict = new Dictionary<string, IScoreExporter>(StringComparer.OrdinalIgnoreCase);

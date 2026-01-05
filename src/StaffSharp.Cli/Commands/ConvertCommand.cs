@@ -1,7 +1,7 @@
 namespace StaffSharp.Cli.Commands;
 
 using System.CommandLine;
-using System.CommandLine.Invocation;
+
 using StaffSharp;
 using StaffSharp.Notation;
 using StaffSharp.Validation;
@@ -16,76 +16,64 @@ internal static class ConvertCommand
         var command = new Command("convert", "Convert between music notation formats");
 
         // Arguments
-        var inputArg = new Argument<string>(
-            "input",
-            "Input file path (use '-' for stdin)");
+        var inputArg = new Argument<string>("input")
+        {
+            Description = "Input file path (use '-' for stdin)"
+        };
 
-        var outputArg = new Argument<string>(
-            "output",
-            "Output file path (use '-' for stdout)");
+        var outputArg = new Argument<string>("output")
+        {
+            Description = "Output file path (use '-' for stdout)"
+        };
 
-        command.AddArgument(inputArg);
-        command.AddArgument(outputArg);
+        command.Arguments.Add(inputArg);
+        command.Arguments.Add(outputArg);
 
         // Options for format override
-        var fromOption = new Option<string?>(
-            "--from",
-            "Override input format detection (e.g., 'abc')");
-
-        var toOption = new Option<string?>(
-            "--to",
-            "Override output format detection (e.g., 'midi')");
-
-        command.AddOption(fromOption);
-        command.AddOption(toOption);
+        var fromOption = new Option<string?>("--from") { Description = "Override input format detection (e.g., 'abc')" };
+        var toOption = new Option<string?>("--to") { Description = "Override output format detection (e.g., 'midi')" };
+        command.Options.Add(fromOption);
+        command.Options.Add(toOption);
 
         // Verbosity options
-        var quietOption = new Option<bool>(
-            "--quiet",
-            "Suppress all output except errors");
-
-        var verboseOption = new Option<bool>(
-            "--verbose",
-            "Show detailed conversion information");
-
-        command.AddOption(quietOption);
-        command.AddOption(verboseOption);
+        var quietOption = new Option<bool>("--quiet") { Description = "Suppress all output except errors" };
+        var verboseOption = new Option<bool>("--verbose") { Description = "Show detailed conversion information" };
+        command.Options.Add(quietOption);
+        command.Options.Add(verboseOption);
 
         // Add format-specific options dynamically
         foreach (var exporter in FormatRegistry.Exporters)
         {
             foreach (var option in exporter.AvailableOptions)
             {
-                var cmdOption = new Option<string?>(
-                    $"--{option.Name}",
-                    option.Description)
+                var cmdOption = new Option<string?>($"--{option.Name}")
                 {
-                    ArgumentHelpName = option.DefaultValue
+                    Description = option.Description,
+                    HelpName = option.DefaultValue
                 };
-                command.AddOption(cmdOption);
+
+                command.Options.Add(cmdOption);
             }
         }
 
-        command.SetHandler(async (context) =>
+        command.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            var input = context.ParseResult.GetValueForArgument(inputArg);
-            var output = context.ParseResult.GetValueForArgument(outputArg);
-            var from = context.ParseResult.GetValueForOption(fromOption);
-            var to = context.ParseResult.GetValueForOption(toOption);
-            var quiet = context.ParseResult.GetValueForOption(quietOption);
-            var verbose = context.ParseResult.GetValueForOption(verboseOption);
+            var input = parseResult.GetRequiredValue(inputArg);
+            var output = parseResult.GetRequiredValue(outputArg);
+            var from = parseResult.GetValue(fromOption);
+            var to = parseResult.GetValue(toOption);
+            var quiet = parseResult.GetValue(quietOption);
+            var verbose = parseResult.GetValue(verboseOption);
 
-            var exitCode = await ExecuteAsync(
+            return await ExecuteAsync(
                 input,
                 output,
                 from,
                 to,
                 quiet,
                 verbose,
-                context.ParseResult,
-                context.GetCancellationToken());
-
-            context.ExitCode = exitCode;
+                parseResult,
+                cancellationToken);
         });
 
         return command;
@@ -98,7 +86,7 @@ internal static class ConvertCommand
         string? toFormat,
         bool quiet,
         bool verbose,
-        System.CommandLine.Parsing.ParseResult parseResult,
+        ParseResult parseResult,
         CancellationToken cancellationToken)
     {
         try
@@ -179,7 +167,7 @@ internal static class ConvertCommand
             var options = new Dictionary<string, string>();
             foreach (var option in exporter.AvailableOptions)
             {
-                var optionResult = parseResult.FindResultFor(new Option<string?>($"--{option.Name}"));
+                var optionResult = parseResult.GetResult(new Option<string?>($"--{option.Name}"));
                 if (optionResult != null)
                 {
                     var value = optionResult.GetValueOrDefault<string?>();
