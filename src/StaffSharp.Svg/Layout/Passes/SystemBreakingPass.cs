@@ -25,16 +25,23 @@ internal class SystemBreakingPass : ILayoutPass
         var newSystems = new List<LayoutSystem>();
         foreach (var system in model.Systems)
         {
-            // Break each staff independently, then align them
-            var brokenStaves = new List<List<LayoutStaff>>();
-            
-            foreach (var staff in system.Staves)
+            if (system.Staves.Count == 0)
             {
-                brokenStaves.Add(BreakStaffIntoSystems(staff, model.Metadata, context));
+                continue;
             }
 
-            // All staves should have the same number of systems
-            var systemCount = brokenStaves.Max(staves => staves.Count);
+            // Calculate break points that work for ALL staves
+            var breakPoints = CalculateUnifiedBreakPoints(system.Staves, context);
+
+            // Break all staves at the same points
+            var brokenStaves = new List<List<LayoutStaff>>();
+            foreach (var staff in system.Staves)
+            {
+                brokenStaves.Add(BreakStaffAtPoints(staff, breakPoints, model.Metadata, context));
+            }
+
+            // All staves should now have the same number of systems
+            var systemCount = brokenStaves[0].Count;
 
             for (int i = 0; i < systemCount; i++)
             {
@@ -42,10 +49,7 @@ internal class SystemBreakingPass : ILayoutPass
                 
                 foreach (var staffList in brokenStaves)
                 {
-                    if (i < staffList.Count)
-                    {
-                        newSystem.AddStaff(staffList[i]);
-                    }
+                    newSystem.AddStaff(staffList[i]);
                 }
 
                 newSystems.Add(newSystem);
@@ -56,7 +60,69 @@ internal class SystemBreakingPass : ILayoutPass
         model.ReplaceSystems(newSystems);
     }
 
-    private static List<LayoutStaff> BreakStaffIntoSystems(LayoutStaff staff, ScoreMetadata? metadata, SvgContext context)
+    /// <summary>
+    /// Calculates unified break points that work for all staves in a system.
+    /// Returns a list of measure indices where breaks should occur.
+    /// </summary>
+    private static List<int> CalculateUnifiedBreakPoints(IReadOnlyList<LayoutStaff> staves, SvgContext context)
+    {
+        var breakPoints = new List<int>();
+
+        if (staves.Count == 0)
+        {
+            return breakPoints;
+        }
+
+        // Get the maximum measure count across all staves
+        var maxMeasureCount = staves.Max(s => s.Measures.Count);
+
+        if (maxMeasureCount == 0)
+        {
+            return breakPoints;
+        }
+
+        // Calculate system start width
+        var systemStartWidth = SymbolWidthCalculator.CalculateSystemStartWidth(staves[0], context);
+
+        double currentWidth = context.Margins.Left + systemStartWidth;
+        var firstMeasureInSystem = true;
+
+        for (int measureIndex = 0; measureIndex < maxMeasureCount; measureIndex++)
+        {
+            // Find the widest measure at this index across all staves
+            double maxMeasureWidth = 0;
+            foreach (var staff in staves)
+            {
+                if (measureIndex < staff.Measures.Count)
+                {
+                    maxMeasureWidth = Math.Max(maxMeasureWidth, staff.Measures[measureIndex].Width);
+                }
+            }
+
+            // Check if adding this measure would exceed max width
+            if (currentWidth + maxMeasureWidth > context.MaxWidth && !firstMeasureInSystem)
+            {
+                // Record break point BEFORE this measure
+                breakPoints.Add(measureIndex);
+                currentWidth = context.Margins.Left + systemStartWidth;
+                firstMeasureInSystem = true;
+            }
+
+            currentWidth += maxMeasureWidth;
+            firstMeasureInSystem = false;
+        }
+
+        return breakPoints;
+    }
+
+    /// <summary>
+    /// Breaks a staff at the specified measure indices.
+    /// </summary>
+    private static List<LayoutStaff> BreakStaffAtPoints(
+        LayoutStaff staff, 
+        List<int> breakPoints, 
+        ScoreMetadata? metadata, 
+        SvgContext context)
     {
         var result = new List<LayoutStaff>();
         var currentStaff = new LayoutStaff
@@ -67,21 +133,13 @@ internal class SystemBreakingPass : ILayoutPass
 
         result.Add(currentStaff);
 
-        double currentWidth = context.Margins.Left;
-        var firstMeasureInSystem = true;
-        var isFirstSystem = true;
+        int nextBreakIndex = 0;
+        bool isFirstSystem = true;
 
-        // Calculate width for system-start symbols (clef + key signature + time signature)
-        var systemStartWidth = SymbolWidthCalculator.CalculateSystemStartWidth(staff, context);
-
-        currentWidth += systemStartWidth;
-
-        foreach (var measure in staff.Measures)
+        for (int measureIndex = 0; measureIndex < staff.Measures.Count; measureIndex++)
         {
-            var measureWidth = measure.Width;
-
-            // Check if adding this measure would exceed max width
-            if (currentWidth + measureWidth > context.MaxWidth && !firstMeasureInSystem)
+            // Check if we should break before this measure
+            if (nextBreakIndex < breakPoints.Count && measureIndex == breakPoints[nextBreakIndex])
             {
                 // Start a new system
                 currentStaff = new LayoutStaff
@@ -91,28 +149,22 @@ internal class SystemBreakingPass : ILayoutPass
                 };
 
                 result.Add(currentStaff);
-                currentWidth = context.Margins.Left + systemStartWidth;
-                firstMeasureInSystem = true;
                 isFirstSystem = false;
+                nextBreakIndex++;
             }
 
-            // Clone the measure and add to current staff
-            // For now, we'll just add the reference (we're not modifying the measure)
+            var measure = staff.Measures[measureIndex];
             currentStaff.AddMeasure(measure);
             
             // Insert system-start symbols for systems after the first
-            if (firstMeasureInSystem && !isFirstSystem && currentStaff.Measures.Count == 1)
+            if (currentStaff.Measures.Count == 1 && !isFirstSystem)
             {
                 InsertSystemStartSymbols(currentStaff, measure, metadata, context);
             }
-            
-            currentWidth += measureWidth;
-            firstMeasureInSystem = false;
         }
 
         return result;
     }
-
 
     private static void InsertSystemStartSymbols(LayoutStaff staff, LayoutMeasure measure, ScoreMetadata? metadata, SvgContext context)
     {
