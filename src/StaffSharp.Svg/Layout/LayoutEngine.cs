@@ -1,10 +1,10 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Layout;
 
-using StaffSharp.Layout.Services;
+using StaffSharp;
+
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Passes;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
-using StaffSharp.Svg.Layout.Passes;
-using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Engine for laying out musical elements.
@@ -63,7 +63,7 @@ public static class LayoutEngine
             foreach (var staff in part.Staves)
             {
                 var layoutStaff = ConvertStaff(staff, score.Metadata, context);
-                
+
                 // Store the staff temporarily - SystemGenerationPass will organize into systems
                 // For now, add to a single system (will be refactored by SystemGenerationPass)
                 if (model.Systems.Count == 0)
@@ -101,56 +101,39 @@ public static class LayoutEngine
 
             // Set time signature (use measure-specific or fall back to score default)
             layoutMeasure.TimeSignature = firstMeasure.TimeSignature ?? metadata.TimeSignature;
-            
+
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)
             {
-                var clefSymbol = new ClefLayoutSymbol 
-                { 
-                    Clef = staff.Clef, 
-                    TimePosition = -3.0,
-                    Spacing = ClefCalculator.ClefSpacing(context)
-                };
-
-                layoutMeasure.AddSymbol(clefSymbol);
+                layoutMeasure.AddSymbol(ClefLayoutSymbol.Create(staff.Clef, context));
             }
 
             // Add key signature at the start of the first measure (after clef)
             if (measureNumber == 1 && metadata.KeySignature != KeySignature.C)
             {
-                var keySymbol = new KeySignatureLayoutSymbol 
-                { 
-                    KeySignature = metadata.KeySignature, 
-                    Clef = staff.Clef, 
-                    TimePosition = -2.0,
-                    Spacing = KeySignatureService.KeySignatureSpacing(context)
-                };
-
-                layoutMeasure.AddSymbol(keySymbol);
+                layoutMeasure.AddSymbol(KeySignatureLayoutSymbol.Create(metadata.KeySignature, staff.Clef, context));
             }
 
             // Add time signature at the start of the first measure (after key signature)
             if (measureNumber == 1)
             {
-                var timeSymbol = new TimeSignatureLayoutSymbol { TimeSignature = metadata.TimeSignature, TimePosition = -1.0 };
-                layoutMeasure.AddSymbol(timeSymbol);
+                layoutMeasure.AddSymbol(TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
             }
 
             // Collect all events from all voices with their time positions
             var allEvents = new List<(INotationEvent Event, double TimePosition, int VoiceNumber)>();
-            
-            foreach (var voice in staff.Voices)
+
+            // Technically each voice could have a different number of measures (one ending early, etc.)
+            // So we make sure that we only process voices for which there are enough measures.
+            foreach (var voice in staff.Voices.Where(v => measureIndex < v.Measures.Count))
             {
-                if (measureIndex < voice.Measures.Count)
+                var measure = voice.Measures[measureIndex];
+                double timePosition = 0.0;
+
+                foreach (var notationEvent in measure.Events)
                 {
-                    var measure = voice.Measures[measureIndex];
-                    double timePosition = 0.0;
-                    
-                    foreach (var notationEvent in measure.Events)
-                    {
-                        allEvents.Add((notationEvent, timePosition, voice.Number));
-                        timePosition += GetDurationValue(notationEvent);
-                    }
+                    allEvents.Add((notationEvent, timePosition, voice.Number));
+                    timePosition += GetDurationValue(notationEvent);
                 }
             }
 
@@ -170,27 +153,27 @@ public static class LayoutEngine
             }
 
             // Find the last time position for the barline
-            var lastTimePosition = allEvents.Count > 0 
-                ? allEvents.Max(e => e.TimePosition + GetDurationValue(e.Event)) 
+            var lastTimePosition = allEvents.Count > 0
+                ? allEvents.Max(e => e.TimePosition + GetDurationValue(e.Event))
                 : 0.0;
 
             // Add start barline if specified
             if (firstMeasure.StartBarline.HasValue)
             {
-                var startBarlineSymbol = new BarlineLayoutSymbol 
-                { 
-                    BarlineType = firstMeasure.StartBarline.Value, 
-                    TimePosition = -0.5 
+                var startBarlineSymbol = new BarlineLayoutSymbol
+                {
+                    BarlineType = firstMeasure.StartBarline.Value,
+                    TimePosition = -0.5
                 };
                 layoutMeasure.AddSymbol(startBarlineSymbol);
             }
 
             // Add barline at the end of the measure
             var endBarlineType = firstMeasure.EndBarline ?? BarlineType.Normal;
-            var barlineSymbol = new BarlineLayoutSymbol 
-            { 
-                BarlineType = endBarlineType, 
-                TimePosition = lastTimePosition 
+            var barlineSymbol = new BarlineLayoutSymbol
+            {
+                BarlineType = endBarlineType,
+                TimePosition = lastTimePosition
             };
             layoutMeasure.AddSymbol(barlineSymbol);
 

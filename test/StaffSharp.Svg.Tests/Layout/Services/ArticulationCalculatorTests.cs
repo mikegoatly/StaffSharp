@@ -1,9 +1,11 @@
 namespace StaffSharp.Svg.Tests.Layout.Services;
 
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg;
-using StaffSharp.Svg.Layout;
-using StaffSharp.Svg.Layout.Services;
+
 using Xunit;
 
 /// <summary>

@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
 /// <summary>
 /// Represents a tie or slur curve in the layout.

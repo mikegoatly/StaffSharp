@@ -1,7 +1,6 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
 using StaffSharp.Layout.Model;
-using StaffSharp.Svg.Layout;
 
 /// <summary>
 /// Service for calculating accurate bounds including stems, beams, ledger lines, and other visual elements.

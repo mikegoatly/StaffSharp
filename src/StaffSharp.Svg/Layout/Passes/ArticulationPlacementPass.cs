@@ -1,7 +1,9 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
 
-using StaffSharp.Svg;
-using StaffSharp.Svg.Layout.Services;
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 
 /// <summary>
 /// Positions articulations and decorations on notes and chords.

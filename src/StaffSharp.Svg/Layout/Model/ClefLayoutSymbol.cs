@@ -1,5 +1,10 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
+using System;
+
+using StaffSharp;
+
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -8,4 +13,16 @@ using StaffSharp.Notation;
 public sealed class ClefLayoutSymbol : LayoutSymbol
 {
     public required Clef Clef { get; init; }
+
+    internal static LayoutSymbol Create(Clef clef, SvgContext context)
+    {
+        return new ClefLayoutSymbol
+        {
+            Clef = clef,
+            TimePosition = -3.0,  // Negative time positions sort before measure content
+            Width = ClefCalculator.GetClefWidth(clef, context),
+            Y = ClefCalculator.GetClefYPosition(clef, context),
+            Spacing = ClefCalculator.ClefSpacing(context)
+        };
+    }
 }

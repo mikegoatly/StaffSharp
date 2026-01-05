@@ -1,5 +1,3 @@
-using StaffSharp.Audio.Numerics;
-
 namespace StaffSharp.Audio.Analysis.Pitch;
 
 /// <summary>

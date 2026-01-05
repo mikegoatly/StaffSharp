@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Passes;
 
 /// <summary>
 /// Interface for layout passes.

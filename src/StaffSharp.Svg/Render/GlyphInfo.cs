@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Render;
+namespace StaffSharp.Render;
 
 /// <summary>
 /// Represents a music notation glyph with its SVG path and bounding box information.

@@ -1,7 +1,10 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
+
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
 
 using StaffSharp.Notation;
-using StaffSharp.Svg;
 
 /// <summary>
 /// Calculates positions for augmentation dots on notes, rests, and chords.

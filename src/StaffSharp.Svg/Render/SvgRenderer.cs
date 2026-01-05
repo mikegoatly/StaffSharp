@@ -1,6 +1,9 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Xml.Linq;
+
+using StaffSharp;
+using StaffSharp.Layout;
 
 /// <summary>
 /// Renders a LayoutModel to SVG.

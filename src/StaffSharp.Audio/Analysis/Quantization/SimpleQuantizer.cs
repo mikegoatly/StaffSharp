@@ -1,13 +1,11 @@
-using StaffSharp;
-using StaffSharp.Notation;
 using StaffSharp.Performance;
 
 namespace StaffSharp.Audio.Analysis.Quantization;
 
 /// <summary>
-/// Simple rhythm quantizer for Phase 1.
+/// Simple rhythm quantizer.
 /// Snaps onsets to a quantization grid and infers durations from inter-onset intervals.
-/// Assumes single tempo and time signature (Phase 1 constraint).
+/// Assumes single tempo and time signature.
 /// </summary>
 public sealed class SimpleQuantizer : IQuantizer
 {
@@ -41,7 +39,7 @@ public sealed class SimpleQuantizer : IQuantizer
         if (tempoMap.TempoChanges.Count == 0 || tempoMap.TimeSignatures.Count == 0)
             throw new ArgumentException("TempoMap must have at least one tempo and time signature");
 
-        // Phase 1: Assume single tempo and time signature
+        // Assume single tempo and time signature for the simple quantizer
         var bpm = tempoMap.TempoChanges[0].BeatsPerMinute;
         var secondsPerBeat = 60.0 / bpm;
 
@@ -71,7 +69,9 @@ public sealed class SimpleQuantizer : IQuantizer
 
                 // Ensure minimum duration
                 if (quantizedDuration < _minNoteDuration)
+                {
                     quantizedDuration = _minNoteDuration;
+                }
             }
             else
             {
@@ -92,7 +92,7 @@ public sealed class SimpleQuantizer : IQuantizer
                 Pitch: new MidiNote(pitches[i]),
                 Onset: TimeSpan.FromSeconds(onsetTimes[i]),
                 Duration: TimeSpan.FromSeconds(actualDurationSeconds),
-                Velocity: new Velocity(0.5f) // Default moderate velocity (0.5 = mf) for Phase 1
+                Velocity: new Velocity(0.5f) // Default moderate velocity (0.5 = mf) - could be improved with dynamics analysis
             );
 
             // Step 6: Create quantization metadata
@@ -108,9 +108,7 @@ public sealed class SimpleQuantizer : IQuantizer
                 rawEvent: rawEvent,
                 onsetBeats: quantizedBeat,
                 durationBeats: quantizedDuration,
-                quantizationMetadata: metadata,
-                voiceHint: null, // Monophonic for Phase 1
-                articulation: ArticulationFlags.None // No articulation detection in Phase 1
+                quantizationMetadata: metadata
             ));
         }
 
@@ -124,13 +122,9 @@ public sealed class SimpleQuantizer : IQuantizer
     {
         // Round to nearest grid point
         var gridSize = (double)grid.Numerator / grid.Denominator;
-        var quantized = Math.Round(beatPosition / gridSize) * gridSize;
 
         // Convert to Rational
         // We need to express quantized as a fraction
-        // quantized = (round(beatPosition / gridSize)) * gridSize
-        // = (round(beatPosition / gridSize)) * (grid.Numerator / grid.Denominator)
-
         var gridMultiplier = (int)Math.Round(beatPosition / gridSize);
         var result = Rational.Create(gridMultiplier * grid.Numerator, grid.Denominator);
 

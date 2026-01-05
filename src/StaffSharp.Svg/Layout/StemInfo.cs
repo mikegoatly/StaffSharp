@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout;
 
 /// <summary>
 /// Contains stem information for a note or chord.

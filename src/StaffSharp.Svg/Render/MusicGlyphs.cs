@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Render;
+namespace StaffSharp.Render;
 
 public static class MusicGlyphs
 {

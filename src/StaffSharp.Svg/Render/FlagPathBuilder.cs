@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Render;
+namespace StaffSharp.Render;
 
 using System.Globalization;
 using System.Text;

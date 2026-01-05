@@ -1,8 +1,9 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Xml.Linq;
 
-using StaffSharp.Svg.Layout;
+using StaffSharp;
+using StaffSharp.Layout.Model;
 
 internal sealed class SymbolRenderer : LayoutElementRenderer<LayoutSymbol>
 {

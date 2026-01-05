@@ -1,6 +1,7 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
 
-using StaffSharp.Svg;
+using StaffSharp;
+using StaffSharp.Layout;
 
 /// <summary>
 /// Assigns horizontal positions (X coordinates) to all symbols.

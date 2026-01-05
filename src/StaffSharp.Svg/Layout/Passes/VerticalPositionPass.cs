@@ -1,8 +1,10 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
+
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
 
 using StaffSharp.Layout.Services;
-using StaffSharp.Svg;
-using StaffSharp.Svg.Layout.Services;
 
 /// <summary>
 /// Assigns vertical positions (Y coordinates) to all symbols based on their pitch.

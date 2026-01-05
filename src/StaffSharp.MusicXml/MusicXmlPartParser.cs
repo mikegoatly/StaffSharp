@@ -13,9 +13,6 @@ internal static class MusicXmlPartParser
     /// </summary>
     public static List<Staff> ParsePart(XElement partElement, MusicXmlContext context)
     {
-        ArgumentNullException.ThrowIfNull(partElement);
-        ArgumentNullException.ThrowIfNull(context);
-
         // Group measures by staff -> voice -> list of measures
         var staffData = new Dictionary<int, Dictionary<int, List<Measure>>>();
 
@@ -30,7 +27,7 @@ internal static class MusicXmlPartParser
             {
                 if (!staffData.TryGetValue(staffNumber, out var voiceData))
                 {
-                    voiceData = new Dictionary<int, List<Measure>>();
+                    voiceData = [];
                     staffData[staffNumber] = voiceData;
                 }
 
@@ -38,9 +35,10 @@ internal static class MusicXmlPartParser
                 {
                     if (!voiceData.TryGetValue(voiceNumber, out var measures))
                     {
-                        measures = new List<Measure>();
+                        measures = [];
                         voiceData[voiceNumber] = measures;
                     }
+
                     measures.Add(measure);
                 }
             }
@@ -64,27 +62,29 @@ internal static class MusicXmlPartParser
             // If no voices were created for this staff, create an empty voice 1
             if (voices.Count == 0)
             {
-                voices.Add(new Voice(1, new List<Measure>()));
+                voices.Add(new Voice(1, []));
             }
 
             // Get the clef for this staff
             var clef = context.GetClefForStaff(staffNumber);
 
-            staves.Add(new Staff(
-                number: staffNumber,
-                clef: clef,
-                voices: voices
-            ));
+            staves.Add(
+                new Staff(
+                    number: staffNumber,
+                    clef: clef,
+                    voices: voices
+                ));
         }
 
         // If no staves were created, create a default staff 1 with empty voice 1
         if (staves.Count == 0)
         {
-            staves.Add(new Staff(
-                number: 1,
-                clef: context.Clef,
-                voices: new[] { new Voice(1, new List<Measure>()) }
-            ));
+            staves.Add(
+                new Staff(
+                    number: 1,
+                    clef: context.Clef,
+                    voices: [new Voice(1, [])]
+                ));
         }
 
         return staves;

@@ -1,10 +1,12 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Render;
 
 using System.Globalization;
 using System.Xml.Linq;
+
+using StaffSharp;
+using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
-using StaffSharp.Svg.Render;
 
 internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureLayoutSymbol>
 {
@@ -23,12 +25,12 @@ internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureL
         );
 
         // Get accidental positions from service (handles all clef types)
-        var positions = Layout.Services.KeySignatureService.GetAccidentalPositions(
+        var positions = KeySignatureService.GetAccidentalPositions(
             symbol.KeySignature,
             symbol.Clef,
             context.StaffSpace);
 
-        var xSpacing = Layout.Services.KeySignatureService.AccidentalSpacing * context.StaffSpace;
+        var xSpacing = KeySignatureService.AccidentalSpacing * context.StaffSpace;
         var currentX = 0.0;
 
         foreach (var (accidental, yPosition) in positions)

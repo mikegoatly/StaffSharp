@@ -1,6 +1,7 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
-using StaffSharp.Layout.Services;
+using StaffSharp;
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -17,17 +18,14 @@ internal static class SymbolWidthCalculator
     /// <returns>The base width of the symbol in units.</returns>
     public static double CalculateSymbolWidth(LayoutSymbol symbol, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(symbol);
-        ArgumentNullException.ThrowIfNull(context);
-
         var baseWidth = symbol switch
         {
             NoteLayoutSymbol note => GetDurationWidth(note.Note.Duration, context),
             RestLayoutSymbol rest => GetDurationWidth(rest.Rest.Duration, context),
             ChordLayoutSymbol chord => GetDurationWidth(chord.Chord.Duration, context),
-            ClefLayoutSymbol => 2.2 * context.StaffSpace,
-            KeySignatureLayoutSymbol keySymbol => GetKeySignatureWidth(keySymbol.KeySignature, context),
-            TimeSignatureLayoutSymbol => 1.8 * context.StaffSpace,
+            ClefLayoutSymbol clef => ClefCalculator.GetClefWidth(clef.Clef, context),
+            KeySignatureLayoutSymbol keySymbol => KeySignatureService.CalculateWidth(keySymbol.KeySignature, context),
+            TimeSignatureLayoutSymbol timeSymbol => TimeSignatureCalculator.CalculateWidth(timeSymbol.TimeSignature, context),
             BarlineLayoutSymbol barline => GetBarlineWidth(barline.BarlineType, context),
             _ => context.StaffSpace
         };
@@ -58,9 +56,6 @@ internal static class SymbolWidthCalculator
     /// <returns>The spacing (left and right padding) for the symbol.</returns>
     public static LayoutSpacing CalculateSpacing(LayoutSymbol symbol, double baseWidth, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(symbol);
-        ArgumentNullException.ThrowIfNull(context);
-
         return symbol switch
         {
             NoteLayoutSymbol or RestLayoutSymbol or ChordLayoutSymbol =>
@@ -95,29 +90,22 @@ internal static class SymbolWidthCalculator
     /// <returns>The total width needed for system-start symbols in units.</returns>
     public static double CalculateSystemStartWidth(LayoutStaff staff, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         double width = 0;
 
         // Clef
-        var clefSymbol = new ClefLayoutSymbol { Clef = staff.CurrentClef };
-        var clefWidth = CalculateSymbolWidth(clefSymbol, context);
-        var clefSpacing = ClefCalculator.ClefSpacing(context);
-        width += clefSpacing.Left + clefWidth + clefSpacing.Right;
+        var clefSymbol = ClefLayoutSymbol.Create(staff.CurrentClef, context);
+        width += clefSymbol.Spacing.Left + clefSymbol.Width + clefSymbol.Spacing.Right;
 
         // Key signature (if not C major)
         if (staff.CurrentKeySignature != KeySignature.C)
         {
-            var keySymbol = new KeySignatureLayoutSymbol { KeySignature = staff.CurrentKeySignature };
-            var keyWidth = CalculateSymbolWidth(keySymbol, context);
-            var keySpacing = KeySignatureService.KeySignatureSpacing(context);
-            width += keySpacing.Left + keyWidth + keySpacing.Right;
+            var keySymbol = KeySignatureLayoutSymbol.Create(staff.CurrentKeySignature, staff.CurrentClef, context);
+            width += keySymbol.Spacing.Left + keySymbol.Width + keySymbol.Spacing.Right;
         }
 
         // Time signature
-        var timeSymbol = new TimeSignatureLayoutSymbol { TimeSignature = new TimeSignature(4, 4) };
-        var timeWidth = CalculateSymbolWidth(timeSymbol, context);
-        width += timeWidth;
+        var timeSymbol = TimeSignatureLayoutSymbol.Create(new TimeSignature(4, 4), context);
+        width += timeSymbol.Spacing.Left + timeSymbol.Width + timeSymbol.Spacing.Right;
 
         return width;
     }
@@ -134,11 +122,6 @@ internal static class SymbolWidthCalculator
 
         // Minimum width for readability
         return Math.Max(baseWidth, 1.5 * context.StaffSpace);
-    }
-
-    private static double GetKeySignatureWidth(KeySignature keySignature, SvgContext context)
-    {
-        return KeySignatureService.CalculateWidth(keySignature, context.StaffSpace);
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
-using StaffSharp.Layout.Model;
+using StaffSharp.Layout;
 using StaffSharp.Notation;
 
 /// <summary>

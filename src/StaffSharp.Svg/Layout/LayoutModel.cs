@@ -1,7 +1,7 @@
-namespace StaffSharp.Svg;
+namespace StaffSharp.Layout;
 
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
-using StaffSharp.Svg.Layout;
 
 /// <summary>
 /// The root of the layout model.

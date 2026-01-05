@@ -7,7 +7,7 @@ namespace StaffSharp.Audio.Analysis.Meter;
 /// Simple time signature detector using beat count division.
 /// Determines meter by analyzing how cleanly beats divide into measures.
 /// Strongly biases toward 4/4 (appropriate for amateur recordings).
-/// Returns a single time signature for Phase 1; architecture supports meter changes for Phase 2.
+/// Returns a single time signature.
 /// </summary>
 public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
 {
@@ -23,10 +23,10 @@ public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
     {
         if (onsetTimes.Length == 0)
         {
-            return new List<TimeSignatureChange>
-            {
+            return
+            [
                 new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime)
-            };
+            ];
         }
 
         // Count beats (onsets)
@@ -35,10 +35,10 @@ public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
         // Detect time signature using beat count division
         var detectedMeter = DetectFromBeatCount(beatCount);
 
-        return new List<TimeSignatureChange>
-        {
+        return
+        [
             new TimeSignatureChange(Rational.Zero, detectedMeter)
-        };
+        ];
     }
 
     /// <summary>

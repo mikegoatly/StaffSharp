@@ -1,4 +1,4 @@
-namespace StaffSharp.Svg.Layout;
+namespace StaffSharp.Layout.Model;
 
 /// <summary>
 /// Represents spacing (padding) around a layout symbol.

@@ -1,8 +1,10 @@
 namespace StaffSharp.Svg.Tests;
 
-using StaffSharp.Svg.Tests.Infrastructure;
-using StaffSharp.Svg.Render;
 using System.Xml.Linq;
+
+using StaffSharp.Render;
+using StaffSharp.Svg.Tests.Infrastructure;
+
 using Xunit;
 
 /// <summary>

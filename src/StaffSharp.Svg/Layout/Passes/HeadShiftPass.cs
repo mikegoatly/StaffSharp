@@ -1,6 +1,8 @@
-namespace StaffSharp.Svg.Layout.Passes;
+namespace StaffSharp.Layout.Passes;
 
-using StaffSharp.Svg;
+using StaffSharp;
+using StaffSharp.Layout;
+using StaffSharp.Layout.Model;
 
 /// <summary>
 /// Shifts noteheads in chords to avoid collisions when notes are a second apart.

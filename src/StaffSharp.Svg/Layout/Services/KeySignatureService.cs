@@ -1,5 +1,7 @@
-namespace StaffSharp.Svg.Layout.Services;
+namespace StaffSharp.Layout.Services;
 
+using StaffSharp;
+using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -123,7 +125,7 @@ internal static class KeySignatureService
     /// <summary>
     /// Calculates the horizontal width required to render a key signature.
     /// </summary>
-    public static double CalculateWidth(KeySignature keySignature, double staffSpace)
+    public static double CalculateWidth(KeySignature keySignature, SvgContext context)
     {
         if (keySignature == KeySignature.C)
         {
@@ -131,9 +133,10 @@ internal static class KeySignatureService
         }
 
         var accidentalCount = Math.Abs(keySignature.Sharps);
+
         // Each accidental takes AccidentalSpacing staff spaces
         // Last accidental doesn't need trailing space, so (n-1) spacings
-        return (accidentalCount - 1) * AccidentalSpacing * staffSpace + (1.0 * staffSpace);
+        return ((accidentalCount - 1) * AccidentalSpacing * context.StaffSpace) + context.StaffSpace;
     }
 
     /// <summary>
@@ -184,7 +187,7 @@ internal static class KeySignatureService
         {
             Clef.Treble =>
             [
-                0.0 * staffSpace,  // F# - Top line
+                0.0,               // F# - Top line
                 1.5 * staffSpace,  // C# - 3rd space
                 -0.5 * staffSpace, // G# - Space above staff
                 1.0 * staffSpace,  // D# - 4th line
@@ -214,7 +217,7 @@ internal static class KeySignatureService
             ],
             Clef.Tenor =>
             [
-                0.0 * staffSpace,  // F# - 5th line (top)
+                0.0,               // F# - 5th line (top)
                 2.0 * staffSpace,  // C# - 3rd line (center)
                 -0.5 * staffSpace, // G# - Space above staff
                 1.0 * staffSpace,  // D# - 4th line
