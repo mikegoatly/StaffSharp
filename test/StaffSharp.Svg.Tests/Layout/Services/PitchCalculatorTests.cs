@@ -187,7 +187,6 @@ public class PitchCalculatorTests
         var treblePosition = PitchCalculator.PitchToStaffPosition(pitch, Clef.Treble);
         var bassPosition = PitchCalculator.PitchToStaffPosition(pitch, Clef.Bass);
         var altoPosition = PitchCalculator.PitchToStaffPosition(pitch, Clef.Alto);
-        var tenorPosition = PitchCalculator.PitchToStaffPosition(pitch, Clef.Tenor);
 
         // Assert - all should be different
         Assert.NotEqual(treblePosition, bassPosition);
