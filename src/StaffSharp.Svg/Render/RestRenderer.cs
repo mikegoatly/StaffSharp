@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -15,7 +14,7 @@ internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "rest"),
-            new XAttribute("transform", $"translate({symbol.X.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
         );
 
         var restGlyph = GetRestGlyph(symbol.Rest.Duration);

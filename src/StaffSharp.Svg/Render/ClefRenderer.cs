@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -18,8 +17,7 @@ internal sealed class ClefRenderer : LayoutElementRenderer<ClefLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "clef"),
-            // TODO create common CreateTransform helper
-            new XAttribute("transform", $"translate({x.ToString(CultureInfo.InvariantCulture)},{symbol.Y.ToString(CultureInfo.InvariantCulture)})")
+            new XAttribute("transform", CreateTranslate(x, symbol.Y))
         );
 
         var (clefGlyph, scale) = symbol.Clef switch
