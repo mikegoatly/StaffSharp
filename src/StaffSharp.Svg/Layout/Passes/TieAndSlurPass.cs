@@ -10,19 +10,13 @@ using StaffSharp.Notation;
 /// Pass that creates layout curves for ties and slurs.
 /// Must run after HorizontalSpacingPass (needs X positions) and VerticalPositionPass (needs Y positions).
 /// </summary>
-public class TieAndSlurPass : ILayoutPass
+internal class TieAndSlurPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(context);
-
-        foreach (var system in model.Systems)
+        foreach (var staff in model.Systems.SelectMany(s => s.Staves))
         {
-            foreach (var staff in system.Staves)
-            {
-                ProcessStaffTies(staff, context);
-            }
+            ProcessStaffTies(staff, context);
         }
     }
 
@@ -33,26 +27,23 @@ public class TieAndSlurPass : ILayoutPass
 
         foreach (var measure in staff.Measures)
         {
-            foreach (var symbol in measure.Symbols)
+            foreach (var noteSymbol in measure.Symbols.OfType<NoteLayoutSymbol>())
             {
-                if (symbol is NoteLayoutSymbol noteSymbol)
+                var tie = noteSymbol.Note.Tie;
+
+                // Handle tie endings
+                if ((tie == TieType.End || tie == TieType.Both) && pendingTieStart != null)
                 {
-                    var tie = noteSymbol.Note.Tie;
+                    // Create tie curve from pending start to this note
+                    var curve = CreateTieCurve(pendingTieStart, noteSymbol, context);
+                    measure.AddCurve(curve);
+                    pendingTieStart = null;
+                }
 
-                    // Handle tie endings
-                    if ((tie == TieType.End || tie == TieType.Both) && pendingTieStart != null)
-                    {
-                        // Create tie curve from pending start to this note
-                        var curve = CreateTieCurve(pendingTieStart, noteSymbol, context);
-                        measure.AddCurve(curve);
-                        pendingTieStart = null;
-                    }
-
-                    // Handle tie starts
-                    if (tie == TieType.Start || tie == TieType.Both)
-                    {
-                        pendingTieStart = noteSymbol;
-                    }
+                // Handle tie starts
+                if (tie == TieType.Start || tie == TieType.Both)
+                {
+                    pendingTieStart = noteSymbol;
                 }
             }
         }
@@ -67,7 +58,7 @@ public class TieAndSlurPass : ILayoutPass
         // Calculate notehead width (scaled from SMuFL units)
         // NoteHeadBlack height: 279 units, width: 330 units, scaled to 1.0 staff spaces height
         var noteheadWidth = 1.18 * context.StaffSpace;
-        var noteheadHeight = 1.0 * context.StaffSpace;
+        var noteheadHeight = context.StaffSpace;
 
         // Start tie at right edge of first notehead
         var startX = startNote.X + noteheadWidth;
