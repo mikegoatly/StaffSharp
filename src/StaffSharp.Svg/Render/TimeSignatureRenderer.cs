@@ -21,9 +21,13 @@ internal sealed class TimeSignatureRenderer : LayoutElementRenderer<TimeSignatur
         // Handle special time signatures with dedicated glyphs
         if (symbol.TimeSignature == TimeSignature.CommonTime)
         {
-            var glyph = RenderGlyph(MusicGlyphs.CommonTime, 1.0,
-               CreateTranslate(0, 2.0 * context.StaffSpace), context);
-            if (glyph != null)
+            var glyph = RenderGlyph(
+                MusicGlyphs.CommonTime, 
+                1.0,
+                CreateTranslate(0, 2.0 * context.StaffSpace), 
+                context);
+
+            if (glyph is not null)
             {
                 group.Add(glyph);
             }
@@ -31,9 +35,13 @@ internal sealed class TimeSignatureRenderer : LayoutElementRenderer<TimeSignatur
         else if (symbol.TimeSignature.Numerator == 2 && symbol.TimeSignature.Denominator == 2)
         {
             // Cut time (2/2)
-            var glyph = RenderGlyph(MusicGlyphs.CutTime, 1.0,
-                CreateTranslate(0, 2.0 * context.StaffSpace), context);
-            if (glyph != null)
+            var glyph = RenderGlyph(
+                MusicGlyphs.CutTime, 
+                1.0,
+                CreateTranslate(0, 2.0 * context.StaffSpace), 
+                context);
+
+            if (glyph is not null)
             {
                 group.Add(glyph);
             }

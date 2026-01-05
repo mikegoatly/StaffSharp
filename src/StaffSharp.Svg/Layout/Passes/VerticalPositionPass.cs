@@ -9,13 +9,10 @@ using StaffSharp.Layout.Services;
 /// <summary>
 /// Assigns vertical positions (Y coordinates) to all symbols based on their pitch.
 /// </summary>
-public class VerticalPositionPass : ILayoutPass
+internal class VerticalPositionPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(context);
-
         foreach (var system in model.Systems)
         {
             double currentY = system.Y;
@@ -26,19 +23,16 @@ public class VerticalPositionPass : ILayoutPass
                 staff.Y = currentY;
 
                 // Staff baseline (middle line of a 5-line staff) - RELATIVE to staff origin
-                var staffBaseline = 2 * context.StaffSpace;
+                var staffBaseline = 2.0 * context.StaffSpace;
 
-                foreach (var measure in staff.Measures)
+                foreach (var symbol in staff.Measures.SelectMany(m => m.Symbols))
                 {
-                    foreach (var symbol in measure.Symbols)
-                    {
-                        CalculateSymbolVerticalPosition(symbol, staff, staffBaseline, context);
-                    }
+                    CalculateSymbolVerticalPosition(symbol, staff, staffBaseline, context);
                 }
 
                 // Move to next staff (temporary height, will be recalculated by BoundsCalculationPass)
-                var tempHeight = 4 * context.StaffSpace; // 5 staff lines = 4 spaces
-                currentY += tempHeight + (2 * context.StaffSpace);
+                var tempHeight = 4.0 * context.StaffSpace; // 5 staff lines = 4 spaces
+                currentY += tempHeight + (2.0 * context.StaffSpace);
             }
 
             // Update system height
@@ -126,7 +120,7 @@ public class VerticalPositionPass : ILayoutPass
             case BarlineLayoutSymbol:
                 // Position at top of staff, spanning full staff height
                 symbol.Y = 0;
-                symbol.Height = 4 * context.StaffSpace;  // 5 lines = 4 spaces
+                symbol.Height = 4.0 * context.StaffSpace;  // 5 lines = 4 spaces
                 break;
         }
     }
