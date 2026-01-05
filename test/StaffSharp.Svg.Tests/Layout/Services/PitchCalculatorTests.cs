@@ -104,7 +104,7 @@ public class PitchCalculatorTests
     [InlineData(PitchClass.FSharp, 4, Clef.Treble)] // F#4
     [InlineData(PitchClass.GSharp, 3, Clef.Bass)]   // G#3
     [InlineData(PitchClass.DSharp, 4, Clef.Alto)]   // D#4
-    public void PitchToStaffPosition_AccidentalPitches_ReturnsApproximatePosition(
+    public void PitchToStaffPosition_AccidentalPitches_ReturnsReasonablePosition(
         PitchClass pitchClass,
         int octave,
         Clef clef)
@@ -115,22 +115,49 @@ public class PitchCalculatorTests
         // Act
         var position = PitchCalculator.PitchToStaffPosition(pitch, clef);
 
-        // Assert - just verify it returns a reasonable value (not testing exact position for accidentals)
+        // Assert - verify it returns a reasonable value (within expected staff range)
         Assert.True(position >= -20 && position <= 20);
     }
 
+    [Theory]
+    [InlineData(PitchClass.CSharp, 4, Clef.Treble, PitchClass.C)]   // C#4 should position as C
+    [InlineData(PitchClass.DSharp, 4, Clef.Treble, PitchClass.D)]   // D#4 should position as D
+    [InlineData(PitchClass.FSharp, 4, Clef.Treble, PitchClass.F)]   // F#4 should position as F
+    [InlineData(PitchClass.GSharp, 4, Clef.Treble, PitchClass.G)]   // G#4 should position as G
+    [InlineData(PitchClass.ASharp, 4, Clef.Treble, PitchClass.A)]   // A#4 should position as A
+    public void PitchToStaffPosition_ChromaticPitchClass_PositionsOnBaseNoteLetter(
+        PitchClass chromaticPitchClass,
+        int octave,
+        Clef clef,
+        PitchClass expectedBaseNote)
+    {
+        // Arrange - chromatic pitch class (e.g., CSharp enum value)
+        var chromaticPitch = new Pitch(chromaticPitchClass, octave);
+        var baseNotePitch = new Pitch(expectedBaseNote, octave);
+
+        // Act
+        var chromaticPosition = PitchCalculator.PitchToStaffPosition(chromaticPitch, clef);
+        var baseNotePosition = PitchCalculator.PitchToStaffPosition(baseNotePitch, clef);
+
+        // Assert - chromatic pitch should be positioned at same staff position as its base note
+        // E.g., C# (PitchClass.CSharp) should be positioned on the C line/space
+        Assert.Equal(baseNotePosition, chromaticPosition);
+    }
+
     [Fact]
-    public void PitchToStaffPosition_WithAccidentalAnnotation_TreatsAsNaturalBase()
+    public void PitchToStaffPosition_WithAccidentalAnnotation_PreservesPitchClass()
     {
         // Arrange - F#4 with explicit sharp notation should position like F natural
         var pitch = new Pitch(PitchClass.F, 4, Accidental.Sharp);
+        var pitchFNatural = new Pitch(PitchClass.F, 4);
 
         // Act
-        var position = PitchCalculator.PitchToStaffPosition(pitch, Clef.Treble);
+        var positionFSharp = PitchCalculator.PitchToStaffPosition(pitch, Clef.Treble);
+        var positionFNatural = PitchCalculator.PitchToStaffPosition(pitchFNatural, Clef.Treble);
 
-        // Assert - F# treated as MIDI 66, one semitone above F (65)
-        // The method should handle the accidental in the MIDI calculation
-        Assert.True(position >= -5 && position <= 5); // Should be in reasonable range
+        // Assert - F# should be positioned at the same staff position as F natural
+        // The sharp symbol is rendered separately
+        Assert.Equal(positionFNatural, positionFSharp);
     }
 
     [Theory]
@@ -227,5 +254,61 @@ public class PitchCalculatorTests
 
         // Assert - one octave = 7 diatonic positions
         Assert.Equal(7, positionC5 - positionC4);
+    }
+
+    [Theory]
+    [InlineData(PitchClass.C, Accidental.Sharp, Clef.Treble)]   // C# positioned as C
+    [InlineData(PitchClass.D, Accidental.Flat, Clef.Treble)]    // Db positioned as D
+    [InlineData(PitchClass.D, Accidental.Sharp, Clef.Treble)]   // D# positioned as D
+    [InlineData(PitchClass.E, Accidental.Flat, Clef.Treble)]    // Eb positioned as E
+    [InlineData(PitchClass.F, Accidental.Sharp, Clef.Treble)]   // F# positioned as F
+    [InlineData(PitchClass.G, Accidental.Flat, Clef.Treble)]    // Gb positioned as G
+    [InlineData(PitchClass.G, Accidental.Sharp, Clef.Treble)]   // G# positioned as G
+    [InlineData(PitchClass.A, Accidental.Flat, Clef.Treble)]    // Ab positioned as A
+    [InlineData(PitchClass.A, Accidental.Sharp, Clef.Treble)]   // A# positioned as A
+    [InlineData(PitchClass.B, Accidental.Flat, Clef.Treble)]    // Bb positioned as B
+    [InlineData(PitchClass.C, Accidental.Sharp, Clef.Bass)]     // Test bass clef too
+    [InlineData(PitchClass.D, Accidental.Flat, Clef.Bass)]
+    [InlineData(PitchClass.G, Accidental.Flat, Clef.Bass)]
+    public void PitchToStaffPosition_WithAccidentals_PreservesOriginalPitchClass(
+        PitchClass pitchClass,
+        Accidental accidental,
+        Clef clef)
+    {
+        // Arrange - create pitch with accidental and without
+        var pitchWithAccidental = new Pitch(pitchClass, 4, accidental);
+        var pitchNatural = new Pitch(pitchClass, 4);
+
+        // Act
+        var positionWithAccidental = PitchCalculator.PitchToStaffPosition(pitchWithAccidental, clef);
+        var positionNatural = PitchCalculator.PitchToStaffPosition(pitchNatural, clef);
+
+        // Assert - both should be at the same staff position
+        // The accidental symbol is rendered separately, but the letter name is preserved
+        Assert.Equal(positionNatural, positionWithAccidental);
+    }
+
+    [Theory]
+    [InlineData(PitchClass.D, Accidental.Flat, 4, Clef.Treble, -5)]  // Db4
+    [InlineData(PitchClass.E, Accidental.Flat, 4, Clef.Treble, -4)]  // Eb4
+    [InlineData(PitchClass.G, Accidental.Flat, 4, Clef.Treble, -2)]  // Gb4
+    [InlineData(PitchClass.A, Accidental.Flat, 4, Clef.Treble, -1)]  // Ab4
+    [InlineData(PitchClass.B, Accidental.Flat, 4, Clef.Treble, 0)]   // Bb4
+    public void PitchToStaffPosition_DbMajorScaleNotes_PositionedCorrectly(
+        PitchClass pitchClass,
+        Accidental accidental,
+        int octave,
+        Clef clef,
+        int expectedPosition)
+    {
+        // Arrange - notes from Db major scale with explicit flats
+        var pitch = new Pitch(pitchClass, octave, accidental);
+
+        // Act
+        var position = PitchCalculator.PitchToStaffPosition(pitch, clef);
+
+        // Assert - verify the position matches expected based on letter name, not MIDI
+        // Before the fix, Db would be positioned as C (one position lower)
+        Assert.Equal(expectedPosition, position);
     }
 }
