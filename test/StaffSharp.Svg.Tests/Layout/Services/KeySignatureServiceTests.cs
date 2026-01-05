@@ -179,6 +179,45 @@ public class KeySignatureServiceTests
         Assert.Equal(expected, accidental);
     }
 
+    [Fact]
+    public void GetAccidental_ExplicitFlat_ReturnsFlat()
+    {
+        // Arrange - explicit flat from ABC notation (e.g., _D)
+        var pitch = new Pitch(PitchClass.D, 4, Accidental.Flat);
+
+        // Act
+        var accidental = KeySignatureService.GetAccidental(pitch);
+
+        // Assert - should return the explicit flat, not infer sharp from MIDI
+        Assert.Equal(Accidental.Flat, accidental);
+    }
+
+    [Fact]
+    public void GetAccidental_ExplicitSharp_ReturnsSharp()
+    {
+        // Arrange - explicit sharp from ABC notation (e.g., ^C)
+        var pitch = new Pitch(PitchClass.C, 4, Accidental.Sharp);
+
+        // Act
+        var accidental = KeySignatureService.GetAccidental(pitch);
+
+        // Assert - should return the explicit sharp
+        Assert.Equal(Accidental.Sharp, accidental);
+    }
+
+    [Fact]
+    public void GetAccidental_NullAccidental_InfersFromMIDI()
+    {
+        // Arrange - pitch without explicit accidental (e.g., from MIDI)
+        var pitch = new Pitch(PitchClass.CSharp, 4); // No explicit accidental
+
+        // Act
+        var accidental = KeySignatureService.GetAccidental(pitch);
+
+        // Assert - should infer sharp from MIDI (fallback behavior)
+        Assert.Equal(Accidental.Sharp, accidental);
+    }
+
     #endregion
 
     #region NeedsAccidental Tests
@@ -273,8 +312,9 @@ public class KeySignatureServiceTests
         // Act
         var needs = KeySignatureService.NeedsAccidental(pitch, KeySignature.C, measureAccidentals);
 
-        // Assert - C natural doesn't need accidental in C major, and C#4 doesn't affect C4
-        Assert.False(needs);
+        // Assert
+        // C#4 (MIDI 61) doesn't affect C4 (MIDI 60), but the explicit natural should still display
+        Assert.True(needs);
     }
 
     [Fact]
@@ -310,6 +350,35 @@ public class KeySignatureServiceTests
         // Assert - GetAccidental returns Sharp, key has Flat, so they don't match
         // Therefore it needs an accidental to show the sharp
         Assert.True(needs);
+    }
+
+    [Fact]
+    public void NeedsAccidental_ExplicitFlatInFlatKey_ReturnsTrue()
+    {
+        // Arrange - explicit _D in K:Db
+        var pitch = new Pitch(PitchClass.D, 4, Accidental.Flat);
+        var measureAccidentals = new Dictionary<int, Accidental>();
+
+        // Act
+        var needs = KeySignatureService.NeedsAccidental(pitch, KeySignature.DFlat, measureAccidentals);
+
+        // Assert - explicit accidentals should always be shown (first occurrence in measure)
+        Assert.True(needs);
+    }
+
+    [Fact]
+    public void NeedsAccidental_InheritedFlatInFlatKey_ReturnsFalse()
+    {
+        // Arrange - D (no explicit accidental) in K:Db
+        // This note should sound as Db due to key signature, but not show an accidental symbol
+        var pitch = new Pitch(PitchClass.D, 4); // No explicit accidental
+        var measureAccidentals = new Dictionary<int, Accidental>();
+
+        // Act
+        var needs = KeySignatureService.NeedsAccidental(pitch, KeySignature.DFlat, measureAccidentals);
+
+        // Assert - should NOT show accidental because it inherits from key signature
+        Assert.False(needs);
     }
 
     #endregion

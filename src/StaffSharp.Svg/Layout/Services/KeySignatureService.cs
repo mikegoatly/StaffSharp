@@ -47,6 +47,7 @@ internal static class KeySignatureService
 
     /// <summary>
     /// Determines if a note needs an accidental symbol displayed, considering the key signature and measure context.
+    /// Explicit accidentals are always displayed, unless already shown in the same measure.
     /// </summary>
     public static bool NeedsAccidental(
         Pitch pitch,
@@ -56,6 +57,12 @@ internal static class KeySignatureService
         var midiNote = (int)pitch.ToMidiNote().Value;
         var pitchClass = midiNote % 12;
         var accidental = GetAccidental(pitch);
+
+        // If the pitch has an EXPLICIT accidental it should ALWAYS be displayed, even if it matches the key signature
+        if (pitch.Accidental.HasValue)
+        {
+            return ShouldShowExplicitAccidental(measureAccidentals, midiNote, accidental);
+        }
 
         // Get key signature affected pitches
         var keyAccidentals = GetAffectedPitches(keySignature);
@@ -98,11 +105,35 @@ internal static class KeySignatureService
         return accidental != Accidental.Natural;
     }
 
+    private static bool ShouldShowExplicitAccidental(Dictionary<int, Accidental> measureAccidentals, int midiNote, Accidental accidental)
+    {
+        // Check measure context to avoid redundant accidentals
+        if (measureAccidentals.TryGetValue(midiNote, out var prevAccidental))
+        {
+            // Only show if different from previous in measure
+            return accidental != prevAccidental;
+        }
+
+        // First occurrence in measure with explicit accidental - show it
+        return true;
+    }
+
     /// <summary>
-    /// Gets the accidental type for a pitch based on its MIDI note.
+    /// Gets the accidental type for a pitch.
+    /// If the pitch has an explicit accidental (e.g., from ABC notation), that is returned.
+    /// Otherwise, infers the accidental from the MIDI note value.
     /// </summary>
     public static Accidental GetAccidental(Pitch pitch)
     {
+        // If the pitch has an explicit accidental, use it
+        // This preserves the enharmonic spelling from source notation
+        if (pitch.Accidental is { } explicitAccidental)
+        {
+            return explicitAccidental;
+        }
+
+        // Fallback: Infer from MIDI for pitches without explicit accidentals
+        // This handles cases where pitch is constructed from MIDI or other sources
         var noteClass = (int)pitch.ToMidiNote().Value % 12;
 
         return noteClass switch
