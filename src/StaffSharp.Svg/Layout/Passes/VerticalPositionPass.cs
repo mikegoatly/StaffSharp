@@ -54,11 +54,15 @@ internal class VerticalPositionPass : ILayoutPass
                     {
                         symbol.LedgerLineCount = (staffPosition - 5 + 1) / 2;
                         symbol.LedgerLinesAbove = true;
+                        // For notes in spaces (odd positions), offset to the line below
+                        symbol.FirstLedgerLineOffsetY = CalculateSpaceNoteOffset(staffPosition, context.StaffSpace);
                     }
                     else if (staffPosition < -5)
                     {
                         symbol.LedgerLineCount = (-5 - staffPosition + 1) / 2;
                         symbol.LedgerLinesAbove = false;
+                        // For notes in spaces (odd positions), offset to the line above
+                        symbol.FirstLedgerLineOffsetY = -CalculateSpaceNoteOffset(staffPosition, context.StaffSpace);
                     }
                     break;
                 }
@@ -93,11 +97,18 @@ internal class VerticalPositionPass : ILayoutPass
                         {
                             symbol.LedgerLineCount = (highestPosition - 5 + 1) / 2;
                             symbol.LedgerLinesAbove = true;
+                            // Offset is relative to the chord's Y (bottom note), so we need to calculate
+                            // the offset from the highest note position
+                            var highNoteY = staffBaseline - (highestPosition * 0.5 * context.StaffSpace);
+                            var offsetAtHighNote = CalculateSpaceNoteOffset(highestPosition, context.StaffSpace);
+                            symbol.FirstLedgerLineOffsetY = (highNoteY - symbol.Y) + offsetAtHighNote;
                         }
                         else if (lowestPosition < -5)
                         {
                             symbol.LedgerLineCount = (-5 - lowestPosition + 1) / 2;
                             symbol.LedgerLinesAbove = false;
+                            // For notes in spaces (odd positions), offset to the line above
+                            symbol.FirstLedgerLineOffsetY = -CalculateSpaceNoteOffset(lowestPosition, context.StaffSpace);
                         }
                     }
                     break;
@@ -125,4 +136,6 @@ internal class VerticalPositionPass : ILayoutPass
         }
     }
 
+    private static double CalculateSpaceNoteOffset(int staffPosition, double staffSpace) =>
+        (Math.Abs(staffPosition) % 2) * 0.5 * staffSpace;
 }

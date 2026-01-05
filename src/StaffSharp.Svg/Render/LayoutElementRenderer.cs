@@ -132,9 +132,12 @@ internal abstract class LayoutElementRenderer<T>
 
         for (int i = 0; i < symbol.LedgerLineCount; i++)
         {
+            // Start from the first ledger line offset and draw toward the staff
+            // For lines above: positive Y moves toward staff (downward)
+            // For lines below: positive Y moves toward staff (upward)
             var lineY = symbol.LedgerLinesAbove
-                ? -i * lineSpacing
-                : i * lineSpacing;
+                ? symbol.FirstLedgerLineOffsetY + (i * lineSpacing)
+                : symbol.FirstLedgerLineOffsetY - (i * lineSpacing);
 
             group.Add(
                 CreateLine(

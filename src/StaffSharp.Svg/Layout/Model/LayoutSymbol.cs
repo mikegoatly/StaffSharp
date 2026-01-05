@@ -23,4 +23,11 @@ public abstract class LayoutSymbol : LayoutElement, ILayoutSymbol
 
     public int LedgerLineCount { get; set; }
     public bool LedgerLinesAbove { get; set; }
+
+    /// <summary>
+    /// Y offset from the symbol's position to the first ledger line.
+    /// For notes in spaces, this is 0.5 * staffSpace toward the staff.
+    /// For notes on lines, this is 0.
+    /// </summary>
+    public double FirstLedgerLineOffsetY { get; set; }
 }
