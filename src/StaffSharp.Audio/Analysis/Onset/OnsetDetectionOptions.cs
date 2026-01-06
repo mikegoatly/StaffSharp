@@ -21,15 +21,15 @@ public record OnsetDetectionOptions : DiagnosticsOptions
 
     /// <summary>
     /// Gets or initializes the onset detection threshold.
-    /// Must be positive. Default: 1.0.
+    /// Must be positive. Default: 2.0.
     /// </summary>
-    public float Threshold { get; init; } = 1.0f;
+    public float Threshold { get; init; } = 2.0f;
 
     /// <summary>
     /// Gets or initializes the minimum time interval between consecutive onsets in seconds.
-    /// Must be non-negative. Default: 0.20 seconds (200ms).
+    /// Must be non-negative. Default: 0.40 seconds (400ms).
     /// </summary>
-    public float MinOnsetIntervalSeconds { get; init; } = 0.20f;
+    public float MinOnsetIntervalSeconds { get; init; } = 0.40f;
 
     /// <summary>
     /// Gets or initializes whether to apply logarithmic compression (log(1+x)).

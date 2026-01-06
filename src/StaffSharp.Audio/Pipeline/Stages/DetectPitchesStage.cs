@@ -83,6 +83,13 @@ internal sealed class DetectPitchesStage : PipelineStageBase
             }).ConfigureAwait(false);
 
         EmitDiagnostics("Pitch count", pitches.Length);
+        EmitDiagnostics("Pitches (MIDI)", pitches);
+        
+        // Count pitched vs unpitched
+        var pitchedCount = pitches.Count(p => p != UnpitchedSentinel);
+        var unpitchedCount = pitches.Length - pitchedCount;
+        EmitDiagnostics("Pitched notes", pitchedCount);
+        EmitDiagnostics("Unpitched/silent", unpitchedCount);
 
         return pitches;
     }
