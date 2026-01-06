@@ -1,39 +1,43 @@
+using StaffSharp.Core.Notation;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
-using StaffSharp.Core.Notation;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
 
 /// <summary>
 /// Pipeline stage that converts a PerformanceTimeline (IR1) to a NotationScore (IR2).
 /// </summary>
-internal sealed class ConvertToScoreStage : IAsyncPipelineStage<PerformanceTimeline, NotationScore>
+internal sealed class ConvertToScoreStage : PipelineStageBase
 {
     private readonly INotationEngine _engine;
-    private readonly NotationOptions _options;
+    private readonly NotationOptions _notationOptions;
+    protected override string StageName => "ConvertToScore";
 
-    public string StageName => "ConvertToScore";
-
-    public ConvertToScoreStage(INotationEngine engine, NotationOptions options)
+    public ConvertToScoreStage(AudioPipelineOptions options, INotationEngine engine, NotationOptions notationOptions) : base(options)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _notationOptions = notationOptions ?? throw new ArgumentNullException(nameof(notationOptions));
     }
 
-    public Task<NotationScore> ProcessAsync(PerformanceTimeline input, AudioPipelineContext context)
+    /// <summary>
+    /// Converts a performance timeline to a notation score (IR1 → IR2).
+    /// </summary>
+    /// <param name="timeline">The performance timeline.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The notation score.</returns>
+    public Task<NotationScore> ExecuteAsync(PerformanceTimeline timeline, CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ReportProgress("Converting to score");
 
-        var score = _engine.Convert(input, _options);
+        ct.ThrowIfCancellationRequested();
 
-        context.EmitDiagnostics(StageName, "PartCount", score.Parts.Count);
-        context.EmitDiagnostics(StageName, "Title", score.Metadata.Title ?? "(none)");
-        context.EmitDiagnostics(StageName, "KeySignature", score.Metadata.KeySignature.ToString());
+        var score = _engine.Convert(timeline, _notationOptions);
 
+        EmitDiagnostics("PartCount", score.Parts.Count);
         if (score.Parts.Count > 0)
         {
             var totalVoices = score.Parts.Sum(p => p.Voices.Count);
-            context.EmitDiagnostics(StageName, "TotalVoices", totalVoices);
+            EmitDiagnostics("TotalVoices", totalVoices);
         }
 
         return Task.FromResult(score);

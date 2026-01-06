@@ -28,8 +28,8 @@ public class GlyphSnapshotTests : VisualSnapshotTestBase
 
     private static (string, int, int) CreateCompositeGlyphSvg((string Name, GlyphInfo Info)[] glyphs)
     {
-        var cellWidth = 120;
-        var cellHeight = 120;
+        var cellWidth = 100;
+        var cellHeight = 100;
         var columns = 6;
         var rows = (glyphs.Length + columns - 1) / columns;
 
@@ -45,13 +45,13 @@ public class GlyphSnapshotTests : VisualSnapshotTestBase
             var col = i % columns;
             var row = i / columns;
 
-            var x = col * cellWidth + cellWidth / 2;
-            var y = row * cellHeight + cellHeight / 2;
+            var x = (col * cellWidth) + (cellWidth / 2);
+            var y = (row * cellHeight) + (cellHeight / 2);
 
             // Scale to fit within cell
             var scale = Math.Min(cellWidth * 0.7 / glyphInfo.Width, (cellHeight * 0.7) / glyphInfo.Height);
-            var translateX = x - (glyphInfo.MinX + glyphInfo.Width / 2) * scale;
-            var translateY = y - (glyphInfo.MinY + glyphInfo.Height / 2) * scale;
+            var translateX = x - ((glyphInfo.MinX + (glyphInfo.Width / 2)) * scale);
+            var translateY = y - ((glyphInfo.MinY + (glyphInfo.Height / 2)) * scale);
 
             var group = new XElement("g",
                 new XAttribute("transform", $"translate({translateX:F2},{translateY:F2}) scale({scale:F2})"));
@@ -67,11 +67,10 @@ public class GlyphSnapshotTests : VisualSnapshotTestBase
             // Add label
             var text = new XElement("text",
                 new XAttribute("x", x),
-                new XAttribute("y", row * cellHeight + cellHeight - 10),
+                new XAttribute("y", (row * cellHeight) + cellHeight - 10),
                 new XAttribute("text-anchor", "middle"),
                 new XAttribute("font-size", "10"),
                 new XAttribute("font-family", "Arial, sans-serif"),
-                new XAttribute("fill", "#666"),
                 name);
 
             elements.Add(text);

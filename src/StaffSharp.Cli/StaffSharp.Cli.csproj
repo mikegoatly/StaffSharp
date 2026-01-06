@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+		<ProjectReference Include="..\StaffSharp.Audio\StaffSharp.Audio.csproj" />
 		<ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
 		<ProjectReference Include="..\StaffSharp.Importers\StaffSharp.Importers.csproj" />
 		<ProjectReference Include="..\StaffSharp.Midi\StaffSharp.Midi.csproj" />
@@ -9,6 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Spectre.Console" />
 		<PackageReference Include="System.CommandLine" />
 	</ItemGroup>
 

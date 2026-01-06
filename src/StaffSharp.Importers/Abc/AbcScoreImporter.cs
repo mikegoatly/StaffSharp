@@ -16,13 +16,16 @@ public sealed class AbcScoreImporter : IScoreImporter
     {
         ArgumentNullException.ThrowIfNull(stream);
 
-        progress?.Report(new ImportProgress(1, 2, "Reading ABC file"));
+        progress?.Report(new ImportProgress("ABC Import", "Reading ABC file"));
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
-        progress?.Report(new ImportProgress(2, 2, "Parsing ABC notation"));
+        progress?.Report(new ImportProgress("ABC Import", "Parsing ABC notation"));
         // AbcParser.Parse is synchronous
-        return AbcParser.Parse(content);
+        var output = AbcParser.Parse(content);
+
+        progress?.Report(new ImportProgress("ABC Import", "Import complete"));
+        return output;
     }
 
     public Task<NotationScore> ImportAsync(Stream stream, CancellationToken cancellationToken = default)

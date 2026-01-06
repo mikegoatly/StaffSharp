@@ -1,26 +1,36 @@
-using StaffSharp.Audio.IO;
+﻿using StaffSharp.Audio.IO;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
 
 /// <summary>
-/// Pipeline stage that loads audio from a stream.
+/// Pipeline stage that loads audio from a WAV stream.
 /// </summary>
-internal sealed class LoadAudioStage : IAsyncPipelineStage<Stream, AudioBuffer>
+internal sealed class LoadAudioStage : PipelineStageBase
 {
-    public string StageName => "LoadAudio";
+    protected override string StageName => "LoadAudio";
 
-    public async Task<AudioBuffer> ProcessAsync(Stream input, AudioPipelineContext context)
+    public LoadAudioStage(AudioPipelineOptions options) : base(options)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+    }
 
-        var audio = await WavReader.ReadAsync(input, context.CancellationToken).ConfigureAwait(false);
+    /// <summary>
+    /// Loads audio data from a WAV stream.
+    /// </summary>
+    /// <param name="stream">The input WAV stream.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The loaded audio buffer.</returns>
+    public async Task<AudioBuffer> ExecuteAsync(Stream stream, CancellationToken ct)
+    {
+        ReportProgress("Loading audio");
 
-        context.EmitDiagnostics(StageName, "SampleRate", audio.SampleRate);
-        context.EmitDiagnostics(StageName, "Channels", audio.Channels);
-        context.EmitDiagnostics(StageName, "DurationSeconds", audio.DurationSeconds);
-        context.EmitDiagnostics(StageName, "SampleCount", audio.SampleCount);
+        var audio = await WavReader.ReadAsync(stream, ct).ConfigureAwait(false);
 
-        context.Audio = audio;
+        EmitDiagnostics("SampleRate", audio.SampleRate);
+        EmitDiagnostics("Channels", audio.Channels);
+        EmitDiagnostics("DurationSeconds", audio.DurationSeconds);
+        EmitDiagnostics("SampleCount", audio.SampleCount);
+
         return audio;
     }
 }
+

@@ -46,41 +46,41 @@ public sealed class NotationEventBuilder
     }
 
     // Note methods for each pitch class
-    public NotationEventBuilder C(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.C, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder C(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.C, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder CSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.CSharp, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder CSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.CSharp, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder D(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.D, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder D(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.D, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder DSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.DSharp, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder DSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.DSharp, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder E(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.E, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder E(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.E, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder F(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.F, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder F(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.F, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder FSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.FSharp, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder FSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.FSharp, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder G(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.G, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder G(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.G, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder GSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.GSharp, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder GSharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.GSharp, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder A(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.A, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder A(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.A, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder ASharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.ASharp, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder ASharp(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.ASharp, octave, duration, velocity, tie, accidental, decorations);
 
-    public NotationEventBuilder B(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null)
-        => AddNote(PitchClass.B, octave, duration, velocity, tie, accidental);
+    public NotationEventBuilder B(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, TieType tie = TieType.None, Accidental? accidental = null, IReadOnlyList<Decoration>? decorations = null)
+        => AddNote(PitchClass.B, octave, duration, velocity, tie, accidental, decorations);
 
     /// <summary>
     /// Adds a rest.
@@ -95,18 +95,19 @@ public sealed class NotationEventBuilder
     /// Adds a chord with the specified pitch classes at the default octave.
     /// </summary>
     public NotationEventBuilder Chord(params PitchClass[] pitchClasses)
-        => Chord(null, null, null, pitchClasses);
+        => Chord(null, null, null, null, pitchClasses);
 
     /// <summary>
     /// Adds a chord with full control over parameters.
     /// </summary>
-    public NotationEventBuilder Chord(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, params PitchClass[] pitchClasses)
+    public NotationEventBuilder Chord(int? octave = null, SymbolicDuration? duration = null, Velocity? velocity = null, Decoration[]? decorations = null, params PitchClass[] pitchClasses)
     {
         var pitches = pitchClasses.Select(pc => new Pitch(pc, octave ?? _defaultOctave)).ToList();
-        _events.Add(new Notation.Chord(
+        _events.Add(new Chord(
             pitches,
             duration ?? _defaultDuration,
-            velocity ?? _defaultVelocity));
+            velocity ?? _defaultVelocity,
+            decorations: decorations ?? []));
         return this;
     }
 
@@ -121,13 +122,19 @@ public sealed class NotationEventBuilder
         SymbolicDuration? duration,
         Velocity? velocity,
         TieType tie,
-        Accidental? accidental)
+        Accidental? accidental,
+        IReadOnlyList<Decoration>? decorations)
     {
-        _events.Add(new NotationNote(
-            new Pitch(pitchClass, octave ?? _defaultOctave, accidental),
-            duration ?? _defaultDuration,
-            velocity ?? _defaultVelocity,
-            tie));
+        _events.Add(
+            new NotationNote(
+                new Pitch(pitchClass, octave ?? _defaultOctave, accidental),
+                duration ?? _defaultDuration,
+                velocity ?? _defaultVelocity,
+                tie)
+            {
+                Decorations = decorations ?? []
+            });
+
         return this;
     }
 }

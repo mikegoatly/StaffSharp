@@ -1,39 +1,48 @@
-using StaffSharp.Performance;
+﻿using StaffSharp.Performance;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
 
 /// <summary>
 /// Pipeline stage that builds a PerformanceTimeline from quantized notes.
 /// </summary>
-internal sealed class BuildTimelineStage : IAsyncPipelineStage<IReadOnlyList<QuantizedNoteEvent>, PerformanceTimeline>
+internal sealed class BuildTimelineStage : PipelineStageBase
 {
-    public string StageName => "BuildTimeline";
+    protected override string StageName => "BuildTimeline";
 
-    public Task<PerformanceTimeline> ProcessAsync(IReadOnlyList<QuantizedNoteEvent> input, AudioPipelineContext context)
+    public BuildTimelineStage(AudioPipelineOptions options) : base(options)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+    }
 
-        if (context.TempoMap == null)
-        {
-            throw new InvalidOperationException("TempoMap not available in context.");
-        }
+    /// <summary>
+    /// Builds a performance timeline (IR1) from quantized note events.
+    /// </summary>
+    /// <param name="quantizedNotes">The quantized note events.</param>
+    /// <param name="tempoMap">The tempo map.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The performance timeline.</returns>
+    public Task<PerformanceTimeline> ExecuteAsync(
+        IReadOnlyList<QuantizedNoteEvent> quantizedNotes,
+        TempoMap tempoMap,
+        CancellationToken ct)
+    {
+        ReportProgress("Building timeline");
+
+        ct.ThrowIfCancellationRequested();
 
         var metadata = new PerformanceMetadata(
             Title: null,
             Composer: null,
-            Copyright: null
-        );
+            Copyright: null);
 
         var timeline = new PerformanceTimeline(
-            context.TempoMap,
-            input,
-            metadata
-        );
+            tempoMap,
+            quantizedNotes,
+            metadata);
 
-        context.EmitDiagnostics(StageName, "EventCount", timeline.Events.Count);
-        context.EmitDiagnostics(StageName, "TotalDurationBeats", () => timeline.TotalDurationBeats);
+        EmitDiagnostics("EventCount", timeline.Events.Count);
+        EmitDiagnostics("TotalDurationBeats", timeline.TotalDurationBeats);
 
-        context.Timeline = timeline;
         return Task.FromResult(timeline);
     }
 }
+

@@ -226,7 +226,7 @@ public class SvgExporterTests : VisualSnapshotTestBase
             // Dotted quarter rest
             .Rest(dottedQuarter)
             // Dotted chord
-            .Chord(4, dottedQuarter, null, PitchClass.C, PitchClass.E, PitchClass.G)
+            .Chord(4, dottedQuarter, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G ])
             .Build();
 
         var score = CreateScore(events, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
@@ -287,10 +287,98 @@ public class SvgExporterTests : VisualSnapshotTestBase
     {
         // Eighth note chords separated by quarter notes (won't beam)
         var notes = NotationEventBuilder.Create()
-            .Chord(4, SymbolicDuration.Eighth, null, PitchClass.C, PitchClass.E, PitchClass.G)
+            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G ])
             .D(4, SymbolicDuration.Quarter)
-            .Chord(4, SymbolicDuration.Eighth, null, PitchClass.D, PitchClass.F, PitchClass.A)
+            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.D, PitchClass.F, PitchClass.A ])
             .E(4, SymbolicDuration.Quarter)
+            .Build();
+
+        var score = CreateScore(notes, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
+
+        await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_AllBarlineTypes_RendersCorrectly()
+    {
+        // Create measures with different barline types
+        var measures = new List<Measure>
+        {
+            // Normal barline (default)
+            new(
+                1,
+                [new NotationNote(new Pitch(PitchClass.C, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                endBarline: BarlineType.Normal),
+
+            // Double bar
+            new(
+                2,
+                [new NotationNote(new Pitch(PitchClass.D, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                endBarline: BarlineType.DoubleBar),
+
+            // Repeat start
+            new(
+                3,
+                [new NotationNote(new Pitch(PitchClass.E, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                startBarline: BarlineType.RepeatStart,
+                endBarline: BarlineType.Normal),
+
+            // Repeat end
+            new(
+                4,
+                [new NotationNote(new Pitch(PitchClass.F, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                endBarline: BarlineType.RepeatEnd),
+
+            // Repeat both (:|:)
+            new(
+                5,
+                [new NotationNote(new Pitch(PitchClass.G, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                endBarline: BarlineType.RepeatBoth),
+
+            // Final barline
+            new(
+                6,
+                [new NotationNote(new Pitch(PitchClass.A, 4), SymbolicDuration.Whole, Velocity.MezzoForte)],
+                endBarline: BarlineType.Final)
+        };
+
+        var voice = new Voice(1, measures);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Piano", [staff]);
+        var metadata = new ScoreMetadata("Barline Types", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+        var score = new NotationScore(metadata, [part]);
+
+        await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
+        
+    }
+
+    [Fact]
+    public async Task Export_VariousArticulations_RendersCorrectly()
+    {
+        var notes = NotationEventBuilder.Create()
+            .C(4, SymbolicDuration.Quarter, decorations: [Decoration.Staccato])
+            .D(4, SymbolicDuration.Quarter, decorations: [Decoration.Accent])
+            .E(4, SymbolicDuration.Quarter, decorations: [Decoration.Tenuto])
+            .F(4, SymbolicDuration.Quarter, decorations: [Decoration.Marcato])
+            .G(4, SymbolicDuration.Quarter, decorations: [Decoration.Fermata])
+            .A(4, SymbolicDuration.Quarter, decorations: [Decoration.Staccato, Decoration.Accent])
+            .B(4, SymbolicDuration.Quarter, decorations: [Decoration.Trill])
+            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.UpBow])
+            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.DownBow])
+            .Build();
+
+        var score = CreateScore(notes, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
+
+        await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
+    }
+
+    [Fact]
+    public async Task Export_ChordWithArticulations_RendersCorrectly()
+    {
+        var notes = NotationEventBuilder.Create()
+            .Chord(decorations: [Decoration.Staccato], pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G])
+            .Chord(decorations: [Decoration.Accent], pitchClasses: [PitchClass.D, PitchClass.F, PitchClass.A])
+            .Chord(decorations: [Decoration.Fermata], pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G])
             .Build();
 
         var score = CreateScore(notes, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
@@ -306,7 +394,16 @@ public class SvgExporterTests : VisualSnapshotTestBase
     {
         var exporter = new SvgScoreExporter();
         using var stream = new MemoryStream();
-        await exporter.ExportAsync(score, stream);
+        await exporter.ExportAsync(
+            score, 
+            stream,
+            new Dictionary<string, string>
+            {
+                ["staffSpace"]= "15",
+                ["margins"] = "0,0,0,0",
+                ["maxWidth"] = "800"
+            });
+
         var svgContent = Encoding.UTF8.GetString(stream.ToArray());
 
         if (expectedContentCheck != null)

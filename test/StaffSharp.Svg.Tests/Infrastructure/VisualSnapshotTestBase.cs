@@ -2,8 +2,9 @@ namespace StaffSharp.Svg.Tests.Infrastructure;
 
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Xml.Linq;
+
 using global::SkiaSharp;
+
 using Xunit;
 
 /// <summary>
@@ -164,42 +165,51 @@ public abstract class VisualSnapshotTestBase
         var maxPixelDelta = 0;
         SKBitmap? diffBitmap = null;
 
-        // Create diff bitmap if we might need it
         if (options.GenerateDiffImage)
         {
             diffBitmap = new SKBitmap(width, height);
         }
 
-        for (int y = 0; y < height; y++)
+        var totalPixels = width * height;
+        var bytesPerPixel = 4; // RGBA
+
+        var goldenSpan = golden.GetPixelSpan();
+        var actualSpan = actual.GetPixelSpan();
+        var diffSpan = diffBitmap is null ? [] : diffBitmap.GetPixelSpan();
+
+        for (int i = 0; i < totalPixels; i++)
         {
-            for (int x = 0; x < width; x++)
+            var offset = i * bytesPerPixel;
+
+            var deltaR = Math.Abs(goldenSpan[offset] - actualSpan[offset]);
+            var deltaG = Math.Abs(goldenSpan[offset + 1] - actualSpan[offset + 1]);
+            var deltaB = Math.Abs(goldenSpan[offset + 2] - actualSpan[offset + 2]);
+            var deltaA = Math.Abs(goldenSpan[offset + 3] - actualSpan[offset + 3]);
+            var delta = Math.Max(Math.Max(deltaR, deltaG), Math.Max(deltaB, deltaA));
+
+            if (delta > options.MaxPixelDelta)
             {
-                var goldenPixel = golden.GetPixel(x, y);
-                var actualPixel = actual.GetPixel(x, y);
+                differentPixels++;
+                maxPixelDelta = Math.Max(maxPixelDelta, delta);
 
-                var delta = PixelDelta(goldenPixel, actualPixel);
-
-                if (delta > options.MaxPixelDelta)
+                if (diffSpan.Length > 0)
                 {
-                    differentPixels++;
-                    maxPixelDelta = Math.Max(maxPixelDelta, delta);
-
-                    // Mark diff pixel as red
-                    diffBitmap?.SetPixel(x, y, SKColors.Red);
+                    diffSpan[offset] = 0;     // B
+                    diffSpan[offset + 1] = 0; // G
+                    diffSpan[offset + 2] = 255; // R
+                    diffSpan[offset + 3] = 255; // A
                 }
-                else
-                {
-                    // Show original pixel in diff (grayed out)
-                    if (diffBitmap != null)
-                    {
-                        var gray = (byte)((goldenPixel.Red + goldenPixel.Green + goldenPixel.Blue) / 3);
-                        diffBitmap.SetPixel(x, y, new SKColor(gray, gray, gray));
-                    }
-                }
+            }
+            else if (diffSpan.Length > 0)
+            {
+                var gray = (byte)((goldenSpan[offset] + goldenSpan[offset + 1] + goldenSpan[offset + 2]) / 3);
+                diffSpan[offset] = gray;
+                diffSpan[offset + 1] = gray;
+                diffSpan[offset + 2] = gray;
+                diffSpan[offset + 3] = 255;
             }
         }
 
-        var totalPixels = width * height;
         var differencePercentage = (differentPixels * 100.0) / totalPixels;
         var isMatch = differencePercentage <= options.PixelDifferenceThreshold &&
                       maxPixelDelta <= options.MaxPixelDelta;
@@ -213,19 +223,6 @@ public abstract class VisualSnapshotTestBase
             MaxPixelDelta = maxPixelDelta,
             DiffBitmap = diffBitmap
         };
-    }
-
-    /// <summary>
-    /// Calculates the maximum color channel difference between two pixels.
-    /// </summary>
-    private static int PixelDelta(SKColor a, SKColor b)
-    {
-        var deltaR = Math.Abs(a.Red - b.Red);
-        var deltaG = Math.Abs(a.Green - b.Green);
-        var deltaB = Math.Abs(a.Blue - b.Blue);
-        var deltaA = Math.Abs(a.Alpha - b.Alpha);
-
-        return Math.Max(Math.Max(deltaR, deltaG), Math.Max(deltaB, deltaA));
     }
 
     private static void SaveBitmap(SKBitmap bitmap, string path)
@@ -247,32 +244,6 @@ public abstract class VisualSnapshotTestBase
 
     private static string GetArtifactPath(string testName, string suffix) =>
         Path.Combine(ArtifactsDir, $"{testName}_{suffix}.png");
-}
-
-
-
-
-
-
-/// <summary>
-/// Options for snapshot comparison behavior.
-/// </summary>
-/// <param name="Width"> Width of rendered image in pixels. </param>
-/// <param name="Height"> Height of rendered image in pixels. </param>
-/// <param name="PixelDifferenceThreshold"> Maximum percentage of pixels that can differ (0-100). </param>
-/// <param name="MaxPixelDelta"> Maximum delta per color channel (0-255) to consider pixels equal. </param>
-/// <param name="GenerateDiffImage"> Whether to generate a diff image showing differences. </param>
-public record SnapshotOptions(int Width, int Height, double PixelDifferenceThreshold, int MaxPixelDelta, bool GenerateDiffImage)
-{
-    /// <summary>
-    /// Default options: 800x600, 0.5% pixel difference threshold, max delta of 5 per channel.
-    /// </summary>
-    public static readonly SnapshotOptions Default = new(
-        Width: 800,
-        Height: 600,
-        PixelDifferenceThreshold: 0.5, // 0.5% of pixels can differ
-        MaxPixelDelta: 5, // Max difference per color channel
-        GenerateDiffImage: true);
 }
 
 /// <summary>

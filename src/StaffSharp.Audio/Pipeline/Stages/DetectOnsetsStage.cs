@@ -1,48 +1,50 @@
-using StaffSharp.Audio.Analysis;
-using StaffSharp.Audio.Analysis.Onset;
 using StaffSharp.Audio.Analysis.Boundaries;
+using StaffSharp.Audio.Analysis.Onset;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
 
 /// <summary>
-/// Pipeline stage that detects note onset times.
+/// Pipeline stage that detects onset times (note attacks) in audio.
 /// </summary>
-internal sealed class DetectOnsetsStage : IAsyncPipelineStage<AudioBoundaries, double[]>
+internal sealed class DetectOnsetsStage : PipelineStageBase
 {
     private readonly IOnsetDetector _detector;
+    protected override string StageName => "DetectOnsets";
 
-    public string StageName => "DetectOnsets";
-
-    public DetectOnsetsStage(IOnsetDetector detector)
+    public DetectOnsetsStage(AudioPipelineOptions options, IOnsetDetector detector) : base(options)
     {
         _detector = detector ?? throw new ArgumentNullException(nameof(detector));
     }
 
-    public Task<double[]> ProcessAsync(AudioBoundaries input, AudioPipelineContext context)
+    /// <summary>
+    /// Detects onset times from the audio content region.
+    /// </summary>
+    /// <param name="audio">The audio buffer to analyze.</param>
+    /// <param name="boundaries">The content boundaries (non-silent region).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Array of onset times in seconds.</returns>
+    public Task<double[]> ExecuteAsync(
+        AudioBuffer audio,
+        AudioBoundaries boundaries,
+        CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
-        if (context.Audio == null)
-        {
-            throw new InvalidOperationException("Audio buffer not available in context. Ensure LoadAudioStage has executed.");
-        }
+        ReportProgress("Detecting onsets");
 
-        // Slice the audio to the content region
-        var slice = context.Audio.Samples.Span.Slice(
-            input.StartSample,
-            input.EndSample - input.StartSample
-        );
+        // Extract the content region (excluding leading/trailing silence)
+        var slice = audio.Samples.Span.Slice(
+            boundaries.StartSample,
+            boundaries.EndSample - boundaries.StartSample);
 
         var onsets = _detector.DetectOnsets(
             slice,
-            input.SampleRate,
-            startTimeOffset: input.LeadingSilence.TotalSeconds
-        );
+            audio.SampleRate,
+            boundaries.StartSample);
 
-        context.EmitDiagnostics(StageName, "OnsetCount", onsets.Length);
-        context.EmitDiagnostics(StageName, "Onsets", () => onsets);
+        EmitDiagnostics("Detected onset count", onsets.Length);
+        EmitDiagnostics("Onsets", onsets);
 
-        context.Onsets = onsets;
         return Task.FromResult(onsets);
     }
 }

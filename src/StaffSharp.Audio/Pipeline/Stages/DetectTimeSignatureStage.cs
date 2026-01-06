@@ -1,6 +1,4 @@
-using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Analysis.Meter;
-using StaffSharp;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 
@@ -9,20 +7,30 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// <summary>
 /// Pipeline stage that detects time signatures from onset patterns.
 /// </summary>
-internal sealed class DetectTimeSignatureStage : IAsyncPipelineStage<double[], IReadOnlyList<TimeSignatureChange>>
+internal sealed class DetectTimeSignatureStage : PipelineStageBase
 {
     private readonly ITimeSignatureDetector? _detector;
+    protected override string StageName => "DetectTimeSignature";
 
-    public string StageName => "DetectTimeSignature";
-
-    public DetectTimeSignatureStage(ITimeSignatureDetector? detector = null)
+    public DetectTimeSignatureStage(AudioPipelineOptions options, ITimeSignatureDetector? detector = null) : base(options)
     {
         _detector = detector;
     }
 
-    public Task<IReadOnlyList<TimeSignatureChange>> ProcessAsync(double[] input, AudioPipelineContext context)
+    /// <summary>
+    /// Detects time signatures from onset timing patterns.
+    /// Returns 4/4 if no detector configured or detection fails.
+    /// </summary>
+    /// <param name="onsets">Array of onset times in seconds.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>List of time signature changes.</returns>
+    public Task<IReadOnlyList<TimeSignatureChange>> ExecuteAsync(
+        double[] onsets,
+        CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
+
+        ReportProgress("Detecting time signatures...");
 
         IReadOnlyList<TimeSignatureChange> timeSignatures;
 
@@ -33,15 +41,12 @@ internal sealed class DetectTimeSignatureStage : IAsyncPipelineStage<double[], I
             {
                 new TimeSignatureChange(
                     Rational.Zero,
-                    TimeSignature.CommonTime
-                )
+                    TimeSignature.CommonTime)
             };
-
-            context.EmitDiagnostics(StageName, "DetectorUsed", "Default (4/4)");
         }
         else
         {
-            var detected = _detector.DetectTimeSignatures(input);
+            var detected = _detector.DetectTimeSignatures(onsets);
 
             if (detected == null || detected.Count == 0)
             {
@@ -50,23 +55,17 @@ internal sealed class DetectTimeSignatureStage : IAsyncPipelineStage<double[], I
                 {
                     new TimeSignatureChange(
                         Rational.Zero,
-                        TimeSignature.CommonTime
-                    )
+                        TimeSignature.CommonTime)
                 };
-
-                context.EmitDiagnostics(StageName, "DetectorUsed", "Failed - Fallback to 4/4");
             }
             else
             {
                 timeSignatures = detected;
-                context.EmitDiagnostics(StageName, "DetectorUsed", _detector.GetType().Name);
             }
         }
 
-        context.EmitDiagnostics(StageName, "TimeSignatureCount", timeSignatures.Count);
-        context.EmitDiagnostics(StageName, "TimeSignatures", () => timeSignatures);
+        EmitDiagnostics("TimeSignatureCount", timeSignatures.Count);
 
-        context.TimeSignatures = timeSignatures;
         return Task.FromResult(timeSignatures);
     }
 }

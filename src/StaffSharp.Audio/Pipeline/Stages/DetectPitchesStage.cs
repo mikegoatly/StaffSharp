@@ -1,7 +1,5 @@
-using StaffSharp;
-using StaffSharp.Audio.Analysis;
-using StaffSharp.Audio.Analysis.Pitch;
 using StaffSharp.Audio.Analysis.Boundaries;
+using StaffSharp.Audio.Analysis.Pitch;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
 
@@ -9,56 +7,59 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// Pipeline stage that detects MIDI pitch for each onset.
 /// Returns -1 for unpitched/percussive onsets.
 /// </summary>
-internal sealed class DetectPitchesStage : IAsyncPipelineStage<double[], int[]>
+internal sealed class DetectPitchesStage : PipelineStageBase
 {
     private readonly IPitchDetector _detector;
     private readonly int _maxDegreeOfParallelism;
-    private const int PitchWindowSamples = 4096; // Window size for pitch detection
+    private const int PitchWindowSamples = 4096;
+    protected override string StageName => "DetectPitches";
 
     /// <summary>
     /// Sentinel value indicating no pitch detected (unpitched/percussive onset).
     /// </summary>
     public const int UnpitchedSentinel = -1;
 
-    public string StageName => "DetectPitches";
-
-    public DetectPitchesStage(IPitchDetector detector, int maxDegreeOfParallelism = 0)
+    public DetectPitchesStage(AudioPipelineOptions options, IPitchDetector detector, int maxDegreeOfParallelism = 0) : base(options)
     {
         _detector = detector ?? throw new ArgumentNullException(nameof(detector));
         _maxDegreeOfParallelism = maxDegreeOfParallelism; // 0 = unlimited
     }
 
-    public async Task<int[]> ProcessAsync(double[] input, AudioPipelineContext context)
+    /// <summary>
+    /// Detects MIDI pitch for each onset time.
+    /// </summary>
+    /// <param name="onsets">Array of onset times in seconds.</param>
+    /// <param name="audio">The audio buffer to analyze.</param>
+    /// <param name="boundaries">The content boundaries.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Array of MIDI pitch numbers (-1 for unpitched).</returns>
+    public async Task<int[]> ExecuteAsync(
+        double[] onsets,
+        AudioBuffer audio,
+        AudioBoundaries boundaries,
+        CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
-        if (context.Audio == null)
-        {
-            throw new InvalidOperationException("Audio buffer not available in context.");
-        }
+        ReportProgress("Starting pitch detection...");
 
-        if (context.Boundaries == null)
-        {
-            throw new InvalidOperationException("Audio boundaries not available in context.");
-        }
-
-        var audio = context.Audio;
-        var boundaries = context.Boundaries;
-        var pitches = new int[input.Length];
+        var pitches = new int[onsets.Length];
 
         // Parallelize pitch detection for better performance
         var parallelOptions = new ParallelOptions
         {
-            CancellationToken = context.CancellationToken,
-            MaxDegreeOfParallelism = _maxDegreeOfParallelism == 0 ? Environment.ProcessorCount : _maxDegreeOfParallelism
+            CancellationToken = ct,
+            MaxDegreeOfParallelism = _maxDegreeOfParallelism == 0
+                ? Environment.ProcessorCount
+                : _maxDegreeOfParallelism
         };
 
         await Parallel.ForEachAsync(
-            Enumerable.Range(0, input.Length),
+            Enumerable.Range(0, onsets.Length),
             parallelOptions,
             async (i, ct) =>
             {
-                var onsetTime = input[i];
+                var onsetTime = onsets[i];
                 var onsetSample = (int)(onsetTime * audio.SampleRate);
 
                 // Extract window around onset
@@ -68,29 +69,21 @@ internal sealed class DetectPitchesStage : IAsyncPipelineStage<double[], int[]>
 
                 if (windowLength <= 0)
                 {
-                    pitches[i] = UnpitchedSentinel; // Invalid window = unpitched
+                    pitches[i] = UnpitchedSentinel;
                     return;
                 }
 
                 var window = audio.Samples.Span.Slice(windowStart, windowLength);
+
                 var result = _detector.DetectPitch(window, audio.SampleRate);
 
-                if (result.IsPitched)
-                {
-                    pitches[i] = MidiNote.FromFrequency(result.FrequencyHz).MidiNumber;
-                }
-                else
-                {
-                    // Unpitched onset (percussion, noise, or detection failure)
-                    // Use sentinel value to let downstream stages decide how to handle
-                    pitches[i] = UnpitchedSentinel;
-                }
+                pitches[i] = result.IsPitched
+                    ? MidiNote.FromFrequency(result.FrequencyHz).MidiNumber
+                    : UnpitchedSentinel;
             }).ConfigureAwait(false);
 
-        context.EmitDiagnostics(StageName, "PitchCount", pitches.Length);
-        context.EmitDiagnostics(StageName, "Pitches", () => pitches);
+        EmitDiagnostics("Pitch count", pitches.Length);
 
-        context.Pitches = pitches;
         return pitches;
     }
 }

@@ -1,4 +1,3 @@
-using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Performance;
 
@@ -7,42 +6,46 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// <summary>
 /// Pipeline stage that detects tempo and builds a TempoMap.
 /// </summary>
-internal sealed class DetectTempoStage : IAsyncPipelineStage<IReadOnlyList<TimeSignatureChange>, TempoMap>
+internal sealed class DetectTempoStage : PipelineStageBase
 {
     private readonly ITempoDetector _detector;
+    protected override string StageName => "DetectTempo";
 
-    public string StageName => "DetectTempo";
-
-    public DetectTempoStage(ITempoDetector detector)
+    public DetectTempoStage(AudioPipelineOptions options, ITempoDetector detector) : base(options)
     {
         _detector = detector ?? throw new ArgumentNullException(nameof(detector));
     }
 
-    public Task<TempoMap> ProcessAsync(IReadOnlyList<TimeSignatureChange> input, AudioPipelineContext context)
+    /// <summary>
+    /// Detects tempo from onset timing patterns and builds a tempo map.
+    /// </summary>
+    /// <param name="onsets">Array of onset times in seconds.</param>
+    /// <param name="timeSignatures">Detected time signatures.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The tempo map with tempo changes and time signatures.</returns>
+    public Task<TempoMap> ExecuteAsync(
+        double[] onsets,
+        IReadOnlyList<TimeSignatureChange> timeSignatures,
+        CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ReportProgress("Detecting tempo");
 
-        if (context.Onsets is not { } onsets)
-        {
-            throw new InvalidOperationException("Onsets not available in context.");
-        }
+        ct.ThrowIfCancellationRequested();
 
-        var tempoMap = _detector.DetectTempo(onsets.Span);
+        var tempoMap = _detector.DetectTempo(onsets);
 
         if (tempoMap is null)
         {
             throw new InvalidOperationException("Tempo detection failed - detector returned null.");
         }
 
-        context.EmitDiagnostics(StageName, "TempoChangeCount", tempoMap.TempoChanges.Count);
-        context.EmitDiagnostics(StageName, "TimeSignatureCount", tempoMap.TimeSignatures.Count);
-
         if (tempoMap.TempoChanges.Count > 0)
         {
-            context.EmitDiagnostics(StageName, "InitialTempo", tempoMap.TempoChanges[0].BeatsPerMinute);
+            EmitDiagnostics("InitialTempo", tempoMap.TempoChanges[0].BeatsPerMinute);
         }
 
-        context.TempoMap = tempoMap;
+        EmitDiagnostics("TempoChangeCount", tempoMap.TempoChanges.Count);
+
         return Task.FromResult(tempoMap);
     }
 }

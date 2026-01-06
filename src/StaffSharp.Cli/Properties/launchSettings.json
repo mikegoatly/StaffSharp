@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StaffSharp.Cli": {
+      "commandName": "Project",
+      "commandLineArgs": "convert c:\\dev\\StaffSharp\\tmp\\c-scale-44100-mono.wav c:\\dev\\StaffSharp\\tmp\\c-scale.mid"
+    }
+  }
+}

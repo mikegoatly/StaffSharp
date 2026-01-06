@@ -1,9 +1,11 @@
+using StaffSharp.Audio.Diagnostics;
+
 namespace StaffSharp.Audio.Analysis.Pitch;
 
 /// <summary>
 /// Options for pitch detection algorithms implementing <see cref="IPitchDetector"/>.
 /// </summary>
-public record PitchDetectionOptions
+public record PitchDetectionOptions : DiagnosticsOptions
 {
     /// <summary>
     /// Gets or initializes the minimum detectable frequency in Hz.

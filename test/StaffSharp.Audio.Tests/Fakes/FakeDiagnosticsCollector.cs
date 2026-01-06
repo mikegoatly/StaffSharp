@@ -1,11 +1,11 @@
 using StaffSharp.Audio.Diagnostics;
 
-namespace StaffSharp.Audio.Tests;
+namespace StaffSharp.Audio.Tests.Fakes;
 
 /// <summary>
 /// Simple in-memory diagnostics collector for testing.
 /// </summary>
-internal sealed class MemoryDiagnosticsCollector : IDiagnosticsCollector
+public sealed class FakeDiagnosticsCollector : IDiagnosticsCollector
 {
     private readonly Dictionary<string, Dictionary<string, object>> _diagnostics = new();
 
@@ -28,7 +28,7 @@ internal sealed class MemoryDiagnosticsCollector : IDiagnosticsCollector
         );
     }
 
-    public IEnumerable<DiagnosticEntry> GetEntries()
+    internal IEnumerable<DiagnosticEntry> GetEntries()
     {
         foreach (var stage in _diagnostics)
         {

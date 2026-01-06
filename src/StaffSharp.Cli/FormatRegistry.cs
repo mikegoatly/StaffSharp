@@ -19,6 +19,7 @@ internal static class FormatRegistry
         {
             new AbcScoreImporter(),
             new MusicXmlScoreImporter(),
+            new AudioScoreImporter(),
         };
 
         var dict = new Dictionary<string, IScoreImporter>(StringComparer.OrdinalIgnoreCase);

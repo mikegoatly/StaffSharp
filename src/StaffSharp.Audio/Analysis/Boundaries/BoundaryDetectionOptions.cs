@@ -1,9 +1,11 @@
+using StaffSharp.Audio.Diagnostics;
+
 namespace StaffSharp.Audio.Analysis.Boundaries;
 
 /// <summary>
 /// Options for audio boundary detection algorithms implementing <see cref="IAudioBoundaryDetector"/>.
 /// </summary>
-public record BoundaryDetectionOptions
+public record BoundaryDetectionOptions : DiagnosticsOptions
 {
     /// <summary>
     /// Gets or initializes the energy threshold in dB.
@@ -31,10 +33,18 @@ public record BoundaryDetectionOptions
     public void Validate()
     {
         if (ThresholdDb >= 0)
+        {
             throw new ArgumentException("Threshold must be negative (dB)", nameof(ThresholdDb));
+        }
+
         if (WindowSize <= 0)
+        {
             throw new ArgumentException("Window size must be positive", nameof(WindowSize));
+        }
+
         if (MinContentSamples <= 0)
+        {
             throw new ArgumentException("Minimum content samples must be positive", nameof(MinContentSamples));
+        }
     }
 }

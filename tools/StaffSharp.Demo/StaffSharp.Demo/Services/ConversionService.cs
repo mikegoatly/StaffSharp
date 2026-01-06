@@ -1,17 +1,3 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-
-using StaffSharp.Audio;
-using StaffSharp.Audio.Analysis.Boundaries;
-using StaffSharp.Audio.Analysis.Onset;
-using StaffSharp.Audio.Analysis.Pitch;
-using StaffSharp.Audio.Analysis.Quantization;
-using StaffSharp.Audio.Analysis.Tempo;
-using StaffSharp.Audio.IO;
-using StaffSharp.Audio.Pipeline;
-using StaffSharp.Audio.Pipeline.Stages;
 using StaffSharp.Demo.ViewModels;
 using StaffSharp.Importers.Abc;
 using StaffSharp.Notation;

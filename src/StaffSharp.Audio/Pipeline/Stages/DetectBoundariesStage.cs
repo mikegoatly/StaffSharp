@@ -1,4 +1,3 @@
-using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Analysis.Boundaries;
 
 namespace StaffSharp.Audio.Pipeline.Stages;
@@ -6,35 +5,42 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// <summary>
 /// Pipeline stage that detects audio boundaries (leading/trailing silence).
 /// </summary>
-internal sealed class DetectBoundariesStage : IAsyncPipelineStage<AudioBuffer, AudioBoundaries>
+internal sealed class DetectBoundariesStage : PipelineStageBase
 {
     private readonly IAudioBoundaryDetector _detector;
+    protected override string StageName => "DetectBoundaries";
 
-    public string StageName => "DetectBoundaries";
-
-    public DetectBoundariesStage(IAudioBoundaryDetector detector)
+    public DetectBoundariesStage(AudioPipelineOptions options, IAudioBoundaryDetector detector) : base(options)
     {
         _detector = detector ?? throw new ArgumentNullException(nameof(detector));
     }
 
-    public Task<AudioBoundaries> ProcessAsync(AudioBuffer input, AudioPipelineContext context)
+    /// <summary>
+    /// Detects the content boundaries in the audio, excluding leading/trailing silence.
+    /// </summary>
+    /// <param name="audio">The audio buffer to analyze.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The detected audio boundaries.</returns>
+    public Task<AudioBoundaries> ExecuteAsync(AudioBuffer audio, CancellationToken ct)
     {
-        context.CancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
-        var boundaries = _detector.DetectBoundaries(input);
+        ReportProgress("Detecting audio boundaries");
+
+        var boundaries = _detector.DetectBoundaries(audio);
 
         if (boundaries == null)
         {
             throw new InvalidOperationException("Boundary detection failed - detector returned null.");
         }
 
-        context.EmitDiagnostics(StageName, "StartSample", boundaries.StartSample);
-        context.EmitDiagnostics(StageName, "EndSample", boundaries.EndSample);
-        context.EmitDiagnostics(StageName, "LeadingSilence", boundaries.LeadingSilence);
-        context.EmitDiagnostics(StageName, "TrailingSilence", boundaries.TrailingSilence);
-        context.EmitDiagnostics(StageName, "ContentDuration", boundaries.ContentDuration);
+        EmitDiagnostics("Leading silence", boundaries.LeadingSilence);
+        EmitDiagnostics("Trailing silence", boundaries.TrailingSilence);
+        EmitDiagnostics("Start sample", boundaries.StartSample);
+        EmitDiagnostics("End sample", boundaries.EndSample);
+        EmitDiagnostics("Content duration", boundaries.ContentDuration);
 
-        context.Boundaries = boundaries;
+
         return Task.FromResult(boundaries);
     }
 }

@@ -1,6 +1,9 @@
 namespace StaffSharp.Cli.Commands;
 
 using System.CommandLine;
+using System.Security.Cryptography.X509Certificates;
+
+using Spectre.Console;
 
 using StaffSharp;
 using StaffSharp.Notation;
@@ -113,12 +116,19 @@ internal static class ConvertCommand
             }
 
             // Import
+            var progress = new Progress<ImportProgress>(m => {
+                if (verbose)
+                {
+                    AnsiConsole.MarkupLine($"[blue]{m.StepName}[/] {m.Message}");
+                }
+            });
+
             NotationScore score;
             if (input == "-")
             {
                 // Read from stdin
                 using var stdin = Console.OpenStandardInput();
-                score = await importer.ImportAsync(stdin, cancellationToken);
+                score = await importer.ImportAsync(stdin, progress, cancellationToken);
             }
             else
             {
@@ -130,12 +140,12 @@ internal static class ConvertCommand
                 }
 
                 using var fileStream = File.OpenRead(input);
-                score = await importer.ImportAsync(fileStream, cancellationToken);
+                score = await importer.ImportAsync(fileStream, progress, cancellationToken);
             }
 
             if (verbose)
             {
-                Console.WriteLine($"Imported: {score.Parts.Count} part(s), {score.Metadata.Tempo} BPM, {score.Metadata.TimeSignature}");
+                AnsiConsole.MarkupLine($"[green]Imported[/]: {score.Parts.Count} part(s), [yellow]{score.Metadata.Tempo}[/] BPM, [yellow]{score.Metadata.TimeSignature}[/]");
             }
 
             // Validate score
@@ -200,7 +210,7 @@ internal static class ConvertCommand
                     .SelectMany(m => m.Events)
                     .Count(e => e is NotationNote or Chord);
 
-                Console.WriteLine($"✓ Converted {input} → {output} ({score.Metadata.Tempo} BPM, {score.Metadata.TimeSignature}, {noteCount} note(s))");
+                AnsiConsole.MarkupLine($"[green]✓ Converted[/] {input} → {output} ([yellow]{score.Metadata.Tempo}[/] BPM, [yellow]{score.Metadata.TimeSignature}[/], [yellow]{noteCount}[/] note(s))");
             }
 
             return 0; // Success

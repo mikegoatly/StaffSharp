@@ -12,7 +12,8 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
 {
     private readonly double _minBpm;
     private readonly double _maxBpm;
-    private readonly Notation.TimeSignature _defaultTimeSignature;
+    private readonly TimeSignature _defaultTimeSignature;
+    private readonly TempoDetectionOptions _options;
 
     public InterOnsetIntervalTempoDetector(TempoDetectionOptions? options = null)
     {
@@ -22,18 +23,22 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
         _minBpm = options.MinBpm;
         _maxBpm = options.MaxBpm;
         _defaultTimeSignature = options.DefaultTimeSignature ?? TimeSignature.CommonTime; // 4/4
+        _options = options;
     }
 
     public TempoMap? DetectTempo(ReadOnlySpan<double> onsetTimes)
     {
         if (onsetTimes.Length < 2)
+        {
             return null;
+        }
 
         // Step 1: Compute inter-onset intervals
         var intervals = ComputeIntervals(onsetTimes);
 
         // Step 2: Filter intervals to valid tempo range
         var validIntervals = FilterByTempoRange(intervals, _minBpm, _maxBpm);
+        _options.DiagnosticsCollector?.Collect("InterOnsetIntervalTempoDetector", "Valid intervals", validIntervals.Count);
 
         if (validIntervals.Count == 0)
             return null;

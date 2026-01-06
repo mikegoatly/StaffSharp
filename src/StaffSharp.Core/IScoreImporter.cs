@@ -5,10 +5,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents progress information during score import operations.
 /// </summary>
-/// <param name="CurrentStep">The current step number (1-based).</param>
-/// <param name="TotalSteps">The total number of steps in the import process.</param>
-/// <param name="StepName">A descriptive name for the current step.</param>
-public record ImportProgress(int CurrentStep, int TotalSteps, string StepName);
+public readonly record struct ImportProgress(string StepName, string Message);
 
 /// <summary>
 /// Represents an importer that can read a music notation format and produce a NotationScore.

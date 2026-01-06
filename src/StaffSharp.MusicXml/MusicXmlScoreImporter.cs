@@ -33,20 +33,18 @@ public sealed class MusicXmlScoreImporter : IScoreImporter
         ArgumentNullException.ThrowIfNull(stream);
 
         // Load XML document
-        progress?.Report(new ImportProgress(1, _enableValidation ? 3 : 2, "Loading MusicXML document"));
+        progress?.Report(new ImportProgress("MusicXML import", "Loading MusicXML document"));
         var document = await XDocument.LoadAsync(stream, LoadOptions.SetLineInfo, cancellationToken).ConfigureAwait(false);
 
         // Validate against schema if enabled
         if (_enableValidation)
         {
-            progress?.Report(new ImportProgress(2, 3, "Validating against MusicXML schema"));
+            progress?.Report(new ImportProgress("MusicXML import", "Validating against MusicXML schema"));
             MusicXmlSchemaValidator.Validate(document);
         }
 
         // Parse synchronously (XML parsing is fast)
-        var stepNumber = _enableValidation ? 3 : 2;
-        var totalSteps = _enableValidation ? 3 : 2;
-        progress?.Report(new ImportProgress(stepNumber, totalSteps, "Parsing MusicXML content"));
+        progress?.Report(new ImportProgress("MusicXML import", "Parsing MusicXML content"));
         return MusicXmlParser.Parse(document);
     }
 

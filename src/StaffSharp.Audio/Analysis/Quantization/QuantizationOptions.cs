@@ -1,11 +1,11 @@
-using StaffSharp;
+using StaffSharp.Audio.Diagnostics;
 
 namespace StaffSharp.Audio.Analysis.Quantization;
 
 /// <summary>
 /// Options for quantization algorithms implementing <see cref="IQuantizer"/>.
 /// </summary>
-public record QuantizationOptions
+public record QuantizationOptions : DiagnosticsOptions
 {
     /// <summary>
     /// Gets or initializes the quantization grid in beats.
@@ -34,10 +34,18 @@ public record QuantizationOptions
     public void Validate()
     {
         if (QuantizationGrid <= Rational.Zero)
+        {
             throw new ArgumentException("Quantization grid must be positive", nameof(QuantizationGrid));
+        }
+
         if (DefaultLastNoteDuration <= Rational.Zero)
+        {
             throw new ArgumentException("Default last note duration must be positive", nameof(DefaultLastNoteDuration));
+        }
+
         if (MinNoteDuration <= Rational.Zero)
+        {
             throw new ArgumentException("Minimum note duration must be positive", nameof(MinNoteDuration));
+        }
     }
 }
