@@ -36,35 +36,23 @@ public static class AudioPipeline
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        // Create stages with injected dependencies - each stage handles its own progress/diagnostics
-        var loadAudio = new LoadAudioStage(options);
-        var normalizeAudio = new NormalizeAudioStage(options);
-        var detectBoundaries = new DetectBoundariesStage(options, options.BoundaryDetector);
-        var detectOnsets = new DetectOnsetsStage(options, options.OnsetDetector);
-        var detectPitches = new DetectPitchesStage(options, options.PitchDetector);
-        var detectTimeSignature = new DetectTimeSignatureStage(options, options.TimeSignatureDetector);
-        var detectTempo = new DetectTempoStage(options, options.TempoDetector);
-        var quantize = new QuantizeStage(options, options.Quantizer);
-        var buildTimeline = new BuildTimelineStage(options);
-        var convertToScore = new ConvertToScoreStage(options, new NotationEngine(), new NotationOptions());
-
         // Execute pipeline with explicit orchestration and parallelization
-        var rawAudio = await loadAudio.ExecuteAsync(wavStream, ct).ConfigureAwait(false);
-        var audio = await normalizeAudio.ExecuteAsync(rawAudio, ct).ConfigureAwait(false);
-        var boundaries = await detectBoundaries.ExecuteAsync(audio, ct).ConfigureAwait(false);
-        var onsets = await detectOnsets.ExecuteAsync(audio, boundaries, ct).ConfigureAwait(false);
+        var rawAudio = await new LoadAudioStage(options).ExecuteAsync(wavStream, ct).ConfigureAwait(false);
+        var audio = await new NormalizeAudioStage(options).ExecuteAsync(rawAudio, ct).ConfigureAwait(false);
+        var boundaries = await new DetectBoundariesStage(options, options.BoundaryDetector).ExecuteAsync(audio, ct).ConfigureAwait(false);
+        var onsets = await new DetectOnsetsStage(options, options.OnsetDetector).ExecuteAsync(audio, boundaries, ct).ConfigureAwait(false);
 
-        // PARALLEL EXECUTION: Pitch and time signature detection run concurrently
-        var pitchTask = detectPitches.ExecuteAsync(onsets, audio, boundaries, ct);
-        var tsTask = detectTimeSignature.ExecuteAsync(onsets, ct);
+        // Pitch and time signature detection run concurrently
+        var pitchTask = new DetectPitchesStage(options, options.PitchDetector).ExecuteAsync(onsets, audio, boundaries, ct);
+        var tsTask = new DetectTimeSignatureStage(options, options.TimeSignatureDetector).ExecuteAsync(onsets, ct);
         await Task.WhenAll(pitchTask, tsTask).ConfigureAwait(false);
-        var pitches = pitchTask.GetAwaiter().GetResult();
-        var timeSignatures = tsTask.GetAwaiter().GetResult();
+        var pitches = await pitchTask.ConfigureAwait(false);
+        var timeSignatures = await tsTask.ConfigureAwait(false);
 
-        var tempoMap = await detectTempo.ExecuteAsync(onsets, timeSignatures, ct).ConfigureAwait(false);
-        var quantized = await quantize.ExecuteAsync(onsets, pitches, tempoMap, ct).ConfigureAwait(false);
-        var timeline = await buildTimeline.ExecuteAsync(quantized, tempoMap, ct).ConfigureAwait(false);
-        var score = await convertToScore.ExecuteAsync(timeline, ct).ConfigureAwait(false);
+        var tempoMap = await new DetectTempoStage(options, options.TempoDetector).ExecuteAsync(onsets, timeSignatures, ct).ConfigureAwait(false);
+        var quantized = await new QuantizeStage(options, options.Quantizer).ExecuteAsync(onsets, pitches, tempoMap, ct).ConfigureAwait(false);
+        var timeline = await new BuildTimelineStage(options).ExecuteAsync(quantized, tempoMap, ct).ConfigureAwait(false);
+        var score = await new ConvertToScoreStage(options, new NotationEngine(), new NotationOptions()).ExecuteAsync(timeline, ct).ConfigureAwait(false);
 
         options.Progress?.Report(new ImportProgress("Import from WAV", "Complete"));
 

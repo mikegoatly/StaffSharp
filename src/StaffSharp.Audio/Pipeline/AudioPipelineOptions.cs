@@ -11,7 +11,7 @@ namespace StaffSharp.Audio.Pipeline;
 /// <summary>
 /// Configuration options for the audio-to-score pipeline.
 /// </summary>
-public sealed class AudioPipelineOptions
+public sealed record AudioPipelineOptions
 {
     private IAudioBoundaryDetector? _boundaryDetector;
     private IOnsetDetector? _onsetDetector;

@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="IntegrationTests\TestData\c-scale-44100-mono.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="IntegrationTests\TestData\c-scale-44100-mono.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
