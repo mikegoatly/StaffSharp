@@ -35,10 +35,25 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
 
         // Step 1: Compute inter-onset intervals
         var intervals = ComputeIntervals(onsetTimes);
+        _options.DiagnosticsCollector?.Collect("InterOnsetIntervalTempoDetector", "Total intervals", intervals.Count);
+        
+        // Log first few intervals and their BPM equivalents for debugging
+        if (_options.DiagnosticsCollector is not null && intervals.Count > 0)
+        {
+            var sampleIntervals = intervals.Take(10).ToArray();
+            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "First intervals (seconds)", sampleIntervals);
+            var sampleBpms = sampleIntervals.Select(i => 60.0 / i).ToArray();
+            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "First intervals (BPM)", sampleBpms);
+        }
 
         // Step 2: Filter intervals to valid tempo range
         var validIntervals = FilterByTempoRange(intervals, _minBpm, _maxBpm);
-        _options.DiagnosticsCollector?.Collect("InterOnsetIntervalTempoDetector", "Valid intervals", validIntervals.Count);
+
+        if (_options.DiagnosticsCollector is not null)
+        {
+            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "Valid intervals", validIntervals.Count);
+            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "BPM range", $"{_minBpm}-{_maxBpm}");
+        }
 
         if (validIntervals.Count == 0)
             return null;

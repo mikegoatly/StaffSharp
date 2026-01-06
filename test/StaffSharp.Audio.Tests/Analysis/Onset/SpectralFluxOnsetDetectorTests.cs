@@ -275,10 +275,10 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .Build();
 
         // Simulate processing a slice that starts at 2.5 seconds into the original recording
-        var startTimeOffset = 2.5;
+        var startTimeOffset = TimeSpan.FromSeconds(2.5);
 
         var onsetsWithOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset);
-        var onsetsWithoutOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: 0.0);
+        var onsetsWithoutOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
 
         // Should detect same number of onsets
         Assert.Equal(onsetsWithoutOffset.Length, onsetsWithOffset.Length);
@@ -287,7 +287,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         // Each onset time should be offset by exactly startTimeOffset
         for (int i = 0; i < onsetsWithOffset.Length; i++)
         {
-            var expectedTime = onsetsWithoutOffset[i] + startTimeOffset;
+            var expectedTime = onsetsWithoutOffset[i] + startTimeOffset.TotalSeconds;
             Assert.Equal(expectedTime, onsetsWithOffset[i], precision: 6);
         }
 
@@ -307,7 +307,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .Build();
 
         // Explicit zero offset should be identical to omitting the parameter
-        var onsetsExplicitZero = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: 0.0);
+        var onsetsExplicitZero = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
         var onsetsDefault = detector.DetectOnsets(buffer, SampleRate);
 
         Assert.Equal(onsetsDefault.Length, onsetsExplicitZero.Length);

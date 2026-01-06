@@ -32,7 +32,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         _applyLogarithmicCompression = options.ApplyLogarithmicCompression;
     }
 
-    public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, double startTimeOffset = 0.0)
+    public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default)
     {
         if (buffer.Length < _frameSize)
         {
@@ -50,9 +50,9 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         var onsets = ConvertFramesToTime(onsetFrames, _hopSize, sampleRate, minOnsetIntervalFrames);
 
         // Step 4: Apply start time offset to preserve absolute timing
-        if (startTimeOffset != 0.0)
+        if (startTimeOffset != default)
         {
-            TensorPrimitives.Add(onsets, startTimeOffset, onsets);
+            TensorPrimitives.Add(onsets, startTimeOffset.TotalSeconds, onsets);
         }
 
         return onsets;
@@ -168,7 +168,9 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
     private static double[] ConvertFramesToTime(List<int> frames, int hopSize, int sampleRate, int minIntervalFrames)
     {
         if (frames.Count == 0)
+        {
             return [];
+        }
 
         var onsets = new List<double>();
         int lastFrame = -minIntervalFrames;
@@ -184,6 +186,6 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
             }
         }
 
-        return onsets.ToArray();
+        return [.. onsets];
     }
 }

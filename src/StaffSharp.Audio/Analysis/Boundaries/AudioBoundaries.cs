@@ -23,6 +23,12 @@ public sealed record AudioBoundaries(
         TimeSpan.FromSeconds((EndSample - StartSample) / (double)SampleRate);
 
     /// <summary>
+    /// Gets the start time of the content within the original recording.
+    /// </summary>
+    public TimeSpan StartTime =>
+        TimeSpan.FromSeconds(StartSample / (double)SampleRate);
+
+    /// <summary>
     /// Gets the total duration of the recording (including all silence).
     /// </summary>
     public TimeSpan TotalDuration =>

@@ -40,7 +40,7 @@ internal sealed class DetectOnsetsStage : PipelineStageBase
         var onsets = _detector.DetectOnsets(
             slice,
             audio.SampleRate,
-            boundaries.StartSample);
+            boundaries.StartTime);
 
         EmitDiagnostics("Detected onset count", onsets.Length);
         EmitDiagnostics("Onsets", onsets);
