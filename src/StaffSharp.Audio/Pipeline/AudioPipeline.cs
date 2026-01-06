@@ -38,6 +38,7 @@ public static class AudioPipeline
 
         // Create stages with injected dependencies - each stage handles its own progress/diagnostics
         var loadAudio = new LoadAudioStage(options);
+        var normalizeAudio = new NormalizeAudioStage(options);
         var detectBoundaries = new DetectBoundariesStage(options, options.BoundaryDetector);
         var detectOnsets = new DetectOnsetsStage(options, options.OnsetDetector);
         var detectPitches = new DetectPitchesStage(options, options.PitchDetector);
@@ -48,7 +49,8 @@ public static class AudioPipeline
         var convertToScore = new ConvertToScoreStage(options, new NotationEngine(), new NotationOptions());
 
         // Execute pipeline with explicit orchestration and parallelization
-        var audio = await loadAudio.ExecuteAsync(wavStream, ct).ConfigureAwait(false);
+        var rawAudio = await loadAudio.ExecuteAsync(wavStream, ct).ConfigureAwait(false);
+        var audio = await normalizeAudio.ExecuteAsync(rawAudio, ct).ConfigureAwait(false);
         var boundaries = await detectBoundaries.ExecuteAsync(audio, ct).ConfigureAwait(false);
         var onsets = await detectOnsets.ExecuteAsync(audio, boundaries, ct).ConfigureAwait(false);
 
