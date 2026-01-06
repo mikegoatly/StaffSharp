@@ -51,7 +51,12 @@ public sealed class YinPitchDetector : IPitchDetector
         var frequency = sampleRate / refinedPeriod;
         var confidence = 1.0f - cmndf[period];
 
-        return new PitchDetectionResult(frequency, confidence);
+        // Calculate voicing probability from minimum CMNDF value
+        var voicingProbability = 1.0f - cmndf[period];
+
+        // Return as single-candidate result
+        var candidate = new PitchCandidate(frequency, confidence);
+        return new PitchDetectionResult([candidate], voicingProbability);
     }
 
     /// <summary>

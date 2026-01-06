@@ -64,8 +64,8 @@ public sealed record AudioPipelineOptions
     {
         get
         {
-            // Lazy initialization to inject diagnostics collector
-            _pitchDetector ??= new YinPitchDetector(PitchDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
+            // Lazy initialization to inject diagnostics collector - defaults to pYIN
+            _pitchDetector ??= new PyinPitchDetector(PitchDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
             return _pitchDetector;
         }
 
