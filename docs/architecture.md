@@ -1,202 +1,131 @@
 # StaffSharp Architecture
 
-A music notation system using dual intermediate representations (IR) for clean separation between performance and notation.
+StaffSharp uses two intermediate representations to separate performance data (what plays when) from notation decisions (how it's written).
 
-**Quick Links:**
-- [Pipeline Flows](architecture/pipeline-flows.md) - Data flow diagrams
-- [Implementation Notes](architecture/implementation-notes.md) - Patterns and gotchas
+## The Two IRs
 
----
+Music needs two different representations:
 
-## Why Two IRs?
+**Performance (IR1)** - Flat list of note events with exact timing. This is what you get from audio analysis or MIDI recording. Everything has a concrete onset time and duration in beats.
 
-**Problem:** Music has two representations:
-1. **Performance** - "what plays when" (timing, pitch, dynamics)
-2. **Notation** - "how it's written" (measures, ties, beaming)
+**Notation (IR2)** - Hierarchical score structure with measures, voices, and symbolic durations (quarter notes, dotted eighths, etc.). This is what you need for rendering sheet music or exporting to notation formats.
 
-**Solution:** Use separate IRs optimized for each purpose:
+The split matters because:
+- Audio sources produce timing data, not notation
+- Notation formats (ABC, MusicXML) already think in measures and symbolic durations
+- All outputs need IR2 anyway (MIDI, SVG, ABC exports all work from notation structure)
+- Converting real timing to notation involves subjective decisions (where to add ties, how to beam notes)
 
+Flow:
 ```
-IR1: Performance Timeline          IR2: Notation Score
-• Flat event list                  • Hierarchical (parts/voices/measures)
-• Rational time (exact beats)      • Symbolic durations (quarter, eighth, etc.)
-• Format-agnostic                  • Notation artifacts (ties, beaming)
-• Easy queries                     • Rendering-ready
-• Canonical for audio sources      • Required for all outputs
+Audio → IR1 → IR2 → [MIDI, SVG, ABC, ...]
+MusicXML/ABC → IR2 → [MIDI, SVG, ...]
 ```
-
-**Data Flow:**
-```
-Audio → IR1 → IR2 → [SVG, ABC, MIDI, WAV]
-ABC → IR2 → [SVG, ABC, MIDI, WAV]
-```
-
-**Benefits:**
-- All outputs from IR2 (consistent)
-- IR1 only for performance sources (audio)
-- ABC parses directly to IR2 (natural)
-- Multiple notation styles from same performance
-- No need for IR2 → IR1 conversion
-
----
 
 ## IR1: Performance Timeline
 
-### Purpose
-The canonical "source of truth" for musical content. Represents timing and pitch without notation decisions.
+The flat event list with rational timing. This is the source of truth for musical content from audio or real-time performance.
 
-### Key Types
+**Key types:**
 
 ```csharp
-// Top-level container
+// Container
 class PerformanceTimeline {
     TempoMap TempoMap
     IReadOnlyList<IPerformanceEvent> Events  // Sorted by onset
     PerformanceMetadata Metadata
 }
 
-// All events implement this
+// All events have an onset time in beats
 interface IPerformanceEvent {
-    Rational OnsetBeats  // From start of piece
+    Rational OnsetBeats
 }
 
-// Exact fractional time (no float errors)
-record struct Rational(int Numerator, int Denominator) {
-    Rational Simplify()
-    double ToDouble()
-    // +, -, *, / operators
-}
+// Exact fractional time - no floating point errors
+record struct Rational(int Numerator, int Denominator)
 
-// From audio analysis (real time)
+// From audio analysis
 record NoteEvent(
     MidiNote Pitch,
-    TimeSpan Onset,      // Real time
+    TimeSpan Onset,      // Real time from audio
     TimeSpan Duration,
     Velocity Velocity,
-    int? VoiceHint,      // Suggested voice (1, 2, 3...)
+    int? VoiceHint
 )
 
-// Wrapper: adds musical time to audio events
+// After quantization (wraps NoteEvent to preserve original timing)
 record QuantizedNoteEvent(
-    NoteEvent RawEvent,           // Preserves original
-    Rational OnsetBeats,          // Musical time
+    NoteEvent RawEvent,
+    Rational OnsetBeats,
     Rational DurationBeats,
-    QuantizationMetadata Metadata,
-    ArticulationFlags Articulation // Staccato, accent, etc.
+    QuantizationMetadata Metadata
 ) : IPerformanceEvent
 
-// From MIDI/ABC/MusicXML (already symbolic)
+// From symbolic sources (MIDI, MusicXML, ABC)
 record SymbolicNoteEvent(
     MidiNote Pitch,
     Rational OnsetBeats,
     Rational DurationBeats,
     Velocity Velocity,
-    int? VoiceHint,
-    ArticulationFlags Articulation
+    int? VoiceHint
 ) : IPerformanceEvent
 
-// Tempo and time signature mapping
+// Tempo and time signature
 class TempoMap {
     IReadOnlyList<TempoChange> TempoChanges
     IReadOnlyList<TimeSignatureChange> TimeSignatures
-
+    
     double BeatsToSeconds(Rational beats)
     Rational SecondsToBeats(double seconds)
-    MeasureLocation GetMeasureAt(Rational beats)  // Which measure and beat within it
+    MeasureLocation GetMeasureAt(Rational beats)
 }
-
-// Supporting types for IR1
-record PerformanceMetadata(
-    string? Title,
-    string? Composer,
-    string? Copyright
-)
-
-record QuantizationMetadata(
-    int Subdivision,              // 16 = sixteenth notes
-    double TempoAtOnset,          // BPM when note started
-    TimeSpan QuantizationError    // How much onset was shifted
-)
-
-[Flags]
-enum ArticulationFlags {
-    None = 0,
-    Staccato = 1,    // Short, detached
-    Accent = 2,      // Emphasized
-    Tenuto = 4,      // Held full value
-    Marcato = 8,     // Strongly accented
-    Fermata = 16     // Hold longer than written
-}
-
-record struct MeasureLocation(
-    int MeasureNumber,            // 1-indexed
-    Rational BeatInMeasure        // Position within measure (0-based)
-)
 ```
 
-### Design Decisions
+**Why rational numbers?**
 
-**Rational vs Float:**
-- ✅ Exact: 1/3, dotted notes, tuplets
-- ✅ No accumulation errors
-- ✅ Can detect tuplets from values
+Rational arithmetic is exact. `1/3` stays `1/3`, no accumulation errors. You can detect tuplets from the denominators. The tradeoff is you need to simplify fractions periodically to keep denominators bounded.
 
-**Flat vs Hierarchical:**
-- ✅ Easy queries: "what's at beat 5.25?"
-- ✅ No arbitrary measure decisions
-- ✅ Trivial MIDI export
+**Why flat instead of hierarchical?**
 
-**Wrapper Pattern:**
-- QuantizedNoteEvent wraps NoteEvent to preserve original audio timing
-- Can re-quantize with different parameters without data loss
-
----
+Easy queries - "what's playing at beat 5.25?" is trivial. No arbitrary measure break decisions. MIDI export is straightforward. The downside is you need TempoMap to figure out measure boundaries.
 
 ## IR2: Notation Score
 
-### Purpose
-Derived representation for rendering music notation. Contains presentation logic (ties, beaming, measure breaks).
+The hierarchical notation structure. This is what gets rendered as sheet music or exported to notation formats.
 
-### Key Types
+**Key types:**
 
 ```csharp
-// Top-level container
+// Container
 class NotationScore {
-    ScoreMetadata Metadata  // Title, composer, key, time sig
+    ScoreMetadata Metadata
     IReadOnlyList<Part> Parts
-
-    // Derived index for queries (rebuilt when score changes)
-    IEnumerable<INotationEvent> EventsAt(Rational beat)
 }
 
-record ScoreMetadata(
-    string? Title,
-    string? Composer,
-    KeySignature KeySignature,    // C, G, D, ... (sharps/flats)
-    TimeSignature DefaultTimeSignature,
-    int DefaultTempo              // BPM
-)
-
-// Hierarchy: Score → Parts → Voices → Measures → Events
+// Hierarchy: Score → Parts → Staves → Voices → Measures → Events
 class Part {
-    PartInfo Info              // Name, clef, transpose
+    string Name
+    IReadOnlyList<Staff> Staves  // Most instruments have 1, piano has 2
+}
+
+class Staff {
+    int Number       // 1-based, top to bottom
+    Clef Clef
     IReadOnlyList<Voice> Voices
 }
 
 class Voice {
-    int VoiceNumber
+    int Number
     IReadOnlyList<Measure> Measures
 }
 
 class Measure {
     int Number
-    TimeSignature? TimeSignature  // Only if changed
+    TimeSignature? TimeSignature  // Only if changed from previous
     IReadOnlyList<INotationEvent> Events
-
-    // Events must sum to measure duration
 }
 
-// All notation events have symbolic duration
+// Events have symbolic duration
 interface INotationEvent {
     SymbolicDuration Duration
 }
@@ -205,256 +134,109 @@ record NotationNote(
     Pitch Pitch,
     SymbolicDuration Duration,
     float Velocity,
-    TieType Tie,                  // None/Start/End/Both
+    TieType Tie,              // None/Start/End/Both
     Accidental? Accidental,
     ArticulationFlags Articulation
 ) : INotationEvent
 
 record Rest(SymbolicDuration Duration) : INotationEvent
 
-// Symbolic duration with dots and tuplets
+// Duration represented symbolically
 record SymbolicDuration(
-    NoteDurationBase Base,     // Whole=1, Half=2, Quarter=4, etc.
-    int Dots = 0,              // 0, 1 (dotted), 2 (double-dotted)
+    NoteDurationBase Base,    // Whole=1, Half=2, Quarter=4, Eighth=8...
+    int Dots = 0,
     Tuplet? Tuplet = null
 ) {
-    Rational ToBeats()  // Convert to beats for validation
+    Rational ToBeats()        // For validation
 }
 
 record Tuplet(int ActualNotes, int NormalNotes)  // (3,2) = triplet
 
-enum NoteDurationBase { Whole=1, Half=2, Quarter=4, Eighth=8, ... }
 enum TieType { None, Start, End, Both }
 ```
 
-### Design Decisions
+**Why ties only in IR2?**
 
-**Ties in IR2 Only:**
-- IR1: Note is just onset + duration
-- IR2: Ties added when duration doesn't fit in measure
-- NotationEngine decides where to add ties
+In IR1, a note is just onset + duration. In IR2, when a note doesn't fit in a measure, the NotationEngine splits it and adds ties. This keeps notation decisions out of the performance representation.
 
-**Voice-per-Stream:**
-- ✅ Natural for sequential rendering (left to right)
-- ✅ Each voice maintains own timeline
-- ✅ Easy to validate measure boundaries
-- ❌ Queries need derived index (rebuild when score changes)
+**Why voice-per-stream?**
 
----
+Each voice is a sequence of measures, rendered left to right. Makes validation easy (measure durations must add up). The downside is querying "what's at beat X" needs a derived index.
 
-## Conversion Algorithms
+## Converting IR1 to IR2
 
-### IR1 → IR2: NotationEngine
+The NotationEngine converts the flat performance timeline into hierarchical notation. Lives in StaffSharp.Core.
 
-Converts flat performance timeline to hierarchical notation.
+**Steps:**
 
-```
-Input: PerformanceTimeline (IR1)
-Output: NotationScore (IR2)
+1. **Voice assignment** - Group overlapping notes into separate voices. Uses VoiceHint from audio analysis if available, otherwise analyzes pitch ranges and overlaps. This is basically constraint satisfaction and gets complicated fast.
 
-Algorithm:
-1. Voice Assignment
-   - Group overlapping notes into separate voices
-   - Use VoiceHint if available
-   - Otherwise: analyze pitch ranges and overlaps
+2. **Staff splitting** - Decide if we need a grand staff (piano: treble + bass) or single staff. Looks at pitch ranges.
 
-2. Measure Breaking
-   - Calculate measure boundaries from TempoMap
-   - Split notes that span barlines (add ties)
+3. **Measure partitioning** - Calculate measure boundaries from TempoMap. Notes that span barlines get split with ties added.
 
-3. Rational → Symbolic Duration
-   - Try exact matches (1/4 → Quarter)
-   - Try dotted notes (3/2 → DottedQuarter)
-   - Try tuplets (1/3 → TripletEighth)
-   - Fall back to approximation
+4. **Duration conversion** - Convert rational beats to symbolic durations. Try exact matches first (1/4 → Quarter), then dotted notes (3/8 → DottedEighth), then tuplets. There are usually multiple valid choices here.
 
-4. Tie Insertion
-   - Ties already added in measure breaking
-   - Validate tie chains
+5. **Validation** - Make sure each measure's events sum to the correct duration.
 
-5. Tuplet Detection
-   - Find consecutive notes with same tuplet ratio
-   - Group for rendering
-```
+**The hard parts:**
 
-**Challenges:**
-- Voice assignment is constraint satisfaction (NP-hard in general)
-- Duration conversion has many valid choices (use NotationRules for preferences)
-- Ties vs dots: configurable preference
+- Voice assignment can have many valid solutions. Which is "best" for readability?
+- Duration conversion is ambiguous. Same rational can be written multiple ways (ties vs dots, how to beam).
+- Tuplet detection needs to find consecutive notes with matching ratios.
 
-### IR2 → Outputs: Export Pipeline
+Currently using simple heuristics. A proper solution would use configurable notation preferences.
 
-All outputs generated from IR2:
+## Exports
 
-**MIDI Export from IR2:**
-```
-Algorithm:
-1. Walk each voice in each part
-2. Track current beat position
-3. Convert NotationNote → MIDI note on/off
-4. Merge tied notes into single duration
-5. Convert Rational beats → MIDI ticks
-6. Add tempo/time signature events
-```
+All exports work from IR2. This keeps output consistent regardless of source format.
 
-**ABC/MusicXML Export:**
-```
-Direct emission from IR2 structure
-(Parts → Voices → Measures → Events)
-```
+**MIDI:** Walk the notation hierarchy (parts → staves → voices → measures → events), convert NotationNote events to MIDI note on/off messages. Merge tied notes into single durations. Convert rational beats to MIDI ticks using tempo map.
 
-**SVG Rendering:**
-```
-Layout engine processes IR2 hierarchically
-Renders glyphs for each measure
-```
+**SVG:** Layout engine processes IR2 hierarchically, renders glyphs for each measure. Very much work in progress.
 
-**WAV Synthesis (future):**
-```
-Walk IR2, synthesize audio for each note
-```
+**ABC/MusicXML:** Direct emission from IR2 structure. Parts map to parts, voices to voices, etc.
 
----
+The tricky bit is tied notes - need to merge them back for MIDI/audio output, but preserve them for notation rendering.
 
-## Trade-offs
+## Tradeoffs
 
-### Audio → IR1: Quantization Loss
-- **Challenge:** Converting real time to musical time requires tempo detection and quantization
-- **Loss:** Microtiming, groove, expressive timing
-- **Mitigation:** Wrapper pattern preserves original TimeSpan data
+**Audio → IR1: Lost timing nuances**
 
-### IR1 → IR2: Notation Ambiguity
-- **Challenge:** Duration 5/8 can be notated many ways (half + eighth, dotted quarter + sixteenth + eighth, etc.)
-- **Decision:** Somewhat arbitrary, needs NotationRules engine
-- **Mitigation:** Configurable preferences (prefer ties vs dots, max dots, allow tuplets)
+Converting real time to musical time requires tempo detection and quantization. You lose microtiming, groove, expressive rubato. The QuantizedNoteEvent wrapper preserves the original TimeSpan data so you can re-quantize with different parameters, but the original performance feel is gone.
 
-### ABC Round-Trip: Notation Preservation
-- **Challenge:** ABC → IR2 → ABC might lose subtle notation choices
-- **Mitigation:** Cache original IR2 on import, reuse on export for lossless round-trip
+**IR1 → IR2: Notation ambiguity**
 
----
+Duration `5/8` beats can be written many ways - half + eighth, dotted quarter + sixteenth + eighth, etc. The NotationEngine makes somewhat arbitrary choices. Should probably have configurable preferences for ties vs dots, max dots allowed, tuplet usage.
 
-## Key Architectural Decisions
+**Round-trip loss**
 
-### 1. Two IRs Instead of One
+ABC → IR2 → ABC might not preserve subtle notation choices. Could cache the original IR2 on import and reuse it for lossless round-trips, but that's not implemented yet.
 
-**Why not single unified IR?**
-- Would force compromise between playback precision and notation flexibility
-- Professional software (MuseScore, Finale, Sibelius) all use dual-IR internally
-- Validates our approach
-
-### 2. Rational Time Instead of Float
-
-**Why not doubles?**
-- Floating point accumulation errors
-- Can't represent 1/3 exactly
-- Difficult to detect tuplets from quantized values
-- Need to simplify fractions to keep denominators bounded
-
-### 3. Flat IR1 Instead of Hierarchical
-
-**Why not hierarchical primary IR?**
-- Queries harder: "what plays at beat X"
-- Forces early measure break decisions
-- Mixing performance and notation concerns
-- Better to separate performance (IR1) from notation (IR2)
-
-### 4. Voice Hints Instead of Required Voices
-
-**Why optional in IR1?**
-- Audio analysis may not detect polyphony correctly
-- NotationEngine can reassign for better engraving
-- Symbolic sources (MIDI with channels) can provide strong hints
-
-### 5. Supporting Metadata Types
-
-**Why include them?**
-- PerformanceMetadata: Track title/composer through pipeline
-- QuantizationMetadata: Debug quantization issues, compare original vs quantized
-- ArticulationFlags: Performance information that affects both playback and notation
-- MeasureLocation: Fast "which measure am I in?" queries
-
----
-
-## Comparison with Other Systems
-
-**MuseScore/Finale/Sibelius:**
-- Similar dual-IR approach (performance + notation)
-- Validates our architecture
-
-**Music21 (Python):**
-- Separates `stream` (sequential) from `score` (hierarchical)
-- Similar philosophy to IR1/IR2
-
-**Lilypond:**
-- Separates music expression from engraving rules
-- Input language vs output formatting
-
-**MIDI Specification:**
-- Tick-based timing (like our Rational beats)
-- Event-based flat timeline (like IR1)
-- Note: We export MIDI from IR2 (after notation generation) for consistency
-
----
-
-## Project Organization
+## Project structure
 
 ```
 src/
-├── StaffSharp.Core/           # IR1 and IR2 types, primitives
-├── StaffSharp.Audio/          # WAV → IR1 pipeline, core audio processing
-├── StaffSharp.Conversion/     # IR1 → IR2 (NotationEngine)
-├── StaffSharp.Importers/      # ABC → IR2 parser
-├── StaffSharp.Exporters/      # IR2 → SVG, ABC, WAV (Dependency-free exporters)
-├── StaffSharp.Exporters.Midi/ # IR2 → MIDI (Requires external dependency)
-└── StaffSharp.Cli/            # Command-line interface
+├── StaffSharp.Core/            # IR1/IR2 types, NotationEngine, primitives
+├── StaffSharp.Audio/           # DSP pipeline (pitch/onset detection)
+├── StaffSharp.MusicXml/        # MusicXML → IR2
+├── StaffSharp.Importers/       # ABC → IR2 💭 I think this project should be StaffSharp.Abc now!
+├── StaffSharp.Midi/            # IR2 → MIDI
+├── StaffSharp.Svg/             # IR2 → SVG (WIP)
+└── StaffSharp.Cli/             # Command-line tool
 
 test/
 ├── StaffSharp.Core.Tests/
 ├── StaffSharp.Audio.Tests/
 └── ...
+
+tools/
+├── StaffSharp.Demo/            # A very much WIP demo UI
+└── StaffSharp.SvgRenderDebug/  # A debug UI that can break out early of the render pipeline
 ```
 
-**Dependency Flow:**
-```
-Core (no dependencies)
-  ↑
-  ├── Audio (produces IR1)
-  ├── Conversion (IR1 → IR2)
-  ├── Importers (produces IR2)
-  └── Exporters (consumes IR2)
+**Dependencies:**
 
-Cli (depends on all above)
-```
+Core has no dependencies. Everything else depends on Core. Audio produces IR1, importers produce IR2, NotationEngine converts IR1 → IR2, exporters consume IR2. Cli ties it all together.
 
----
-
-## Next Steps
-
-1. **Implement Core Types** (StaffSharp.Core)
-   - Rational, Frequency, MidiNote, Pitch
-   - PerformanceTimeline, IPerformanceEvent
-   - NotationScore, INotationEvent
-   - Write comprehensive tests
-
-2. **Build Audio Pipeline** (StaffSharp.Audio)
-   - Start with simple monophonic audio
-   - Add diagnostics from day one
-   - Test each stage independently
-
-3. **Implement Conversion** (StaffSharp.Conversion)
-   - NotationEngine: IR1 → IR2
-   - Test with simple monophonic melodies first
-
-4. **Add Importers/Exporters**
-   - ABC parser → IR2
-   - IR2 → ABC emitter (test round-trip)
-   - IR2 → MIDI emitter
-   - IR2 → SVG renderer
-
-5. **Build CLI**
-   - `convert` command
-   - `diagnose` command with full pipeline diagnostics
-
-See [Pipeline Flows](architecture/pipeline-flows.md) for detailed data flow diagrams.
-See [Implementation Notes](architecture/implementation-notes.md) for coding patterns and gotchas.
+Originally planned separate Conversion and Exporters projects, but NotationEngine ended up in Core (keeps the conversion logic close to the types), and each exporter is separate (MIDI, Svg, etc.) to manage dependencies.

@@ -1,24 +1,50 @@
 # StaffSharp
 
-StaffSharp is a musical transformation library for .NET. It takes music in one form, transforms it to an internal representation, then outputs it in a different format.
+A music notation library for .NET that converts between musical formats - audio, MIDI, MusicXML, ABC notation, and SVG scores.
 
-The initial use-case was just WAV -> SVG Score, but it can ultimately take any musical format to any other, e.g.
+## What's this?
 
-WAV -> MIDI
-ABC -> MIDI
-ABC -> SVG
-etc.
+StaffSharp transforms music from one representation to another. The original goal was converting audio recordings (WAV files) into readable sheet music (SVG), but the architecture supports any-to-any conversion:
 
-## Pipeline processing
+- **Audio** → MIDI, SVG
+- **MusicXML** → SVG, MIDI, ABC
+- **ABC notation** → SVG, MIDI
+- **MIDI** → (planned)
 
-We will define the pipeline as:
+## Early days
 
-```cs
-var pipeline = new ScorePipelineBuilder()
-    .FromAudio(audioBuffer) // Audio input
-    .WithPitchDetector(new AdaptivePitchDetector()) // What DSP algorithm should be applied
-    .WithTempoHint(120) // Tempo hint; otherwise will be inferred.
-    .WithQuantization(subdivision: 4) // How notes should be aligned
-    .Build();
-```
+This is a very early stage project. The core architecture is in place with dual intermediate representations (performance timeline and notation score), but many features are incomplete or experimental. Expect breaking changes, missing functionality, and rough edges.
+
+What's working:
+- Audio analysis (pitch detection, onset detection)
+- MusicXML import
+- ABC import (basic)
+- MIDI export
+- Basic score structures
+
+What's not:
+- Most of it. See the issues for a realistic view of progress.
+
+## Structure
+
+The codebase is organized into focused libraries:
+
+- **StaffSharp.Core** - Core types (`NoteEvent`, `Frequency`, `Rational` timing)
+- **StaffSharp.Audio** - DSP pipeline for audio analysis (pitch/onset detection)
+- **StaffSharp.MusicXml** - MusicXML parsing
+- **StaffSharp.Importers** - ABC and other text-based formats
+- **StaffSharp.Midi** - MIDI file generation
+- **StaffSharp.Svg** - SVG score rendering (very much WIP)
+- **StaffSharp.Cli** - Command-line interface
+
+## Architecture
+
+StaffSharp uses two intermediate representations:
+
+1. **Performance Timeline (IR1)** - Flat list of note events with rational timing. Used for audio sources.
+2. **Notation Score (IR2)** - Hierarchical structure (parts/voices/measures) with symbolic durations. Required for all outputs.
+
+Most importers go directly to IR2. Audio goes through IR1 first for analysis, then converts to IR2.
+
+See [docs/architecture.md](docs/architecture.md) for details.
 
