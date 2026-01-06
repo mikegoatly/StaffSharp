@@ -45,12 +45,16 @@ public static class AudioPipeline
         // Pitch and time signature detection run concurrently
         var pitchTask = new DetectPitchesStage(options, options.PitchDetector).ExecuteAsync(onsets, audio, boundaries, ct);
         var tsTask = new DetectTimeSignatureStage(options, options.TimeSignatureDetector).ExecuteAsync(onsets, ct);
-        await Task.WhenAll(pitchTask, tsTask).ConfigureAwait(false);
+        
+        // Wait for pitch detection to complete, then filter unpitched onsets
         var pitches = await pitchTask.ConfigureAwait(false);
+        var (filteredOnsets, filteredPitches) = await new FilterUnpitchedOnsetsStage(options).ExecuteAsync(onsets, pitches, ct).ConfigureAwait(false);
+        
+        // Wait for time signature detection to complete
         var timeSignatures = await tsTask.ConfigureAwait(false);
 
-        var tempoMap = await new DetectTempoStage(options, options.TempoDetector).ExecuteAsync(onsets, timeSignatures, ct).ConfigureAwait(false);
-        var quantized = await new QuantizeStage(options, options.Quantizer).ExecuteAsync(onsets, pitches, tempoMap, ct).ConfigureAwait(false);
+        var tempoMap = await new DetectTempoStage(options, options.TempoDetector).ExecuteAsync(filteredOnsets, timeSignatures, ct).ConfigureAwait(false);
+        var quantized = await new QuantizeStage(options, options.Quantizer).ExecuteAsync(filteredOnsets, filteredPitches, tempoMap, ct).ConfigureAwait(false);
         var timeline = await new BuildTimelineStage(options).ExecuteAsync(quantized, tempoMap, ct).ConfigureAwait(false);
         var score = await new ConvertToScoreStage(options, new NotationEngine(), new NotationOptions()).ExecuteAsync(timeline, ct).ConfigureAwait(false);
 
