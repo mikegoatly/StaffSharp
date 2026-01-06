@@ -417,4 +417,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
+/.serena
+/.claude
 /tmp
