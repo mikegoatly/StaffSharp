@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using StaffSharp;
 using StaffSharp.Demo.Services;
 using StaffSharp.Midi;
 using StaffSharp.Notation;
@@ -231,7 +232,32 @@ public sealed partial class MainViewModel : ViewModelBase, IDisposable
 
     private async Task RenderScoreAsync(CancellationToken token)
     {
-        throw new NotImplementedException();
+        if (_currentScore == null) return;
+
+        try
+        {
+            var exporter = new SvgScoreExporter();
+            using var stream = new MemoryStream();
+
+            // Configure SVG options from UI settings
+            var svgOptions = new Dictionary<string, string>
+            {
+                ["maxWidth"] = Options.SvgWidth.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["staffSpace"] = "10",
+                ["margins"] = "20,20,20,20",
+                ["scale"] = "1.0"
+            };
+
+            await exporter.ExportAsync(_currentScore, stream, svgOptions, token);
+
+            stream.Position = 0;
+            using var reader = new StreamReader(stream);
+            SvgContent = await reader.ReadToEndAsync(token);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error rendering SVG: {ex.Message}";
+        }
     }
 
     public void Dispose()

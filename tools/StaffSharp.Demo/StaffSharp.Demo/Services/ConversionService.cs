@@ -1,3 +1,5 @@
+using StaffSharp.Audio.IO;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.Demo.ViewModels;
 using StaffSharp.Importers.Abc;
 using StaffSharp.Notation;
@@ -19,13 +21,51 @@ public class ConversionService : IConversionService
     {
         try
         {
-            // TODO implement once the pipeline is structured better
-            throw new NotImplementedException();
+            // Load audio file
+            using var fileStream = File.OpenRead(filePath);
+            
+            // Create pipeline options from UI options
+            var pipelineOptions = CreatePipelineOptions(options);
+            
+            // Run the pipeline
+            var score = await AudioPipeline.FromWavAsync(fileStream, pipelineOptions, cancellationToken);
+            
+            // Load the audio samples for waveform display
+            ReadOnlyMemory<float>? audioSamples = null;
+            try
+            {
+                using var audioFile = File.OpenRead(filePath);
+                var audioBuffer = await WavReader.ReadAsync(audioFile, cancellationToken);
+                audioSamples = audioBuffer.Samples;
+            }
+            catch
+            {
+                // If we can't load samples for display, that's OK
+            }
+            
+            return new ConversionResult
+            {
+                Score = score,
+                AudioSamples = audioSamples,
+                DetectedTempo = score.Metadata.Tempo,
+                Diagnostics = new Dictionary<string, object>()
+            };
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException($"Audio conversion failed: {ex.Message}", ex);
         }
+    }
+    
+    private static AudioPipelineOptions CreatePipelineOptions(ProcessingOptions options)
+    {
+        var pipelineOptions = AudioPipelineOptions.Default;
+        
+        // Apply user-configured options
+        // TODO: Map more options as needed when AudioPipelineOptions is expanded
+        // For now, the default options should work well
+        
+        return pipelineOptions;
     }
 
     /// <summary>
