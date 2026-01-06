@@ -32,6 +32,13 @@ public record OnsetDetectionOptions : DiagnosticsOptions
     public float MinOnsetIntervalSeconds { get; init; } = 0.05f;
 
     /// <summary>
+    /// Gets or initializes whether to apply logarithmic compression (log(1+x)).
+    /// Crucial for detecting onsets in strictly harmonic instruments or dense mixtures.
+    /// Default: true.
+    /// </summary>
+    public bool ApplyLogarithmicCompression { get; init; } = true;
+
+    /// <summary>
     /// Validates the options.
     /// </summary>
     /// <exception cref="ArgumentException">Thrown when frame size is not a power of 2.</exception>
