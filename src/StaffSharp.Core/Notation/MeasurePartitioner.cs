@@ -110,6 +110,14 @@ public sealed class MeasurePartitioner
         Rational onsetBeats,
         Rational durationBeats)
     {
+        // Check if this is an unpitched event (rest)
+        // MIDI note -1 is the sentinel value for unpitched/rest
+        if (performanceEvent.Pitch.MidiNumber < 0)
+        {
+            AddRestWithMeasureSplits(measures, onsetBeats, durationBeats);
+            return;
+        }
+        
         var currentBeat = onsetBeats;
         var remainingDuration = durationBeats;
         NotationNote? previousNote = null;
@@ -162,6 +170,42 @@ public sealed class MeasurePartitioner
             measureEvents.Add(note);
 
             previousNote = note;
+            currentBeat += segmentDuration;
+            remainingDuration -= segmentDuration;
+        }
+    }
+    
+    /// <summary>
+    /// Adds a rest, potentially splitting across measure boundaries.
+    /// </summary>
+    private void AddRestWithMeasureSplits(
+        Dictionary<int, List<INotationEvent>> measures,
+        Rational onsetBeats,
+        Rational durationBeats)
+    {
+        var currentBeat = onsetBeats;
+        var remainingDuration = durationBeats;
+
+        while (remainingDuration > Rational.Zero)
+        {
+            var measureLocation = _tempoMap.GetMeasureAt(currentBeat);
+            var measureNumber = measureLocation.MeasureNumber;
+            var timeSignature = _tempoMap.GetTimeSignatureAt(currentBeat);
+            var measureEndBeat = GetMeasureEndBeat(measureNumber, timeSignature);
+
+            var segmentDuration = remainingDuration < measureEndBeat - currentBeat 
+                ? remainingDuration 
+                : measureEndBeat - currentBeat;
+            var symbolicDuration = segmentDuration.FromRational();
+
+            if (!measures.TryGetValue(measureNumber, out var measureEvents))
+            {
+                measureEvents = [];
+                measures[measureNumber] = measureEvents;
+            }
+
+            measureEvents.Add(new Rest(symbolicDuration));
+
             currentBeat += segmentDuration;
             remainingDuration -= segmentDuration;
         }
