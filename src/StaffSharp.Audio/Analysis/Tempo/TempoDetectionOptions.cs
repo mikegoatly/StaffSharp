@@ -16,9 +16,9 @@ public record TempoDetectionOptions : DiagnosticsOptions
 
     /// <summary>
     /// Gets or initializes the maximum detectable tempo in BPM.
-    /// Default: 240.0 BPM.
+    /// Default: 320.0 BPM.
     /// </summary>
-    public double MaxBpm { get; init; } = 240.0;
+    public double MaxBpm { get; init; } = 320.0;
 
     /// <summary>
     /// Gets or initializes the default time signature for the tempo map.

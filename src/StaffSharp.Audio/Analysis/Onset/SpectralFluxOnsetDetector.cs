@@ -19,6 +19,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
     private readonly float _threshold;
     private readonly float _minOnsetIntervalSeconds;
     private readonly bool _applyLogarithmicCompression;
+    private readonly OnsetDetectionOptions? _options;
 
     public SpectralFluxOnsetDetector(OnsetDetectionOptions? options = null)
     {
@@ -30,6 +31,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         _threshold = options.Threshold;
         _minOnsetIntervalSeconds = options.MinOnsetIntervalSeconds;
         _applyLogarithmicCompression = options.ApplyLogarithmicCompression;
+        _options = options;
     }
 
     public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default)
@@ -41,13 +43,19 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
 
         // Step 1: Compute spectral flux for each frame
         var fluxValues = ComputeSpectralFlux(buffer);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Flux frames computed", fluxValues.Length);
 
         // Step 2: Peak picking with threshold
         var onsetFrames = PickPeaks(fluxValues, _threshold);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Peaks before filtering", onsetFrames.Count);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Threshold", _threshold);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Min onset interval (seconds)", _minOnsetIntervalSeconds);
 
         // Step 3: Convert frame indices to time (seconds)
         var minOnsetIntervalFrames = (int)(_minOnsetIntervalSeconds * sampleRate / _hopSize);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Min onset interval (frames)", minOnsetIntervalFrames);
         var onsets = ConvertFramesToTime(onsetFrames, _hopSize, sampleRate, minOnsetIntervalFrames);
+        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Onsets after time filtering", onsets.Length);
 
         // Step 4: Apply start time offset to preserve absolute timing
         if (startTimeOffset != default)
