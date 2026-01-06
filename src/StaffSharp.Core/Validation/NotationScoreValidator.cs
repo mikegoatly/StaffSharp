@@ -90,9 +90,10 @@ public sealed class NotationScoreValidator
             return;
         }
 
-        foreach (var measure in voice.Measures)
+        for (int i = 0; i < voice.Measures.Count; i++)
         {
-            ValidateMeasure(measure, defaultTimeSignature, partName, voice.Number, errors, warnings);
+            var isLastMeasure = i == voice.Measures.Count - 1;
+            ValidateMeasure(voice.Measures[i], defaultTimeSignature, partName, voice.Number, isLastMeasure, errors, warnings);
         }
     }
 
@@ -101,6 +102,7 @@ public sealed class NotationScoreValidator
         TimeSignature defaultTimeSignature,
         string partName,
         int voiceNumber,
+        bool isLastMeasure,
         List<string> errors,
         List<string> warnings)
     {
@@ -119,7 +121,16 @@ public sealed class NotationScoreValidator
         var diff = actualDuration.ToDouble() - expectedDuration.ToDouble();
         if (Math.Abs(diff) > 0.001)
         {
-            errors.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measure.Number}: Duration mismatch. Expected {expectedDuration}, got {actualDuration}");
+            // Allow partial final measures (pickup/incomplete ending measures are common)
+            if (isLastMeasure && actualDuration < expectedDuration)
+            {
+                // This is OK - partial final measure
+                warnings.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measure.Number}: Incomplete final measure. Expected {expectedDuration} beats, got {actualDuration} beats");
+            }
+            else
+            {
+                errors.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measure.Number}: Duration mismatch. Expected {expectedDuration}, got {actualDuration}");
+            }
         }
 
         // Validate individual events
@@ -144,7 +155,7 @@ public sealed class NotationScoreValidator
                 break;
 
             case Chord chord:
-                ValidateChord(chord, partName, voiceNumber, measureNumber, errors, warnings);
+                ValidateChord(chord, partName, voiceNumber, measureNumber, errors);
                 break;
 
             case Rest rest:
@@ -170,7 +181,7 @@ public sealed class NotationScoreValidator
         }
 
         // Validate MIDI note range (for eventual MIDI export)
-        var midiNote = note.Pitch.Octave * 12 + (int)note.Pitch.PitchClass;
+        var midiNote = (note.Pitch.Octave * 12) + (int)note.Pitch.PitchClass;
         if (midiNote < 0 || midiNote > 127)
         {
             warnings.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measureNumber}: Note {note.Pitch} is outside MIDI range (0-127)");
@@ -187,8 +198,7 @@ public sealed class NotationScoreValidator
         string partName,
         int voiceNumber,
         int measureNumber,
-        List<string> errors,
-        List<string> warnings)
+        List<string> errors)
     {
         if (chord.Duration.ToBeats() <= Rational.Zero)
         {
