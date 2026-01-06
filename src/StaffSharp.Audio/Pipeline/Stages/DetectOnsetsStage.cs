@@ -37,10 +37,14 @@ internal sealed class DetectOnsetsStage : PipelineStageBase
             boundaries.StartSample,
             boundaries.EndSample - boundaries.StartSample);
 
+        // Detect onsets in the content region
+        // Note: We pass TimeSpan.Zero as the offset because we want onset times
+        // relative to the content start (beat 0), not the original audio file start.
+        // The boundary detection has already trimmed the leading silence.
         var onsets = _detector.DetectOnsets(
             slice,
             audio.SampleRate,
-            boundaries.StartTime);
+            TimeSpan.Zero);
 
         EmitDiagnostics("Detected onset count", onsets.Length);
         EmitDiagnostics("Onsets", onsets);
