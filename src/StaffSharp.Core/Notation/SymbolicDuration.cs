@@ -59,4 +59,15 @@ public readonly record struct SymbolicDuration
     public static readonly SymbolicDuration TripletEighth = new(NoteDurationBase.Eighth, 0, Tuplet.Triplet);
     public static readonly SymbolicDuration TripletQuarter = new(NoteDurationBase.Quarter, 0, Tuplet.Triplet);
     public static readonly SymbolicDuration TripletSixteenth = new(NoteDurationBase.Sixteenth, 0, Tuplet.Triplet);
+
+    public override string ToString()
+    {
+        return Tuplet != null
+            ? Dots > 0
+                ? $"{Base} {new string('.', Dots)} in {Tuplet}"
+                : $"{Base} in {Tuplet}"
+            : Dots > 0
+                ? $"{Base} {new string('.', Dots)}"
+                : Base.ToString();
+    }
 }

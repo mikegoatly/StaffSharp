@@ -38,6 +38,32 @@ internal sealed class ConvertToScoreStage : PipelineStageBase
         {
             var totalVoices = score.Parts.Sum(p => p.Voices.Count);
             EmitDiagnostics("TotalVoices", totalVoices);
+            
+            // Detailed measure diagnostics
+            if (Options.DiagnosticsCollector != null)
+            {
+                foreach (var (part, partIndex) in score.Parts.Select((p, i) => (p, i)))
+                {
+                    foreach (var (voice, voiceIndex) in part.Voices.Select((v, i) => (v, i)))
+                    {
+                        EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1} - Measure count", voice.Measures.Count);
+                        
+                        foreach (var (measure, measureIndex) in voice.Measures.Select((m, i) => (m, i)))
+                        {
+                            var eventCount = measure.Events.Count;
+                            var totalDuration = measure.Events.Sum(e => e.Duration.ToBeats().ToDouble());
+                            var eventTypes = string.Join(", ", measure.Events.Select(e => 
+                                e is NotationNote ? "Note" : e is Rest ? "Rest" : e.GetType().Name));
+                            var durations = string.Join(", ", measure.Events.Select(e => e.Duration.ToString()));
+                            
+                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Events", eventCount);
+                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Total duration", totalDuration);
+                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Event types", eventTypes);
+                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Durations", durations);
+                        }
+                    }
+                }
+            }
         }
 
         return Task.FromResult(score);

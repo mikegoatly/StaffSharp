@@ -42,6 +42,20 @@ internal sealed class QuantizeStage : PipelineStageBase
         }
 
         EmitDiagnostics("QuantizedNoteCount", quantizedNotes.Count);
+        
+        // Detailed diagnostics for each quantized note
+        if (Options.DiagnosticsCollector != null)
+        {
+            var startBeats = quantizedNotes.Select(n => n.OnsetBeats.ToDouble()).ToArray();
+            var durations = quantizedNotes.Select(n => n.DurationBeats.ToDouble()).ToArray();
+            var midiNotes = quantizedNotes.Select(n => n.RawEvent.Pitch.MidiNumber).ToArray();
+            var isPitched = quantizedNotes.Select(n => n.RawEvent.Pitch.MidiNumber != DetectPitchesStage.UnpitchedSentinel).ToArray();
+            
+            EmitDiagnostics("Start beats", startBeats);
+            EmitDiagnostics("Durations (beats)", durations);
+            EmitDiagnostics("MIDI notes", midiNotes);
+            EmitDiagnostics("Is pitched", isPitched);
+        }
 
         return Task.FromResult(quantizedNotes);
     }
