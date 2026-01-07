@@ -92,8 +92,9 @@ public sealed class NotationScoreValidator
 
         for (int i = 0; i < voice.Measures.Count; i++)
         {
+            var isFirstMeasure = i == 0;
             var isLastMeasure = i == voice.Measures.Count - 1;
-            ValidateMeasure(voice.Measures[i], defaultTimeSignature, partName, voice.Number, isLastMeasure, errors, warnings);
+            ValidateMeasure(voice.Measures[i], defaultTimeSignature, partName, voice.Number, isFirstMeasure, isLastMeasure, errors, warnings);
         }
     }
 
@@ -102,6 +103,7 @@ public sealed class NotationScoreValidator
         TimeSignature defaultTimeSignature,
         string partName,
         int voiceNumber,
+        bool isFirstMeasure,
         bool isLastMeasure,
         List<string> errors,
         List<string> warnings)
@@ -121,8 +123,14 @@ public sealed class NotationScoreValidator
         var diff = actualDuration.ToDouble() - expectedDuration.ToDouble();
         if (Math.Abs(diff) > 0.001)
         {
-            // Allow partial final measures (pickup/incomplete ending measures are common)
-            if (isLastMeasure && actualDuration < expectedDuration)
+            // Allow partial first measures (pickup bars/anacrusis are common)
+            if (isFirstMeasure && actualDuration < expectedDuration)
+            {
+                // This is OK - pickup bar
+                warnings.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measure.Number}: Incomplete first measure (pickup bar). Expected {expectedDuration} beats, got {actualDuration} beats");
+            }
+            // Allow partial final measures (incomplete ending measures are common)
+            else if (isLastMeasure && actualDuration < expectedDuration)
             {
                 // This is OK - partial final measure
                 warnings.Add($"Part '{partName}', Voice {voiceNumber}, Measure {measure.Number}: Incomplete final measure. Expected {expectedDuration} beats, got {actualDuration} beats");
