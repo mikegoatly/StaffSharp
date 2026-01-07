@@ -1,3 +1,5 @@
+using StaffSharp.Render;
+
 namespace StaffSharp;
 
 /// <summary>
@@ -15,23 +17,24 @@ public record SvgContext
     /// </summary>
     public double NoteSpacing { get; set; } = 2;
     public string? BailAfterPass { get; set; }
-}
 
-/// <summary>
-/// Represents margins in pixels.
-/// </summary>
-public readonly record struct Margins
-{
-    public int Left { get; }
-    public int Right { get; }
-    public int Top { get; }
-    public int Bottom { get; }
+    /// <summary>
+    /// Tracks glyphs used during rendering for deduplication.
+    /// Maps glyph ID to GlyphInfo for later definition emission.
+    /// </summary>
+    private readonly Dictionary<string, GlyphInfo> _usedGlyphs = [];
 
-    public Margins(int left = 0, int right = 0, int top = 0, int bottom = 0)
+    /// <summary>
+    /// Registers a glyph as used during rendering.
+    /// </summary>
+    /// <param name="glyph">The glyph to register.</param>
+    public void RegisterGlyph(GlyphInfo glyph)
     {
-        Left = left;
-        Right = right;
-        Top = top;
-        Bottom = bottom;
+        _usedGlyphs.TryAdd(glyph.Id, glyph);
     }
+
+    /// <summary>
+    /// Gets all glyphs that were registered during rendering.
+    /// </summary>
+    public IReadOnlyCollection<GlyphInfo> UsedGlyphs => _usedGlyphs.Values;
 }

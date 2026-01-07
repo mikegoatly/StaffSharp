@@ -47,11 +47,14 @@ internal abstract class LayoutElementRenderer<T>
     }
 
     /// <summary>
-    /// Renders a glyph as an SVG path element with appropriate scaling.
+    /// Renders a glyph as an SVG use element referencing a shared definition.
     /// </summary>
     protected static XElement? RenderGlyph(GlyphInfo glyph, double targetHeightInStaffSpaces, string? transform, SvgContext context)
     {
         if (glyph.Path == null) return null;
+
+        // Register this glyph for deduplication
+        context.RegisterGlyph(glyph);
 
         var targetHeight = targetHeightInStaffSpaces * context.StaffSpace;
         var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
@@ -61,8 +64,8 @@ internal abstract class LayoutElementRenderer<T>
             ? scaleTransform
             : $"{transform} {scaleTransform}";
 
-        return new XElement(SvgNamespace + "path",
-            new XAttribute("d", glyph.Path),
+        return new XElement(SvgNamespace + "use",
+            new XAttribute("href", $"#{glyph.Id}"),
             new XAttribute("fill", "black"),
             new XAttribute("transform", finalTransform)
         );

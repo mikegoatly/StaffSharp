@@ -29,12 +29,51 @@ public static class SvgRenderer
             new XAttribute("height", viewBoxHeight)
         );
 
+        // Add white background
+        svg.Add(new XElement(SvgNamespace + "rect",
+            new XAttribute("width", viewBoxWidth),
+            new XAttribute("height", viewBoxHeight),
+            new XAttribute("fill", "white")
+        ));
+
         // Render each system
         foreach (var system in layoutModel.Systems)
         {
             svg.Add(SystemLayoutRenderer.Instance.Render(system, context));
         }
 
+        // Add <defs> section with used glyphs after rendering completes
+        var defs = CreateGlyphDefinitions(context);
+        if (defs != null)
+        {
+            svg.AddFirst(defs);
+        }
+
         return svg;
+    }
+
+    /// <summary>
+    /// Creates a <defs> element containing path definitions for all glyphs used during rendering.
+    /// </summary>
+    private static XElement? CreateGlyphDefinitions(SvgContext context)
+    {
+        var usedGlyphs = context.UsedGlyphs;
+        if (usedGlyphs.Count == 0)
+        {
+            return null;
+        }
+
+        var defs = new XElement(SvgNamespace + "defs");
+
+        foreach (var glyph in usedGlyphs)
+        {
+            var path = new XElement(SvgNamespace + "path",
+                new XAttribute("id", glyph.Id),
+                new XAttribute("d", glyph.Path)
+            );
+            defs.Add(path);
+        }
+
+        return defs;
     }
 }
