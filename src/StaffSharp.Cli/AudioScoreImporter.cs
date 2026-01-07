@@ -20,7 +20,7 @@ internal sealed class AudioScoreImporter : IScoreImporter
         var options = new AudioPipelineOptions
         {
             Progress = progress,
-            DiagnosticsCollector = new CliDiagnosticsCollector(),
+            DiagnosticsCollector = progress is not null ? new CliDiagnosticsCollector() : null,
         };
 
         return await AudioPipeline.FromWavAsync(stream, options, cancellationToken);
