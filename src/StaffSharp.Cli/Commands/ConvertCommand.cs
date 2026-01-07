@@ -14,6 +14,8 @@ using StaffSharp.Validation;
 /// </summary>
 internal static class ConvertCommand
 {
+    private static Dictionary<string, Option> dynamicOptions = [];
+
     public static Command Create()
     {
         var command = new Command("convert", "Convert between music notation formats");
@@ -55,6 +57,7 @@ internal static class ConvertCommand
                     HelpName = option.DefaultValue
                 };
 
+                dynamicOptions.Add(option.Name, cmdOption);
                 command.Options.Add(cmdOption);
             }
         }
@@ -116,13 +119,7 @@ internal static class ConvertCommand
             }
 
             // Import
-            var progress = new Progress<ImportProgress>(m => {
-                if (verbose)
-                {
-                    AnsiConsole.MarkupLine($"[blue]{m.StepName}[/] {m.Message}");
-                }
-            });
-
+            var progress = verbose ? new Progress<ImportProgress>(m => AnsiConsole.MarkupLine($"[blue]{m.StepName}[/] {m.Message}")) : null;
             NotationScore score;
             if (input == "-")
             {
@@ -165,10 +162,10 @@ internal static class ConvertCommand
 
                 if (validationResults.Warnings.Count > 0 && verbose)
                 {
-                    Console.WriteLine("Validation warnings:");
+                    AnsiConsole.MarkupLine("[yellow]Validation warnings:[/]");
                     foreach (var warning in validationResults.Warnings)
                     {
-                        Console.WriteLine($"  - {warning}");
+                        AnsiConsole.MarkupLine($"[yellow]  - {Markup.Escape(warning)}[/]");
                     }
                 }
             }
@@ -177,14 +174,11 @@ internal static class ConvertCommand
             var options = new Dictionary<string, string>();
             foreach (var option in exporter.AvailableOptions)
             {
-                var optionResult = parseResult.GetResult(new Option<string?>($"--{option.Name}"));
-                if (optionResult != null)
+                if (dynamicOptions.TryGetValue(option.Name, out var opt)
+                    && parseResult.GetResult(opt) is { } optionResult
+                    && optionResult.GetValueOrDefault<string?>() is { } value)
                 {
-                    var value = optionResult.GetValueOrDefault<string?>();
-                    if (value != null)
-                    {
-                        options[option.Name] = value;
-                    }
+                    options[option.Name] = value;
                 }
             }
 
