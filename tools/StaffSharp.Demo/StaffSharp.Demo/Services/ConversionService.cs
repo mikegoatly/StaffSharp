@@ -1,7 +1,7 @@
+using StaffSharp.Abc.Importing;
 using StaffSharp.Audio.IO;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Demo.ViewModels;
-using StaffSharp.Importers.Abc;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Demo.Services;
@@ -23,13 +23,13 @@ public class ConversionService : IConversionService
         {
             // Load audio file
             using var fileStream = File.OpenRead(filePath);
-            
+
             // Create pipeline options from UI options
             var pipelineOptions = CreatePipelineOptions(options);
-            
+
             // Run the pipeline
             var score = await AudioPipeline.FromWavAsync(fileStream, pipelineOptions, cancellationToken);
-            
+
             // Load the audio samples for waveform display
             ReadOnlyMemory<float>? audioSamples = null;
             try
@@ -42,7 +42,7 @@ public class ConversionService : IConversionService
             {
                 // If we can't load samples for display, that's OK
             }
-            
+
             return new ConversionResult
             {
                 Score = score,
@@ -56,15 +56,15 @@ public class ConversionService : IConversionService
             throw new InvalidOperationException($"Audio conversion failed: {ex.Message}", ex);
         }
     }
-    
+
     private static AudioPipelineOptions CreatePipelineOptions(ProcessingOptions options)
     {
         var pipelineOptions = AudioPipelineOptions.Default;
-        
+
         // Apply user-configured options
         // TODO: Map more options as needed when AudioPipelineOptions is expanded
         // For now, the default options should work well
-        
+
         return pipelineOptions;
     }
 

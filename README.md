@@ -16,14 +16,21 @@ StaffSharp transforms music from one representation to another. The original goa
 This is a very early stage project. The core architecture is in place with dual intermediate representations (performance timeline and notation score), but many features are incomplete or experimental. Expect breaking changes, missing functionality, and rough edges.
 
 What's working:
-- Audio analysis (pitch detection, onset detection)
+- Monophonic audio analysis (Using pYIN, though there is a YIN implementation in there)
 - MusicXML import
-- ABC import (basic)
+- ABC import
 - MIDI export
 - Basic score structures
+- Score validation - the notation layer has validation logic that verifies it is structurally sound
+- Rendering to SVG (Definitely a WIP!)
 
 What's not:
-- Most of it. See the issues for a realistic view of progress.
+- Polyphonic audio analysis
+- ABC export
+- MIDI import
+- MusicXML export
+- Rendering decorations (trills, etc.) is very ropey
+- Realistically even the things above you should expect bugs in!
 
 ## Structure
 
@@ -31,9 +38,9 @@ The codebase is organized into focused libraries:
 
 - **StaffSharp.Core** - Core types (`NoteEvent`, `Frequency`, `Rational` timing)
 - **StaffSharp.Audio** - DSP pipeline for audio analysis (pitch/onset detection)
-- **StaffSharp.MusicXml** - MusicXML parsing
-- **StaffSharp.Importers** - ABC and other text-based formats
-- **StaffSharp.Midi** - MIDI file generation
+- **StaffSharp.MusicXml** - MusicXML parsing (Exporting TODO)
+- **StaffSharp.Abc** - ABC parsing (Exporting TODO)
+- **StaffSharp.Midi** - MIDI file generation (Parsing TODO)
 - **StaffSharp.Svg** - SVG score rendering (very much WIP)
 - **StaffSharp.Cli** - Command-line interface
 

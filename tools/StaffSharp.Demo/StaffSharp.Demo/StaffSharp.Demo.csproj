@@ -30,6 +30,6 @@
     <ProjectReference Include="..\..\..\src\StaffSharp.Svg\StaffSharp.Svg.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.Midi\StaffSharp.Midi.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.MusicXml\StaffSharp.MusicXml.csproj" />
-    <ProjectReference Include="..\..\..\src\StaffSharp.Importers\StaffSharp.Importers.csproj" />
+    <ProjectReference Include="..\..\..\src\StaffSharp.Abc\StaffSharp.Abc.csproj" />
   </ItemGroup>
 </Project>

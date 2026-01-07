@@ -220,7 +220,7 @@ src/
 ├── StaffSharp.Core/            # IR1/IR2 types, NotationEngine, primitives
 ├── StaffSharp.Audio/           # DSP pipeline (pitch/onset detection)
 ├── StaffSharp.MusicXml/        # MusicXML → IR2
-├── StaffSharp.Importers/       # ABC → IR2 💭 I think this project should be StaffSharp.Abc now!
+├── StaffSharp.Abc/             # ABC → IR2
 ├── StaffSharp.Midi/            # IR2 → MIDI
 ├── StaffSharp.Svg/             # IR2 → SVG (WIP)
 └── StaffSharp.Cli/             # Command-line tool

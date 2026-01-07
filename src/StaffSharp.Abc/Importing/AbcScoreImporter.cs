@@ -1,4 +1,6 @@
-namespace StaffSharp.Importers.Abc;
+using StaffSharp.Abc.Importing;
+
+namespace StaffSharp.Abc.Importing;
 
 using StaffSharp;
 using StaffSharp.Notation;

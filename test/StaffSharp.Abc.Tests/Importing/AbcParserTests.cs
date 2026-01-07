@@ -1,7 +1,7 @@
-namespace StaffSharp.Importers.Tests.Abc;
+namespace StaffSharp.Abc.Tests.Importing;
 
 using StaffSharp;
-using StaffSharp.Importers.Abc;
+using StaffSharp.Abc.Importing;
 using StaffSharp.Notation;
 using StaffSharp.TestHelpers;
 

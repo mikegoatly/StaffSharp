@@ -1,7 +1,7 @@
-namespace StaffSharp.Importers.Abc;
+namespace StaffSharp.Abc.Importing;
 
 using System.Diagnostics.CodeAnalysis;
-using StaffSharp;
+
 using StaffSharp.Notation;
 
 /// <summary>

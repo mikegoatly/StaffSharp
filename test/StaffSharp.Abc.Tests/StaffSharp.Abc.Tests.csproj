@@ -15,7 +15,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\StaffSharp.Importers\StaffSharp.Importers.csproj" />
+		<ProjectReference Include="..\..\src\StaffSharp.Abc\StaffSharp.Abc.csproj" />
 		<ProjectReference Include="..\StaffSharp.TestHelpers\StaffSharp.TestHelpers.csproj" />
 	</ItemGroup>
 

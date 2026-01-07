@@ -1,7 +1,7 @@
 namespace StaffSharp.Cli;
 
 using StaffSharp;
-using StaffSharp.Importers.Abc;
+using StaffSharp.Abc.Importing;
 using StaffSharp.Midi;
 using StaffSharp.MusicXml;
 

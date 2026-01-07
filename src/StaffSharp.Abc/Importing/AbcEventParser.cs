@@ -1,7 +1,8 @@
-namespace StaffSharp.Importers.Abc;
+namespace StaffSharp.Abc.Importing;
 
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
+
 using StaffSharp;
 using StaffSharp.Notation;
 
@@ -91,111 +92,11 @@ internal static class AbcEventParser
 
         var startIndex = index;
 
-        // Parse accidental (^, _, =, ^^, __)
-        Accidental? accidental = null;
-        if (index < input.Length && input[index] == '^')
-        {
-            index++;
-            if (index < input.Length && input[index] == '^') // Double sharp
-            {
-                accidental = Accidental.DoubleSharp;
-                index++;
-            }
-            else if (index < input.Length && input[index] == '/') // Quarter sharp
-            {
-                accidental = Accidental.QuarterSharp;
-                index++;
-            }
-            else if (index < input.Length - 1 && input[index] == '3' && input[index + 1] == '/') // Three-quarter sharp
-            {
-                accidental = Accidental.ThreeQuarterSharp;
-                index += 2;
-            }
-            else
-            {
-                accidental = Accidental.Sharp;
-            }
-        }
-        else if (index < input.Length && input[index] == '_')
-        {
-            index++;
-            if (index < input.Length && input[index] == '_') // Double flat
-            {
-                accidental = Accidental.DoubleFlat;
-                index++;
-            }
-            else if (index < input.Length && input[index] == '/') // Quarter flat
-            {
-                accidental = Accidental.QuarterFlat;
-                index++;
-            }
-            else if (index < input.Length - 1 && input[index] == '3' && input[index + 1] == '/') // Three-quarter flat
-            {
-                accidental = Accidental.ThreeQuarterFlat;
-                index += 2;
-            }
-            else
-            {
-                accidental = Accidental.Flat;
-            }
-        }
-        else if (index < input.Length && input[index] == '=')
-        {
-            accidental = Accidental.Natural;
-            index++;
-        }
-
-        // Parse note letter (A-G, a-g, Z, z)
-        if (index >= input.Length)
+        // Parse accidental, note letter, and octave modifiers
+        if (!TryParsePitch(input, ref index, allowQuarterTones: true, allowRests: true, out var pitch))
         {
             index = startIndex;
             return false;
-        }
-
-        char noteChar = input[index];
-        if (!ValidNoteChars.Contains(noteChar))
-        {
-            index = startIndex;
-            return false;
-        }
-
-        var isLowerCase = char.IsLower(noteChar);
-        var upperChar = char.ToUpperInvariant(noteChar);
-
-        var pitchClass = upperChar switch
-        {
-            'C' => PitchClass.C,
-            'D' => PitchClass.D,
-            'E' => PitchClass.E,
-            'F' => PitchClass.F,
-            'G' => PitchClass.G,
-            'A' => PitchClass.A,
-            'B' => PitchClass.B,
-            'Z' => (PitchClass?)null, // Rest
-            _ => null
-        };
-
-        if (pitchClass == null && upperChar != 'Z')
-        {
-            index = startIndex;
-            return false;
-        }
-
-        index++; // Move past note letter
-
-        // Parse octave modifiers (commas lower, apostrophes raise)
-        int octave = isLowerCase ? 5 : 4; // Default: uppercase = octave 4, lowercase = octave 5
-
-        while (index < input.Length && input[index] == ',')
-        {
-            octave--;
-            index++;
-        }
-
-        while (index < input.Length && input[index] == '\'')
-        {
-            octave++;
-            index++;
         }
 
         // Parse duration modifier (2, /2, /, etc.)
@@ -213,11 +114,10 @@ internal static class AbcEventParser
         var symbolicDuration = duration.FromRational();
 
         // Create pitch (or rest)
-        if (pitchClass != null)
+        if (pitch != null)
         {
-            var pitch = new Pitch(pitchClass.Value, octave, accidental);
             noteEvent = new NotationNote(
-                pitch,
+                pitch.GetValueOrDefault(),
                 symbolicDuration,
                 Velocity.MezzoForte,
                 tie,
@@ -225,14 +125,10 @@ internal static class AbcEventParser
                 decorations.Count > 0 ? decorations : null);
             return true;
         }
-        else if (upperChar == 'Z')
-        {
-            // Create rest (rests cannot be tied or have grace notes)
-            noteEvent = new Rest(symbolicDuration);
-            return true;
-        }
-
-        return false;
+        
+        // Create rest (rests cannot be tied or have grace notes)
+        noteEvent = new Rest(symbolicDuration);
+        return true;
     }
 
     private static bool TryParseChord(
@@ -271,7 +167,8 @@ internal static class AbcEventParser
             }
 
             // Parse individual note within chord
-            if (!TryParseChordNote(input, ref index, out var pitch) || pitch == null)
+            // Chords don't support quarter tones or rests
+            if (!TryParsePitch(input, ref index, allowQuarterTones: false, allowRests: false, out var pitch) || pitch == null)
             {
                 index = startIndex;
                 return false;
@@ -316,10 +213,21 @@ internal static class AbcEventParser
         return true;
     }
 
-    private static bool TryParseChordNote(
+    /// <summary>
+    /// Parses accidental, note letter, and octave modifiers from ABC notation.
+    /// </summary>
+    /// <param name="input">The input string</param>
+    /// <param name="index">Current position (will be advanced if successful)</param>
+    /// <param name="allowQuarterTones">Whether to parse quarter-tone accidentals (^/, _/, ^3/, _3/)</param>
+    /// <param name="allowRests">Whether to allow rest notation (Z, z)</param>
+    /// <param name="pitch">The parsed pitch (null for rests)</param>
+    /// <returns>True if a valid pitch or rest was parsed</returns>
+    internal static bool TryParsePitch(
         string input,
         ref int index,
-        [NotNullWhen(true)] out Pitch? pitch)
+        bool allowQuarterTones,
+        bool allowRests,
+        out Pitch? pitch)
     {
         pitch = null;
 
@@ -330,15 +238,25 @@ internal static class AbcEventParser
 
         var startIndex = index;
 
-        // Parse accidental
+        // Parse accidental (^, _, =, ^^, __)
         Accidental? accidental = null;
         if (index < input.Length && input[index] == '^')
         {
             index++;
-            if (index < input.Length && input[index] == '^')
+            if (index < input.Length && input[index] == '^') // Double sharp
             {
                 accidental = Accidental.DoubleSharp;
                 index++;
+            }
+            else if (allowQuarterTones && index < input.Length && input[index] == '/') // Quarter sharp
+            {
+                accidental = Accidental.QuarterSharp;
+                index++;
+            }
+            else if (allowQuarterTones && index < input.Length - 1 && input[index] == '3' && input[index + 1] == '/') // Three-quarter sharp
+            {
+                accidental = Accidental.ThreeQuarterSharp;
+                index += 2;
             }
             else
             {
@@ -348,10 +266,20 @@ internal static class AbcEventParser
         else if (index < input.Length && input[index] == '_')
         {
             index++;
-            if (index < input.Length && input[index] == '_')
+            if (index < input.Length && input[index] == '_') // Double flat
             {
                 accidental = Accidental.DoubleFlat;
                 index++;
+            }
+            else if (allowQuarterTones && index < input.Length && input[index] == '/') // Quarter flat
+            {
+                accidental = Accidental.QuarterFlat;
+                index++;
+            }
+            else if (allowQuarterTones && index < input.Length - 1 && input[index] == '3' && input[index + 1] == '/') // Three-quarter flat
+            {
+                accidental = Accidental.ThreeQuarterFlat;
+                index += 2;
             }
             else
             {
@@ -364,7 +292,7 @@ internal static class AbcEventParser
             index++;
         }
 
-        // Parse note letter
+        // Parse note letter (A-G, a-g, Z, z)
         if (index >= input.Length)
         {
             index = startIndex;
@@ -382,7 +310,24 @@ internal static class AbcEventParser
         var upperChar = char.ToUpperInvariant(noteChar);
 
         var pitchClass = PitchClasses.GetValueOrDefault(upperChar, (PitchClass?)null);
-        if (pitchClass is null)
+
+        // Handle rest
+        if (pitchClass == null && upperChar == 'Z')
+        {
+            if (!allowRests)
+            {
+                index = startIndex;
+                return false;
+            }
+
+            index++; // Move past 'Z'
+
+            // pitch remains null for rest
+            pitch = default;
+            return true; 
+        }
+
+        if (pitchClass == null)
         {
             index = startIndex;
             return false;
@@ -390,8 +335,8 @@ internal static class AbcEventParser
 
         index++; // Move past note letter
 
-        // Parse octave modifiers
-        int octave = isLowerCase ? 5 : 4;
+        // Parse octave modifiers (commas lower, apostrophes raise)
+        int octave = isLowerCase ? 5 : 4; // Default: uppercase = octave 4, lowercase = octave 5
 
         while (index < input.Length && input[index] == ',')
         {
@@ -405,9 +350,7 @@ internal static class AbcEventParser
             index++;
         }
 
-        // Note: Duration for individual notes within chord is parsed on the chord as a whole
-
-        pitch = new Pitch(pitchClass.GetValueOrDefault(), octave, accidental);
+        pitch = new Pitch(pitchClass.Value, octave, accidental);
         return true;
     }
 

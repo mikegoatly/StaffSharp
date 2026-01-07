@@ -1,7 +1,6 @@
-namespace StaffSharp.Importers.Abc;
+namespace StaffSharp.Abc.Importing;
 
 using StaffSharp;
-using StaffSharp.Notation;
 
 /// <summary>
 /// Handles ABC broken rhythm notation (>, <, >>, <<<, etc.).

@@ -2,7 +2,8 @@ namespace StaffSharp.Midi.Tests;
 
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
-using StaffSharp.Importers.Abc;
+
+using StaffSharp.Abc.Importing;
 
 public class AbcToMidiIntegrationTests
 {
