@@ -901,6 +901,39 @@ public class AbcParserTests : ScoreTestBase
     }
 
     [Fact]
+    public void Parse_CrossMeasureSlur_PopulatesMeasureAndPartSpan()
+    {
+        var abc = """
+            X:1
+            T:Cross Slur
+            M:4/4
+            L:1/4
+            K:C
+            A(BC|D)E|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var notes = GetNotes(score);
+        var part = score.Parts[0];
+
+        // Measure-level slur should live where the slur closes (measure 2) and span B-C-D
+        var measure2 = part.Voices[0].Measures[1];
+        var measureSlur = Assert.Single(measure2.Slurs);
+        Assert.Equal(3, measureSlur.Events.Count);
+        Assert.Equal(new[] { PitchClass.B, PitchClass.C, PitchClass.D }, measureSlur.Events.OfType<NotationNote>().Select(n => n.Pitch.PitchClass).ToArray());
+
+        // Part-level span should point to the first and last slurred notes across the barline
+        var span = Assert.Single(part.Slurs);
+        Assert.Same(measureSlur.Events[0], span.StartEvent);
+        Assert.Same(measureSlur.Events[^1], span.EndEvent);
+        Assert.Equal(1, span.StartStaffNumber);
+        Assert.Equal(1, span.EndStaffNumber);
+        Assert.Equal(1, span.StartVoiceNumber);
+        Assert.Equal(1, span.EndVoiceNumber);
+    }
+
+    [Fact]
     public void Parse_MultipleSlurs_ParsesCorrectly()
     {
         var abc = """

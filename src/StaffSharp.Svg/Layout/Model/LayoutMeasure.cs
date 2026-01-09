@@ -13,6 +13,12 @@ public class LayoutMeasure : LayoutElement
     public IReadOnlyList<LayoutCurve> Curves => _curves;
     private readonly List<LayoutCurve> _curves = new();
 
+    // Slurs carried over from the notation measure so layout passes can create slur curves
+    public IReadOnlyList<Slur> Slurs => _slurs;
+    private readonly List<Slur> _slurs = new();
+
+    internal void AddSlurs(IReadOnlyList<Slur> slurs) => _slurs.AddRange(slurs);
+
     /// <summary>
     /// The time signature for this measure, if it differs from the score's default.
     /// </summary>

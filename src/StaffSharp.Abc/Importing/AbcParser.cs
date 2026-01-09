@@ -109,6 +109,69 @@ public static partial class AbcParser
         var metadata = new ScoreMetadata(title, composer, keySignature, timeSignature, tempo);
         var part = new Part("Melody", Clef.Treble, voices);
 
+        // Populate part-level slur spans from per-measure slurs (same-system/measure for now)
+        foreach (var voice in voices)
+        {
+            foreach (var measure in voice.Measures)
+            {
+                if (measure.Slurs.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var slur in measure.Slurs)
+                {
+                    if (slur.Events.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    // Prefer note/chord endpoints; fall back to first/last event
+                    INotationEvent? start = null;
+                    INotationEvent? end = null;
+
+                    for (int i = 0; i < slur.Events.Count && start == null; i++)
+                    {
+                        var ev = slur.Events[i];
+                        if (ev is NotationNote || ev is Chord)
+                        {
+                            start = ev;
+                        }
+                    }
+                    for (int i = slur.Events.Count - 1; i >= 0 && end == null; i--)
+                    {
+                        var ev = slur.Events[i];
+                        if (ev is NotationNote || ev is Chord)
+                        {
+                            end = ev;
+                        }
+                    }
+
+                    if (start == null && slur.Events.Count > 0)
+                    {
+                        start = slur.Events[0];
+                    }
+                    if (end == null && slur.Events.Count > 0)
+                    {
+                        end = slur.Events[slur.Events.Count - 1];
+                    }
+
+                    if (start != null && end != null)
+                    {
+                        part.Slurs.Add(new SlurSpan(
+                            start,
+                            end,
+                            Number: null,
+                            IsDotted: slur.IsDotted,
+                            StartStaffNumber: 1,
+                            EndStaffNumber: 1,
+                            StartVoiceNumber: voice.Number,
+                            EndVoiceNumber: voice.Number));
+                    }
+                }
+            }
+        }
+
         return new NotationScore(metadata, [part]);
     }
 
@@ -118,6 +181,8 @@ public static partial class AbcParser
         KeySignature keySignature)
     {
         var measures = new List<Measure>();
+        var globalEvents = new List<INotationEvent>();
+        var slurTracker = new SlurTracker();
         var measureNumber = 1;
         var currentMeasureContent = new System.Text.StringBuilder();
         int index = 0;
@@ -173,7 +238,7 @@ public static partial class AbcParser
                 var measureString = currentMeasureContent.ToString().Trim();
                 if (!string.IsNullOrWhiteSpace(measureString))
                 {
-                    var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature);
+                    var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
                     if (events.Count > 0)
                     {
                         measures.Add(new Measure(
@@ -202,7 +267,7 @@ public static partial class AbcParser
         var finalMeasureString = currentMeasureContent.ToString().Trim();
         if (!string.IsNullOrWhiteSpace(finalMeasureString))
         {
-            var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature);
+            var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
             if (events.Count > 0)
             {
                 measures.Add(new Measure(
@@ -338,11 +403,15 @@ public static partial class AbcParser
         return variants;
     }
 
-    private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(string measureString, Rational defaultNoteLength, KeySignature keySignature)
+    private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(
+        string measureString,
+        Rational defaultNoteLength,
+        KeySignature keySignature,
+        SlurTracker slurTracker,
+        List<INotationEvent> globalEvents)
     {
         var events = new List<INotationEvent>();
         var slurs = new List<Slur>();
-        var slurTracker = new SlurTracker();
         int index = 0;
         Rational? nextNoteMultiplier = null;
         Tuplet? activeTuplet = null;
@@ -394,7 +463,7 @@ public static partial class AbcParser
             }
 
             // Check for slur end
-            if (slurTracker.TryEndSlur(measureString, ref index, events, out var slur) && slur != null)
+            if (slurTracker.TryEndSlur(measureString, ref index, globalEvents, out var slur) && slur != null)
             {
                 slurs.Add(slur);
                 continue;
@@ -431,7 +500,8 @@ public static partial class AbcParser
                 }
 
                 events.Add(noteEvent);
-                slurTracker.NotifyEventAdded(events.Count - 1);
+                globalEvents.Add(noteEvent);
+                slurTracker.NotifyEventAdded(globalEvents.Count - 1);
             }
             else
             {

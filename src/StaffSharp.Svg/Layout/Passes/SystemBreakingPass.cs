@@ -128,7 +128,9 @@ internal class SystemBreakingPass : ILayoutPass
         var currentStaff = new LayoutStaff
         {
             CurrentClef = staff.CurrentClef,
-            CurrentKeySignature = staff.CurrentKeySignature
+            CurrentKeySignature = staff.CurrentKeySignature,
+            PartIndex = staff.PartIndex,
+            StaffNumber = staff.StaffNumber
         };
 
         result.Add(currentStaff);
@@ -145,7 +147,9 @@ internal class SystemBreakingPass : ILayoutPass
                 currentStaff = new LayoutStaff
                 {
                     CurrentClef = staff.CurrentClef,
-                    CurrentKeySignature = staff.CurrentKeySignature
+                    CurrentKeySignature = staff.CurrentKeySignature,
+                    PartIndex = staff.PartIndex,
+                    StaffNumber = staff.StaffNumber
                 };
 
                 result.Add(currentStaff);

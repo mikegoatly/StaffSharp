@@ -3,6 +3,7 @@ namespace StaffSharp.MusicXml.Tests;
 using StaffSharp.MusicXml;
 using StaffSharp.Notation;
 using StaffSharp.TestHelpers;
+using System.Linq;
 using System.Xml.Linq;
 
 public class MusicXmlParserTests : ScoreTestBase
@@ -241,6 +242,8 @@ public class MusicXmlParserTests : ScoreTestBase
 
         var measure = GetMeasure(score);
         var slurs = GetSlurs(score);
+        var part = GetPart(score);
+        var allNotes = GetNotes(score);
 
         // Should have one slur covering first three notes (C, D, E)
         Assert.Single(slurs);
@@ -256,8 +259,52 @@ public class MusicXmlParserTests : ScoreTestBase
         slurNotes[2].AssertNote(PitchClass.E, SymbolicDuration.Quarter, expectedOctave: 4);
 
         // Verify all 4 notes in measure
-        var allNotes = GetNotes(score);
         Assert.Equal(4, allNotes.Count);
+
+        // Part-level slur span should link the first and third slurred notes
+        var spans = part.Slurs;
+        Assert.Single(spans);
+        var span = spans[0];
+        var startNote = Assert.IsType<NotationNote>(allNotes[0]); // C
+        var endNote = Assert.IsType<NotationNote>(allNotes[2]);   // E
+        Assert.Same(startNote, span.StartEvent);
+        Assert.Same(endNote, span.EndEvent);
+        Assert.Equal(1, span.StartStaffNumber);
+        Assert.Equal(1, span.EndStaffNumber);
+        Assert.Equal(1, span.StartVoiceNumber);
+        Assert.Equal(1, span.EndVoiceNumber);
+    }
+
+    [Fact]
+    public async Task Parse_CrossMeasureSlur_CreatesPartSpan()
+    {
+        var testFilePath = Path.Combine("TestData", "cross-measure-slur.xml");
+        using var stream = File.OpenRead(testFilePath);
+        var importer = new MusicXmlScoreImporter(enableValidation: false);
+
+        var score = await importer.ImportAsync(stream);
+
+        var part = GetPart(score);
+        var notes = part.Voices[0].Measures
+            .SelectMany(m => m.Events)
+            .OfType<NotationNote>()
+            .ToList();
+        Assert.Equal(3, notes.Count);
+
+        var spans = part.Slurs;
+        Assert.Single(spans);
+        var span = spans[0];
+
+        Assert.Same(notes[0], span.StartEvent); // C4 in measure 1
+        Assert.Same(notes[2], span.EndEvent);   // E4 in measure 2
+        Assert.Equal(1, span.StartStaffNumber);
+        Assert.Equal(1, span.EndStaffNumber);
+        Assert.Equal(1, span.StartVoiceNumber);
+        Assert.Equal(1, span.EndVoiceNumber);
+
+        // Measure-level slur should not exist across measures
+        Assert.Empty(part.Voices[0].Measures[0].Slurs);
+        Assert.Empty(part.Voices[0].Measures[1].Slurs);
     }
 
     [Fact]

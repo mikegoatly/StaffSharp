@@ -162,6 +162,38 @@ public class SvgExporterTests : VisualSnapshotTestBase
     }
 
     [Fact]
+    public async Task Export_SlurredNotes_RendersTiesCorrectly()
+    {
+        // Test slurs within a single measure and across measures
+        var measure1Notes = NotationEventBuilder.Create().C(4).D(4).E(4).F(4).Build();
+        var measure2Notes = NotationEventBuilder.Create().G(4, SymbolicDuration.Half).A(4, SymbolicDuration.Half).Build();
+        var measure3Notes = NotationEventBuilder.Create().B(4).C(5).D(5).E(5).Build();
+
+        var measures = new List<Measure>
+        {
+            new(1, measure1Notes),
+            new(2, measure2Notes),
+            new(3, measure3Notes)
+        };
+
+        var voice = new Voice(1, measures);
+        var staff = new Staff(1, Clef.Treble, [voice]);
+        var part = new Part("Instrument", [staff])
+        {
+            Slurs =
+            {
+                new SlurSpan(measure1Notes[0], measure1Notes[3], 1, false, 1, 1, 1, 1),
+                new SlurSpan(measure2Notes[1], measure3Notes[2], 2, false, 1, 1, 1, 1)
+            }
+        };
+
+        var metadata = new ScoreMetadata("Slurred Notes", "Test", KeySignature.C, TimeSignature.CommonTime, 120);
+        var score = new NotationScore(metadata, [part]);
+
+        await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default, "class=\"slur\"");
+    }
+
+    [Fact]
     public async Task Export_ChordWithStemUp_AttachesToBottomNote()
     {
         // Create a chord low on the staff (should have stem up)

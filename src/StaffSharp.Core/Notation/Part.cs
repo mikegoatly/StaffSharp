@@ -49,4 +49,7 @@ public class Part
     /// All voices from all staves (for backward compatibility with single-staff code).
     /// </summary>
     public IReadOnlyList<Voice> Voices => Staves.SelectMany(s => s.Voices).ToList();
+
+    // Part-level slur spans (cross-measure/system/grand-staff capable)
+    public IList<SlurSpan> Slurs {get;} = [];
 }

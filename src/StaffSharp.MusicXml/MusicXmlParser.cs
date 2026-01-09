@@ -1,8 +1,8 @@
 namespace StaffSharp.MusicXml;
 
-using StaffSharp;
-using StaffSharp.Notation;
 using System.Xml.Linq;
+
+using StaffSharp.Notation;
 
 /// <summary>
 /// Main parser for MusicXML documents.
@@ -57,10 +57,19 @@ internal static class MusicXmlParser
                 Tempo = metadata.Tempo
             };
 
-            // Parse the part's measures into staves
-            var staves = MusicXmlPartParser.ParsePart(partElement, context);
+            // Parse the part's measures into staves and collect slur spans
+            var (staves, slurs) = MusicXmlPartParser.ParsePart(partElement, context);
 
-            parts.Add(new Part(partName, staves));
+            var part = new Part(partName, staves);
+            if (slurs.Count > 0)
+            {
+                foreach (var span in slurs)
+                {
+                    part.Slurs.Add(span);
+                }
+            }
+
+            parts.Add(part);
         }
 
         return new NotationScore(metadata, parts);

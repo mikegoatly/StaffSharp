@@ -24,19 +24,23 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
                       $"{curve.EndX.ToString(CultureInfo.InvariantCulture)} {curve.EndY.ToString(CultureInfo.InvariantCulture)}";
 
         // Bottom curve (from end back to start, with thickness offset)
-        var bottomStartY = curve.EndY + direction * thickness;
-        var bottomEndY = curve.StartY + direction * thickness;
-        var bottomControl1Y = curve.ControlY2 + direction * thickness;
-        var bottomControl2Y = curve.ControlY1 + direction * thickness;
+        var bottomStartY = curve.EndY + (direction * thickness);
+        var bottomEndY = curve.StartY + (direction * thickness);
+        var bottomControl1Y = curve.ControlY2 + (direction * thickness);
+        var bottomControl2Y = curve.ControlY1 + (direction * thickness);
 
         var bottomPath = $" L {curve.EndX.ToString(CultureInfo.InvariantCulture)} {bottomStartY.ToString(CultureInfo.InvariantCulture)} " +
                         $"C {curve.ControlX2.ToString(CultureInfo.InvariantCulture)} {bottomControl1Y.ToString(CultureInfo.InvariantCulture)}, " +
                         $"{curve.ControlX1.ToString(CultureInfo.InvariantCulture)} {bottomControl2Y.ToString(CultureInfo.InvariantCulture)}, " +
                         $"{curve.StartX.ToString(CultureInfo.InvariantCulture)} {bottomEndY.ToString(CultureInfo.InvariantCulture)} Z";
 
-        return new XElement(SvgNamespace + "path",
-            new XAttribute("d", topPath + bottomPath),
-            new XAttribute("fill", "black"),
-            new XAttribute("class", curve.IsTie ? "tie" : "slur"));
+            var className = curve.IsTie ? "tie" : "slur";
+            if (curve.ContinuationStart) className += " slur-cont-start";
+            if (curve.ContinuationEnd) className += " slur-cont-end";
+
+            return new XElement(SvgNamespace + "path",
+                new XAttribute("d", topPath + bottomPath),
+                new XAttribute("fill", "black"),
+                new XAttribute("class", className));
     }
 }

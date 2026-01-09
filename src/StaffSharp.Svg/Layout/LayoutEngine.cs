@@ -22,7 +22,8 @@ public static class LayoutEngine
         new DotPositioningPass(),                   // Position augmentation dots (needs X positions)
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
         new ArticulationPlacementPass(),            // Position articulations/decorations (needs stem direction)
-        new TieAndSlurPass(),                       // Creates tie/slur curves (needs final positions)
+        new TiePass(),                       // Creates tie/slur curves (needs final positions)
+        new SlurSpanPass(),                         // Creates slur curves from part-level spans (same-system only v1)
         new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
         new SystemGenerationPass(),                 // Positions systems vertically using actual staff heights
         new LayoutBoundsCalculationPass()           // Calculates final system bounds
@@ -35,7 +36,8 @@ public static class LayoutEngine
 
         var model = new LayoutModel
         {
-            Metadata = score.Metadata
+            Metadata = score.Metadata,
+            Parts = score.Parts
         };
 
         // Convert notation structure to layout structure
@@ -58,19 +60,20 @@ public static class LayoutEngine
     {
         // Store the staff temporarily - SystemGenerationPass will organize into systems
         // For now, add to a single system (will be refactored by SystemGenerationPass)
-        var layoutStaffs = score.Parts.SelectMany(p => p. Staves)
-            .Select(staff => ConvertStaff(staff, score.Metadata, context))
+        var layoutStaffs = score.Parts.SelectMany((p, partIndex) => p.Staves.Select(staff => ConvertStaff(staff, partIndex, score.Metadata, context)))
             .ToList();
 
         model.AddSystem(new LayoutSystem(layoutStaffs));
     }
 
-    private static LayoutStaff ConvertStaff(Staff staff, ScoreMetadata metadata, SvgContext context)
+    private static LayoutStaff ConvertStaff(Staff staff, int partIndex, ScoreMetadata metadata, SvgContext context)
     {
         var layoutStaff = new LayoutStaff
         {
             CurrentClef = staff.Clef,
-            CurrentKeySignature = metadata.KeySignature
+            CurrentKeySignature = metadata.KeySignature,
+            PartIndex = partIndex,
+            StaffNumber = staff.Number
         };
 
         if (staff.Voices.Count == 0)
@@ -91,6 +94,12 @@ public static class LayoutEngine
 
             // Set time signature (use measure-specific or fall back to score default)
             layoutMeasure.TimeSignature = firstMeasure.TimeSignature ?? metadata.TimeSignature;
+
+            // Carry slurs from the notation measure into the layout measure for later processing
+            if (firstMeasure.Slurs != null && firstMeasure.Slurs.Count > 0)
+            {
+                layoutMeasure.AddSlurs(firstMeasure.Slurs);
+            }
 
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)

@@ -30,6 +30,11 @@ public class LayoutModel
     /// </summary>
     public ScoreMetadata? Metadata { get; set; }
 
+    /// <summary>
+    /// Original notation parts, used by layout passes that need part-level information (e.g., slur spans).
+    /// </summary>
+    public IReadOnlyList<StaffSharp.Notation.Part>? Parts { get; set; }
+
     internal void AddSystem(LayoutSystem system) => _systems.Add(system);
 
     internal void ClearSystems() => _systems.Clear();

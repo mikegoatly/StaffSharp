@@ -20,5 +20,9 @@ public class LayoutStaff : LayoutElement
     /// </summary>
     public KeySignature CurrentKeySignature { get; set; } = KeySignature.C;
 
+    // Mapping back to notation structure for span processing
+    public int PartIndex { get; set; }
+    public int StaffNumber { get; set; }
+
     internal void AddMeasure(LayoutMeasure measure) => _measures.Add(measure);
 }

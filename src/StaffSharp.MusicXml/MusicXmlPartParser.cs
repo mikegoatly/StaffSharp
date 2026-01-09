@@ -11,8 +11,9 @@ internal static class MusicXmlPartParser
     /// <summary>
     /// Parses a part element and returns a list of staves.
     /// </summary>
-    public static List<Staff> ParsePart(XElement partElement, MusicXmlContext context)
+    public static (List<Staff> Staves, List<SlurSpan> Slurs) ParsePart(XElement partElement, MusicXmlContext context)
     {
+        var slurAggregator = new SlurSpanAggregator();
         // Group measures by staff -> voice -> list of measures
         var staffData = new Dictionary<int, Dictionary<int, List<Measure>>>();
 
@@ -20,7 +21,7 @@ internal static class MusicXmlPartParser
         foreach (var measureElement in partElement.Elements("measure"))
         {
             // Parse measure and group events by staff and voice
-            var staffVoiceMeasures = MusicXmlMeasureParser.ParseMeasure(measureElement, context, measureNumber);
+            var staffVoiceMeasures = MusicXmlMeasureParser.ParseMeasure(measureElement, context, measureNumber, slurAggregator);
 
             // Merge into the staff data structure
             foreach (var (staffNumber, voiceMeasures) in staffVoiceMeasures)
@@ -87,6 +88,6 @@ internal static class MusicXmlPartParser
                 ));
         }
 
-        return staves;
+        return (staves, slurAggregator.GetSlurs());
     }
 }
