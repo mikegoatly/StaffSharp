@@ -57,14 +57,15 @@ internal class SystemBreakingPass : ILayoutPass
         }
 
         // Replace the original systems with broken systems
-        model.ReplaceSystems(newSystems);
+        model.Systems.Clear();
+        model.Systems.AddRange(newSystems);
     }
 
     /// <summary>
     /// Calculates unified break points that work for all staves in a system.
     /// Returns a list of measure indices where breaks should occur.
     /// </summary>
-    private static List<int> CalculateUnifiedBreakPoints(IReadOnlyList<LayoutStaff> staves, SvgContext context)
+    private static List<int> CalculateUnifiedBreakPoints(List<LayoutStaff> staves, SvgContext context)
     {
         var breakPoints = new List<int>();
 
@@ -158,7 +159,7 @@ internal class SystemBreakingPass : ILayoutPass
             }
 
             var measure = staff.Measures[measureIndex];
-            currentStaff.AddMeasure(measure);
+            currentStaff.Measures.Add(measure);
             
             // Insert system-start symbols for systems after the first
             if (currentStaff.Measures.Count == 1 && !isFirstSystem)
@@ -176,16 +177,16 @@ internal class SystemBreakingPass : ILayoutPass
         // 3. Time signature (always show at start of new system)
         if (metadata?.TimeSignature != null)
         {
-            measure.InsertSymbol(0, TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
+            measure.Symbols.Insert(0, TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
         }
 
         // 2. Key signature (if not C major)
         if (staff.CurrentKeySignature != KeySignature.C)
         {
-            measure.InsertSymbol(0, KeySignatureLayoutSymbol.Create(staff.CurrentKeySignature, staff.CurrentClef, context));
+            measure.Symbols.Insert(0, KeySignatureLayoutSymbol.Create(staff.CurrentKeySignature, staff.CurrentClef, context));
         }
 
         // 1. Clef (always insert at start of new system)
-        measure.InsertSymbol(0, ClefLayoutSymbol.Create(staff.CurrentClef, context));
+        measure.Symbols.Insert(0, ClefLayoutSymbol.Create(staff.CurrentClef, context));
     }
 }

@@ -8,7 +8,7 @@ using StaffSharp.Layout;
 /// This pass runs AFTER SystemBreakingPass to assign final X positions.
 /// It uses pre-calculated symbol widths from MeasureWidthCalculationPass and does NOT recalculate measure widths.
 /// </summary>
-public class HorizontalPositionPass : ILayoutPass
+internal class HorizontalPositionPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

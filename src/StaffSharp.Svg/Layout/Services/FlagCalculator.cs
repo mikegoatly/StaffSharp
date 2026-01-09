@@ -13,7 +13,7 @@ internal static class FlagCalculator
     /// Calculates whether a symbol requires flags and how many.
     /// Flags are needed for eighth notes and shorter that are not part of a beam group.
     /// </summary>
-    public static void CalculateFlag(IStemmedSymbol stemmedSymbol, SvgContext context)
+    public static void CalculateFlag(IStemmedSymbol stemmedSymbol)
     {
         var symbol = (LayoutSymbol)stemmedSymbol;
 
@@ -28,7 +28,6 @@ internal static class FlagCalculator
         if (duration.Value.Base >= NoteDurationBase.Eighth && !stemmedSymbol.Beam.IsBeamed)
         {
             var flagCount = GetFlagCount(duration.Value.Base);
-            var currentStem = stemmedSymbol.Stem;
             var currentBeam = stemmedSymbol.Beam;
 
             // Update beam info with flag requirements

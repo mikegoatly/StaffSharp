@@ -10,7 +10,7 @@ using StaffSharp.Layout.Services;
 /// MUST run after SystemGenerationPass has positioned systems vertically.
 /// This pass sets the Height property on systems based on their constituent staves.
 /// </summary>
-public class LayoutBoundsCalculationPass : ILayoutPass
+internal class LayoutBoundsCalculationPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

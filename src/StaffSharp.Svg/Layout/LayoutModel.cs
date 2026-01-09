@@ -6,10 +6,9 @@ using StaffSharp.Notation;
 /// <summary>
 /// The root of the layout model.
 /// </summary>
-public class LayoutModel
+internal class LayoutModel
 {
-    public IReadOnlyList<LayoutSystem> Systems => _systems;
-    private readonly List<LayoutSystem> _systems = new();
+    public List<LayoutSystem> Systems { get; } = [];
 
     /// <summary>
     /// Gets the total width of all content, calculated from system bounds.
@@ -33,15 +32,5 @@ public class LayoutModel
     /// <summary>
     /// Original notation parts, used by layout passes that need part-level information (e.g., slur spans).
     /// </summary>
-    public IReadOnlyList<StaffSharp.Notation.Part>? Parts { get; set; }
-
-    internal void AddSystem(LayoutSystem system) => _systems.Add(system);
-
-    internal void ClearSystems() => _systems.Clear();
-
-    internal void ReplaceSystems(IEnumerable<LayoutSystem> newSystems)
-    {
-        _systems.Clear();
-        _systems.AddRange(newSystems);
-    }
+    public required IReadOnlyList<Part> Parts { get; init; }
 }

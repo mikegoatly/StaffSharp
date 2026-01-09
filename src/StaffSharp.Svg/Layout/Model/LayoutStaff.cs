@@ -5,10 +5,9 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents a staff within a system.
 /// </summary>
-public class LayoutStaff : LayoutElement
+internal class LayoutStaff : LayoutElement
 {
-    public IReadOnlyList<LayoutMeasure> Measures => _measures;
-    private readonly List<LayoutMeasure> _measures = [];
+    public List<LayoutMeasure> Measures { get; } = [];
 
     /// <summary>
     /// The current clef for this staff. Used by layout passes to calculate pitch positions.
@@ -24,5 +23,8 @@ public class LayoutStaff : LayoutElement
     public int PartIndex { get; set; }
     public int StaffNumber { get; set; }
 
-    internal void AddMeasure(LayoutMeasure measure) => _measures.Add(measure);
+    public bool Contains(INotationEvent notationEvent)
+    {
+        return Measures.Any(m => m.Contains(notationEvent));
+    }
 }

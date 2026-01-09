@@ -60,9 +60,9 @@ internal static class BoundsCalculator
     /// <returns>Tuple of (MinY, MaxY) coordinates</returns>
     public static (double MinY, double MaxY) CalculateCurveBounds(LayoutCurve curve)
     {
-        // For a Bézier curve, extrema can occur at start, end, or control points
-        var minY = Math.Min(Math.Min(curve.StartY, curve.EndY), Math.Min(curve.ControlY1, curve.ControlY2));
-        var maxY = Math.Max(Math.Max(curve.StartY, curve.EndY), Math.Max(curve.ControlY1, curve.ControlY2));
+        // For a quadratic Bézier curve, extrema can occur at start, end, or apex
+        var minY = Math.Min(Math.Min(curve.Y, curve.EndY), curve.ApexY);
+        var maxY = Math.Max(Math.Max(curve.Y, curve.EndY), curve.ApexY);
         return (minY, maxY);
     }
 

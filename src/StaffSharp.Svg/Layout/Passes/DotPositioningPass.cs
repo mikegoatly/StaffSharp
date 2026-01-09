@@ -10,7 +10,7 @@ using StaffSharp.Notation;
 /// Calculates positions for augmentation dots on notes, rests, and chords.
 /// Must run after HorizontalPositionPass since it needs final X positions.
 /// </summary>
-public class DotPositioningPass : ILayoutPass
+internal class DotPositioningPass : ILayoutPass
 {
     private const double DotSpacing = 0.5; // Space between multiple dots (in staff spaces)
     private const double DotOffset = 0.2;   // Offset from note head to first dot (in staff spaces)

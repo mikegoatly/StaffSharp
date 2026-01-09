@@ -4,7 +4,7 @@ namespace StaffSharp.Layout.Model;
 /// Interface for layout symbols that have stems and may be part of beam groups.
 /// Provides information needed for proper articulation placement and other layout decisions.
 /// </summary>
-public interface IStemmedSymbol : ILayoutSymbol
+internal interface IStemmedSymbol : ILayoutSymbol
 {
     /// <summary>
     /// Stem information (position and direction).

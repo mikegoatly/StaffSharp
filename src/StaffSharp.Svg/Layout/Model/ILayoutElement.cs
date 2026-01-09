@@ -1,6 +1,6 @@
 ﻿namespace StaffSharp.Layout.Model
 {
-    public interface ILayoutElement
+    internal interface ILayoutElement
     {
         double X { get; set; }
         double Y { get; set; }

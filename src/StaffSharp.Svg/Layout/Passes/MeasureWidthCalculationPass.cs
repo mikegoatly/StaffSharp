@@ -10,7 +10,7 @@ using StaffSharp.Layout.Services;
 /// This pass ONLY calculates widths and does NOT assign X positions.
 /// It runs before SystemBreakingPass to provide the width information needed for line breaking decisions.
 /// </summary>
-public class MeasureWidthCalculationPass : ILayoutPass
+internal class MeasureWidthCalculationPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

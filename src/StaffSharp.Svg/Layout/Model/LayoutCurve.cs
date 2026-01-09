@@ -1,109 +1,124 @@
 namespace StaffSharp.Layout.Model;
 
+internal enum CurveEndTaper
+{
+    None = 0,    // Square ends (cross-system middle segment)
+    Start = 1,   // Tapered at start, square at end
+    End = 2,     // Square at start, tapered at end
+    Both = 3     // Tapered on both ends (normal)
+}
+
 /// <summary>
 /// Represents a tie or slur curve in the layout.
 /// </summary>
-public class LayoutCurve : LayoutElement
+internal class LayoutCurve : LayoutElement
 {
     /// <summary>
     /// True if this is a tie (same pitch), false if slur (different pitches).
     /// </summary>
-    public bool IsTie { get; set; }
+    public bool IsTie { get; init; }
 
     /// <summary>
     /// True if the curve should arc above the notes, false if below.
     /// </summary>
-    public bool CurveAbove { get; set; }
-
-    /// <summary>
-    /// X coordinate of the curve start.
-    /// </summary>
-    public double StartX { get; set; }
-
-    /// <summary>
-    /// Y coordinate of the curve start.
-    /// </summary>
-    public double StartY { get; set; }
+    public bool CurveAbove { get; init; }
 
     /// <summary>
     /// X coordinate of the curve end.
     /// </summary>
-    public double EndX { get; set; }
+    public double EndX { get; init; }
 
     /// <summary>
     /// Y coordinate of the curve end.
     /// </summary>
-    public double EndY { get; set; }
+    public double EndY { get; init; }
 
     /// <summary>
-    /// X coordinate of the first control point (for Bézier curve).
+    /// Y coordinate of the apex point (highest/lowest point of the curve).
     /// </summary>
-    public double ControlX1 { get; set; }
+    public double ApexY { get; init; }
 
     /// <summary>
-    /// Y coordinate of the first control point.
+    /// X coordinate of the apex point (midpoint between start and end).
     /// </summary>
-    public double ControlY1 { get; set; }
+    public double ApexX => X + (Width / 2.0);
 
     /// <summary>
-    /// X coordinate of the second control point.
+    /// Specifies which ends of the curve should be tapered (pointed) vs square.
     /// </summary>
-    public double ControlX2 { get; set; }
+    public CurveEndTaper EndTaper { get; init; }
 
-    /// <summary>
-    /// Y coordinate of the second control point.
-    /// </summary>
-    public double ControlY2 { get; set; }
-
-    /// <summary>
-    /// True if this curve segment starts in the middle of an ongoing slur (previous system continues).
-    /// </summary>
-    public bool ContinuationStart { get; set; }
-
-    /// <summary>
-    /// True if this curve segment ends in the middle of an ongoing slur (continues to next system).
-    /// </summary>
-    public bool ContinuationEnd { get; set; }
-
-    internal static LayoutCurve Create(IStemmedSymbol startNote, IStemmedSymbol endNote, SvgContext context, bool isTie)
+    internal static LayoutCurve Create(
+        IStemmedSymbol referenceNote,
+        double startX,
+        double startY,
+        double endX,
+        double endY,
+        SvgContext context,
+        CurveEndTaper endTaper,
+        bool isTie)
     {
         // Determine curve direction based on stem direction
         // If stems are up, curve goes below; if stems are down, curve goes above
-        var curveAbove = !startNote.Stem.Up;
-
-        // Calculate notehead width (scaled from SMuFL units)
-        // NoteHeadBlack height: 279 units, width: 330 units, scaled to 1.0 staff spaces height
-        var noteheadWidth = 1.18 * context.StaffSpace;
-        var noteheadHeight = context.StaffSpace;
-
-        // Start tie/slur at right edge of first notehead
-        var startX = startNote.X + noteheadWidth;
-        // End tie/slur at left edge of second notehead
-        var endX = endNote.X;
+        var curveAbove = !referenceNote.Stem.Up;
 
         // Position curve above or below the notehead, not through the middle
         // Add small clearance (0.15 staff spaces) from the notehead edge
-        var verticalOffset = curveAbove ? -noteheadHeight * 0.5 - 0.15 * context.StaffSpace
-                                         : noteheadHeight * 0.5 + 0.15 * context.StaffSpace;
-        var startY = startNote.Y + verticalOffset;
-        var endY = endNote.Y + verticalOffset;
+        var offsetMagnitude = context.StaffSpace * 0.65;
+        var verticalOffset = curveAbove ? -offsetMagnitude : offsetMagnitude;
 
-        // Calculate control points for a smooth curve
+        startY += verticalOffset;
+        endY += verticalOffset;
+
+        // Calculate apex Y position based on curve height
         var curveHeight = isTie ? 0.5 * context.StaffSpace : 0.7 * context.StaffSpace;
         var controlYOffset = curveAbove ? -curveHeight : curveHeight;
+        // For curve above (stem down): apex should be above (smaller Y) both endpoints
+        // For curve below (stem up): apex should be below (larger Y) both endpoints
+        var apexY = (curveAbove
+            ? Math.Min(startY, endY)
+            : Math.Max(startY, endY)) + controlYOffset;
 
         return new LayoutCurve
         {
             IsTie = isTie,
             CurveAbove = curveAbove,
-            StartX = startX,
-            StartY = startY,
+            X = startX,
+            Y = startY,
             EndX = endX,
             EndY = endY,
-            ControlX1 = startX + (endX - startX) * 0.25,
-            ControlY1 = startY + controlYOffset,
-            ControlX2 = startX + (endX - startX) * 0.75,
-            ControlY2 = endY + controlYOffset
+            EndTaper = endTaper,
+            Width = Math.Abs(endX - startX),
+            Height = Math.Abs(endY - startY),
+            ApexY = apexY
+        };
+    }
+
+    /// <summary>
+    /// Creates a curve segment that spans an entire system when a tie/slur
+    /// continues from a previous system to a subsequent system.
+    /// </summary>
+    internal static LayoutCurve CreateCrossSystem(
+        LayoutSystem system,
+        SvgContext context,
+        bool isTie)
+    {
+        // Position above the staff to avoid barlines
+        // Staff top line is at Y=0, so negative Y is above the staff
+        var y = system.Y - (context.StaffSpace * 1.5);
+
+        return new LayoutCurve
+        {
+            IsTie = isTie,
+            CurveAbove = true,
+            X = system.X,
+            Y = y,
+            EndX = system.X + system.Width,
+            EndY = y,
+            EndTaper = CurveEndTaper.None,
+            Width = system.Width,
+            Height = 2.0,
+            ApexY = y + 2.0
         };
     }
 }

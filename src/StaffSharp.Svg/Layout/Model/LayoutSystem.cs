@@ -3,9 +3,9 @@ namespace StaffSharp.Layout.Model;
 /// <summary>
 /// Represents a horizontal system of music.
 /// </summary>
-public class LayoutSystem : LayoutElement
+internal class LayoutSystem : LayoutElement
 {
-    private readonly List<LayoutStaff> _staves = [];
+    public List<LayoutStaff> Staves { get; } = [];
 
     public LayoutSystem()
     {
@@ -13,10 +13,8 @@ public class LayoutSystem : LayoutElement
 
     internal LayoutSystem(List<LayoutStaff> staves)
     {
-        _staves = staves;
+        Staves = staves;
     }
 
-    public IReadOnlyList<LayoutStaff> Staves => _staves;
-
-    internal void AddStaff(LayoutStaff staff) => _staves.Add(staff);
+    internal void AddStaff(LayoutStaff staff) => Staves.Add(staff);
 }

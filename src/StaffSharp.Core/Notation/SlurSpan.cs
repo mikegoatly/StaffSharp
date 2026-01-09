@@ -21,4 +21,4 @@ public record SlurSpan(
     int EndStaffNumber,
     int StartVoiceNumber,
     int EndVoiceNumber
-);
+) : TieSpan(StartEvent, EndEvent, StartStaffNumber, EndStaffNumber, StartVoiceNumber, EndVoiceNumber);

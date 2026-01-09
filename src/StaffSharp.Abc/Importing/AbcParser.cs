@@ -1,7 +1,6 @@
 namespace StaffSharp.Abc.Importing;
 
 using StaffSharp;
-using StaffSharp.Abc.Importing;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -162,33 +161,23 @@ public static partial class AbcParser
             voices,
             extractMarkers: noteEvent =>
             {
-                var pitch = noteEvent switch
+                if (noteEvent switch
                 {
-                    NotationNote note => note.Pitch,
-                    Chord chord => chord.Pitches.Count > 0 ? chord.Pitches[0] : (Pitch?)null,
-                    _ => null
-                };
-
-                var marker = noteEvent switch
+                    NotationNote note => (note.Pitch, note.TieMarker),
+                    Chord chord => (chord.Pitches.ElementAtOrDefault(0), chord.TieMarker),
+                    _ => (pitch: (Pitch?)null, tie: (TieMarker?)null)
+                } is { pitch: { } pitch, tie: { } tie })
                 {
-                    NotationNote note => note.TieMarker,
-                    Chord chord => chord.TieMarker,
-                    _ => null
-                };
-
-                if (pitch is not { } nonNullPitch || marker is not { } nonNullMarker)
-                {
-                    return [];
-                }
-
-                return [
-                    (
-                        Key: nonNullPitch,
-                        HasStart: nonNullMarker.Type is TieMarkerType.Start or TieMarkerType.Both,
-                        HasStop: nonNullMarker.Type is TieMarkerType.Stop or TieMarkerType.Both,
-                        Data: nonNullMarker
+                    return [
+                        (
+                        Key: pitch,
+                        HasStart: tie.Type is TieMarkerType.Start or TieMarkerType.Both,
+                        HasStop: tie.Type is TieMarkerType.Stop or TieMarkerType.Both,
+                        Data: tie
                     )
-                ];
+                    ];
+                }
+                return [];
             },
             onMatch: (startEvent, endEvent, voice, pitch, startMarker, endMarker) =>
             {

@@ -3,10 +3,10 @@ namespace StaffSharp.Layout.Model;
 /// <summary>
 /// Base class for symbols that can have augmentation dots (notes, chords, rests).
 /// </summary>
-public abstract class AugmentationDottedLayoutSymbol : LayoutSymbol
+internal abstract class AugmentationDottedLayoutSymbol : LayoutSymbol
 {
     // Augmentation dots
     public int DotCount { get; set; }
-    public IList<double> DotXPositions { get; } = [];
+    public List<double> DotXPositions { get; } = [];
     public double DotY { get; set; }
 }

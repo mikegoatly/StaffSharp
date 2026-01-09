@@ -1,14 +1,12 @@
 namespace StaffSharp.Svg.Tests.Layout;
 
-using System;
-
 using StaffSharp.Layout.Model;
 using StaffSharp.Notation;
 
 /// <summary>
 /// Helper methods for creating layout objects in tests.
 /// </summary>
-public static class LayoutTestHelpers
+internal static class LayoutTestHelpers
 {
     /// <summary>
     /// Creates a NoteLayoutSymbol with basic default values.
@@ -113,8 +111,8 @@ public static class LayoutTestHelpers
     /// Creates a RestLayoutSymbol with basic default values.
     /// </summary>
     public static LayoutSymbol CreateRestSymbol(
-        SymbolicDuration quarter, 
-        double x, 
+        SymbolicDuration quarter,
+        double x,
         double y,
         double width = 5.0,
         double height = 10.0)

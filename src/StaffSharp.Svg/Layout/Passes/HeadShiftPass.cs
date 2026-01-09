@@ -7,7 +7,7 @@ using StaffSharp.Layout.Model;
 /// <summary>
 /// Shifts noteheads in chords to avoid collisions when notes are a second apart.
 /// </summary>
-public class HeadShiftPass : ILayoutPass
+internal class HeadShiftPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

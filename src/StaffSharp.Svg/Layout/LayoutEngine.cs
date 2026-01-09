@@ -9,7 +9,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Engine for laying out musical elements.
 /// </summary>
-public static class LayoutEngine
+internal static class LayoutEngine
 {
     internal static ILayoutPass[] LayoutPasses { get; } =
     [
@@ -22,8 +22,7 @@ public static class LayoutEngine
         new DotPositioningPass(),                   // Position augmentation dots (needs X positions)
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
         new ArticulationPlacementPass(),            // Position articulations/decorations (needs stem direction)
-        new TiePass(),                              // Creates tie curves from part-level spans (needs final positions)
-        new SlurSpanPass(),                         // Creates slur curves from part-level spans (same-system only v1)
+        new SlurAndTiePass(),                       // Creates tie and slur curves from part-level spans (needs final positions)
         new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
         new SystemGenerationPass(),                 // Positions systems vertically using actual staff heights
         new LayoutBoundsCalculationPass()           // Calculates final system bounds
@@ -63,7 +62,7 @@ public static class LayoutEngine
         var layoutStaffs = score.Parts.SelectMany((p, partIndex) => p.Staves.Select(staff => ConvertStaff(staff, partIndex, score.Metadata, context)))
             .ToList();
 
-        model.AddSystem(new LayoutSystem(layoutStaffs));
+        model.Systems.Add(new LayoutSystem(layoutStaffs));
     }
 
     private static LayoutStaff ConvertStaff(Staff staff, int partIndex, ScoreMetadata metadata, SvgContext context)
@@ -100,19 +99,19 @@ public static class LayoutEngine
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)
             {
-                layoutMeasure.AddSymbol(ClefLayoutSymbol.Create(staff.Clef, context));
+                layoutMeasure.Symbols.Add(ClefLayoutSymbol.Create(staff.Clef, context));
             }
 
             // Add key signature at the start of the first measure (after clef)
             if (measureNumber == 1 && metadata.KeySignature != KeySignature.C)
             {
-                layoutMeasure.AddSymbol(KeySignatureLayoutSymbol.Create(metadata.KeySignature, staff.Clef, context));
+                layoutMeasure.Symbols.Add(KeySignatureLayoutSymbol.Create(metadata.KeySignature, staff.Clef, context));
             }
 
             // Add time signature at the start of the first measure (after key signature)
             if (measureNumber == 1)
             {
-                layoutMeasure.AddSymbol(TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
+                layoutMeasure.Symbols.Add(TimeSignatureLayoutSymbol.Create(metadata.TimeSignature, context));
             }
 
             // Collect all events from all voices with their time positions
@@ -144,7 +143,7 @@ public static class LayoutEngine
             {
                 var symbol = ConvertEventToSymbol(notationEvent, timePosition);
                 symbol.VoiceNumber = voiceNumber;
-                layoutMeasure.AddSymbol(symbol);
+                layoutMeasure.Symbols.Add(symbol);
             }
 
             // Find the last time position for the barline
@@ -160,7 +159,7 @@ public static class LayoutEngine
                     BarlineType = firstMeasure.StartBarline.Value,
                     TimePosition = -0.5
                 };
-                layoutMeasure.AddSymbol(startBarlineSymbol);
+                layoutMeasure.Symbols.Add(startBarlineSymbol);
             }
 
             // Add barline at the end of the measure
@@ -170,9 +169,9 @@ public static class LayoutEngine
                 BarlineType = endBarlineType,
                 TimePosition = lastTimePosition
             };
-            layoutMeasure.AddSymbol(barlineSymbol);
+            layoutMeasure.Symbols.Add(barlineSymbol);
 
-            layoutStaff.AddMeasure(layoutMeasure);
+            layoutStaff.Measures.Add(layoutMeasure);
         }
 
         return layoutStaff;

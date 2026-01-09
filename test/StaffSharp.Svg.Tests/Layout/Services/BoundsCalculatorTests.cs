@@ -204,8 +204,8 @@ public class BoundsCalculatorTests
         var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6);
         symbol.Y = 0.0; // Relative to staff
         symbol.Stem = symbol.Stem with { Y1 = 0.0, Y2 = -30.0 }; // Extends above staff
-        measure.AddSymbol(symbol);
-        staff.AddMeasure(measure);
+        measure.Symbols.Add(symbol);
+        staff.Measures.Add(measure);
         var staffY = 100.0;
 
         // Act
@@ -227,8 +227,8 @@ public class BoundsCalculatorTests
         highNote.Y = -20.0;
         highNote.LedgerLineCount = 2;
         highNote.LedgerLinesAbove = true;
-        measure.AddSymbol(highNote);
-        staff.AddMeasure(measure);
+        measure.Symbols.Add(highNote);
+        staff.Measures.Add(measure);
         var staffY = 100.0;
 
         // Act
@@ -251,9 +251,9 @@ public class BoundsCalculatorTests
         var lowNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 2);
         lowNote.Y = 60.0;
         lowNote.X = 50.0;
-        measure.AddSymbol(highNote);
-        measure.AddSymbol(lowNote);
-        staff.AddMeasure(measure);
+        measure.Symbols.Add(highNote);
+        measure.Symbols.Add(lowNote);
+        staff.Measures.Add(measure);
         var staffY = 100.0;
 
         // Act
@@ -274,10 +274,10 @@ public class BoundsCalculatorTests
         var measure2 = LayoutTestHelpers.CreateMeasure(x: 100.0, width: 100.0);
         var symbol1 = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 5, SymbolicDuration.Quarter, x: 10.0, y: 10.0);
         var symbol2 = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 3, SymbolicDuration.Quarter, x: 110.0, y: 50.0);
-        measure1.AddSymbol(symbol1);
-        measure2.AddSymbol(symbol2);
-        staff.AddMeasure(measure1);
-        staff.AddMeasure(measure2);
+        measure1.Symbols.Add(symbol1);
+        measure2.Symbols.Add(symbol2);
+        staff.Measures.Add(measure1);
+        staff.Measures.Add(measure2);
 
         var staffY = 100.0;
 

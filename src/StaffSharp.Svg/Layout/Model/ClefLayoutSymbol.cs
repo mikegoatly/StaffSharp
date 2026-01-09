@@ -1,7 +1,5 @@
 namespace StaffSharp.Layout.Model;
 
-using System;
-
 using StaffSharp;
 
 using StaffSharp.Layout.Services;
@@ -10,7 +8,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents a positioned clef.
 /// </summary>
-public sealed class ClefLayoutSymbol : LayoutSymbol
+internal sealed class ClefLayoutSymbol : LayoutSymbol
 {
     public required Clef Clef { get; init; }
 

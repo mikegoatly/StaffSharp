@@ -6,22 +6,22 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents a positioned chord.
 /// </summary>
-public sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
+internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
 {
     public required Chord Chord { get; init; }
-    public IList<double> NoteheadYPositions { get; } = [];
-    public IList<double> NoteheadXShifts { get; } = [];
-    public IList<bool> AccidentalShifts { get; } = [];
-    public IList<Accidental> Accidentals { get; } = [];
-    public IList<double> AccidentalXOffsets { get; } = [];
-    public IList<double> AccidentalYPositions { get; } = [];
+    public List<double> NoteheadYPositions { get; } = [];
+    public List<double> NoteheadXShifts { get; } = [];
+    public List<bool> AccidentalShifts { get; } = [];
+    public List<Accidental> Accidentals { get; } = [];
+    public List<double> AccidentalXOffsets { get; } = [];
+    public List<double> AccidentalYPositions { get; } = [];
 
     // Stem and beam information (IStemmedSymbol implementation)
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }
 
     // Positioned decorations/articulations
-    public IList<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
+    public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
 
     /// <summary>
     /// Gets the effective top Y position accounting for stem, beam, and flags.
