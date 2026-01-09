@@ -117,75 +117,36 @@ public static partial class AbcParser
     }
 
     /// <summary>
-    /// Builds TieSpan objects from TieMarkers on notes across all voices.
+    /// Generic helper for building span objects from start/stop marker pairs across measures.
+    /// Handles the common pattern of iterating voices/measures/events and matching marker pairs.
     /// </summary>
-    private static void BuildTieSpans(List<Voice> voices, Part part)
+    /// <typeparam name="TKey">The type of key used to match start and stop markers (e.g., Pitch for ties, int for slurs).</typeparam>
+    /// <typeparam name="TMarkerData">Additional data to carry from start marker to span creation.</typeparam>
+    private static void BuildSpansFromMarkers<TKey, TMarkerData>(
+        List<Voice> voices,
+        Func<INotationEvent, IEnumerable<(TKey Key, bool HasStart, bool HasStop, TMarkerData Data)>> extractMarkers,
+        Action<INotationEvent, INotationEvent, Voice, TKey, TMarkerData, TMarkerData> onMatch)
+        where TKey : notnull
     {
         foreach (var voice in voices)
         {
-            var pendingTieStarts = new Dictionary<Pitch, INotationEvent>(); // Key by pitch for tie matching
+            var pendingStarts = new Dictionary<TKey, (INotationEvent Event, TMarkerData Data)>();
 
-            foreach (var measure in voice.Measures)
+            foreach (var noteEvent in voice.Measures.SelectMany(m => m.Events))
             {
-                foreach (var noteEvent in measure.Events)
+                foreach (var (key, hasStart, hasStop, data) in extractMarkers(noteEvent))
                 {
-                    Pitch? pitch = noteEvent switch
+                    // Process stop first (for tie chains where Both means end previous + start next)
+                    if (hasStop && pendingStarts.TryGetValue(key, out var startInfo))
                     {
-                        NotationNote note => note.Pitch,
-                        Chord chord => chord.Pitches.Count > 0 ? chord.Pitches[0] : null,
-                        _ => null
-                    };
-
-                    var tieMarker = noteEvent switch
-                    {
-                        NotationNote note => note.TieMarker,
-                        Chord chord => chord.TieMarker,
-                        _ => null
-                    };
-
-                    if (pitch is not { } nonNullPitch || tieMarker is not { } nonNullTieMarker)
-                    {
-                        continue;
+                        onMatch(startInfo.Event, noteEvent, voice, key, startInfo.Data, data);
+                        pendingStarts.Remove(key);
                     }
 
-                    // After null check, pitch is guaranteed non-null
-                    switch (nonNullTieMarker.Type)
+                    // Then process start
+                    if (hasStart)
                     {
-                        case TieMarkerType.Start:
-                            // Start a new tie
-                            pendingTieStarts[nonNullPitch] = noteEvent;
-                            break;
-
-                        case TieMarkerType.Stop:
-                            // End a tie
-                            if (pendingTieStarts.TryGetValue(nonNullPitch, out var startEvent))
-                            {
-                                part.Ties.Add(new TieSpan(
-                                    startEvent,
-                                    noteEvent,
-                                    StartStaffNumber: 1,
-                                    EndStaffNumber: 1,
-                                    StartVoiceNumber: voice.Number,
-                                    EndVoiceNumber: voice.Number));
-                                pendingTieStarts.Remove(nonNullPitch);
-                            }
-                            break;
-
-                        case TieMarkerType.Both:
-                            // End previous tie and start new tie (tie chain)
-                            if (pendingTieStarts.TryGetValue(nonNullPitch, out var prevStartEvent))
-                            {
-                                part.Ties.Add(new TieSpan(
-                                    prevStartEvent,
-                                    noteEvent,
-                                    StartStaffNumber: 1,
-                                    EndStaffNumber: 1,
-                                    StartVoiceNumber: voice.Number,
-                                    EndVoiceNumber: voice.Number));
-                            }
-                            // This note also starts the next tie
-                            pendingTieStarts[nonNullPitch] = noteEvent;
-                            break;
+                        pendingStarts[key] = (noteEvent, data);
                     }
                 }
             }
@@ -193,60 +154,93 @@ public static partial class AbcParser
     }
 
     /// <summary>
+    /// Builds TieSpan objects from TieMarkers on notes across all voices.
+    /// </summary>
+    private static void BuildTieSpans(List<Voice> voices, Part part)
+    {
+        BuildSpansFromMarkers<Pitch, TieMarker>(
+            voices,
+            extractMarkers: noteEvent =>
+            {
+                var pitch = noteEvent switch
+                {
+                    NotationNote note => note.Pitch,
+                    Chord chord => chord.Pitches.Count > 0 ? chord.Pitches[0] : (Pitch?)null,
+                    _ => null
+                };
+
+                var marker = noteEvent switch
+                {
+                    NotationNote note => note.TieMarker,
+                    Chord chord => chord.TieMarker,
+                    _ => null
+                };
+
+                if (pitch is not { } nonNullPitch || marker is not { } nonNullMarker)
+                {
+                    return [];
+                }
+
+                return [
+                    (
+                        Key: nonNullPitch,
+                        HasStart: nonNullMarker.Type is TieMarkerType.Start or TieMarkerType.Both,
+                        HasStop: nonNullMarker.Type is TieMarkerType.Stop or TieMarkerType.Both,
+                        Data: nonNullMarker
+                    )
+                ];
+            },
+            onMatch: (startEvent, endEvent, voice, pitch, startMarker, endMarker) =>
+            {
+                part.Ties.Add(new TieSpan(
+                    startEvent,
+                    endEvent,
+                    StartStaffNumber: 1,
+                    EndStaffNumber: 1,
+                    StartVoiceNumber: voice.Number,
+                    EndVoiceNumber: voice.Number));
+            });
+    }
+
+    /// <summary>
     /// Builds SlurSpan objects from SlurMarkers on notes across all voices.
     /// </summary>
     private static void BuildSlurSpans(List<Voice> voices, Part part)
     {
-        foreach (var voice in voices)
-        {
-            var pendingSlurStarts = new Dictionary<int, (INotationEvent Event, bool IsDotted)>(); // Key by slur number
-
-            foreach (var measure in voice.Measures)
+        BuildSpansFromMarkers<int, SlurMarker>(
+            voices,
+            extractMarkers: noteEvent =>
             {
-                foreach (var noteEvent in measure.Events)
+                var markers = noteEvent switch
                 {
-                    var slurMarkers = noteEvent switch
-                    {
-                        NotationNote note => note.SlurMarkers,
-                        Chord chord => chord.SlurMarkers,
-                        _ => Array.Empty<SlurMarker>()
-                    };
+                    NotationNote note => note.SlurMarkers,
+                    Chord chord => chord.SlurMarkers,
+                    _ => []
+                };
 
-                    foreach (var marker in slurMarkers)
-                    {
-                        switch (marker.Type)
-                        {
-                            case SlurMarkerType.Start:
-                                // Start a new slur
-                                pendingSlurStarts[marker.Number] = (noteEvent, marker.IsDotted);
-                                break;
-
-                            case SlurMarkerType.Stop:
-                                // End a slur
-                                if (pendingSlurStarts.TryGetValue(marker.Number, out var start))
-                                {
-                                    // Only create SlurSpan if start and end are different events (ignore single-note slurs)
-                                    if (!ReferenceEquals(start.Event, noteEvent))
-                                    {
-                                        part.Slurs.Add(new SlurSpan(
-                                            start.Event,
-                                            noteEvent,
-                                            Number: marker.Number,
-                                            IsDotted: start.IsDotted || marker.IsDotted,
-                                            StartStaffNumber: 1,
-                                            EndStaffNumber: 1,
-                                            StartVoiceNumber: voice.Number,
-                                            EndVoiceNumber: voice.Number));
-                                    }
-
-                                    pendingSlurStarts.Remove(marker.Number);
-                                }
-                                break;
-                        }
-                    }
+                return markers.Select(m => (
+                    Key: m.Number,
+                    HasStart: m.Type == SlurMarkerType.Start,
+                    HasStop: m.Type == SlurMarkerType.Stop,
+                    Data: m
+                ));
+            },
+            onMatch: (startEvent, endEvent, voice, number, startMarker, endMarker) =>
+            {
+                // Only create SlurSpan if start and end are different events (ignore single-note slurs)
+                if (!ReferenceEquals(startEvent, endEvent))
+                {
+                    part.Slurs.Add(new SlurSpan(
+                        startEvent,
+                        endEvent,
+                        Number: number,
+                        IsDotted: startMarker.IsDotted || endMarker.IsDotted,
+                        StartStaffNumber: 1,
+                        EndStaffNumber: 1,
+                        StartVoiceNumber: voice.Number,
+                        EndVoiceNumber: voice.Number));
                 }
-            }
-        }
+            });
     }
 
     private static List<Measure> ParseNotes(
@@ -386,7 +380,7 @@ public static partial class AbcParser
         return sb.ToString();
     }
 
-    private static (BarlineType? End, BarlineType? NextStart) ParseBarlineTypes(string barline)
+    private static (BarlineType End, BarlineType? NextStart) ParseBarlineTypes(string barline)
     {
         // ABC barline patterns (can start with |, [, or :):
         // |   - normal barline
@@ -397,7 +391,7 @@ public static partial class AbcParser
         // :: or :|: - repeat both
         // [|  - also a barline variant (treat as normal)
 
-        BarlineType? end = null;
+        BarlineType end;
         BarlineType? nextStart = null;
 
         // Check for repeat end first (patterns with : before last char)
@@ -539,8 +533,8 @@ public static partial class AbcParser
                 // Apply Stop markers to the last event
                 if (events.Count > 0)
                 {
-                    events[events.Count - 1] = slurTracker.ApplyPendingStops(events[events.Count - 1]);
-                    globalEvents[globalEvents.Count - 1] = events[events.Count - 1];
+                    events[^1] = slurTracker.ApplyPendingStops(events[^1]);
+                    globalEvents[^1] = events[^1];
                 }
                 continue;
             }
@@ -604,15 +598,10 @@ public static partial class AbcParser
             {
                 Duration = (note.Duration.ToBeats() * multiplier).FromRational()
             },
-            Chord chord => new Chord(
-                chord.Pitches,
-                (chord.Duration.ToBeats() * multiplier).FromRational(),
-                chord.Velocity,
-                chord.TieMarker,
-                chord.GraceNote,
-                chord.Decorations,
-                chord.ChordSymbol,
-                chord.Annotation),
+            Chord chord => chord with
+            {
+                Duration = (chord.Duration.ToBeats() * multiplier).FromRational()
+            },
             Rest rest => rest with
             {
                 Duration = (rest.Duration.ToBeats() * multiplier).FromRational()
@@ -630,15 +619,10 @@ public static partial class AbcParser
             {
                 Duration = new SymbolicDuration(note.Duration.Base, note.Duration.Dots, tuplet)
             },
-            Chord chord => new Chord(
-                chord.Pitches,
-                new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet),
-                chord.Velocity,
-                chord.TieMarker,
-                chord.GraceNote,
-                chord.Decorations,
-                chord.ChordSymbol,
-                chord.Annotation),
+            Chord chord => chord with
+            {
+                Duration = new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet)
+            },
             Rest rest => rest with
             {
                 Duration = new SymbolicDuration(rest.Duration.Base, rest.Duration.Dots, tuplet)
@@ -646,7 +630,4 @@ public static partial class AbcParser
             _ => noteEvent
         };
     }
-
-    [System.Text.RegularExpressions.GeneratedRegex(@"\|+\]?|\[\|")]
-    private static partial System.Text.RegularExpressions.Regex BarLineRegex();
 }

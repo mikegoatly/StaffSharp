@@ -43,13 +43,13 @@ public record Chord : INotationEvent
     {
     }
 
-    public IReadOnlyList<Pitch> Pitches { get; }
-    public SymbolicDuration Duration { get; }
-    public Velocity Velocity { get; }
-    public TieMarker? TieMarker { get; }
-    public GraceNote? GraceNote { get; }
-    public IReadOnlyList<Decoration> Decorations { get; }
-    public ChordSymbol? ChordSymbol { get; }
-    public Annotation? Annotation { get; }
-    public IReadOnlyList<SlurMarker> SlurMarkers { get; }
+    public IReadOnlyList<Pitch> Pitches { get; init; }
+    public SymbolicDuration Duration { get; init; }
+    public Velocity Velocity { get; init; }
+    public TieMarker? TieMarker { get; init; }
+    public GraceNote? GraceNote { get; init; }
+    public IReadOnlyList<Decoration> Decorations { get; init; }
+    public ChordSymbol? ChordSymbol { get; init; }
+    public Annotation? Annotation { get; init; }
+    public IReadOnlyList<SlurMarker> SlurMarkers { get; init; }
 }

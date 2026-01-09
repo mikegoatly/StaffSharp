@@ -452,6 +452,68 @@ public class SvgExporterTests : VisualSnapshotTestBase
         var voice = new Voice(1, [new Measure(1, notes)]);
         var staff = new Staff(1, clef, [voice]);
         var part = new Part("Instrument", [staff]);
+
+        // Build TieSpans from TieMarkers on notes
+        BuildTieSpansForTest(part);
+
         return new NotationScore(metadata, [part]);
+    }
+
+    /// <summary>
+    /// Helper to build TieSpan objects from TieMarkers on notes (similar to AbcParser logic).
+    /// </summary>
+    private static void BuildTieSpansForTest(Part part)
+    {
+        var voices = part.Voices;
+        var pendingTieStarts = new Dictionary<Pitch, INotationEvent>();
+
+        foreach (var voice in voices)
+        {
+            foreach (var measure in voice.Measures)
+            {
+                foreach (var noteEvent in measure.Events)
+                {
+                    var pitch = noteEvent switch
+                    {
+                        NotationNote note => note.Pitch,
+                        Chord chord => chord.Pitches.Count > 0 ? chord.Pitches[0] : (Pitch?)null,
+                        _ => null
+                    };
+
+                    var marker = noteEvent switch
+                    {
+                        NotationNote note => note.TieMarker,
+                        Chord chord => chord.TieMarker,
+                        _ => null
+                    };
+
+                    if (pitch is not { } nonNullPitch || marker is not { } nonNullMarker)
+                    {
+                        continue;
+                    }
+
+                    // Process stop first (for tie chains)
+                    bool hasStop = nonNullMarker.Type is TieMarkerType.Stop or TieMarkerType.Both;
+                    if (hasStop && pendingTieStarts.TryGetValue(nonNullPitch, out var startEvent))
+                    {
+                        part.Ties.Add(new TieSpan(
+                            startEvent,
+                            noteEvent,
+                            StartStaffNumber: 1,
+                            EndStaffNumber: 1,
+                            StartVoiceNumber: 1,
+                            EndVoiceNumber: 1));
+                        pendingTieStarts.Remove(nonNullPitch);
+                    }
+
+                    // Then process start
+                    bool hasStart = nonNullMarker.Type is TieMarkerType.Start or TieMarkerType.Both;
+                    if (hasStart)
+                    {
+                        pendingTieStarts[nonNullPitch] = noteEvent;
+                    }
+                }
+            }
+        }
     }
 }

@@ -20,31 +20,7 @@ internal sealed class SlurSpanPass : ILayoutPass
         foreach (var system in model.Systems)
         {
             // Build event->symbol maps per staff in this system
-            var staffSymbolMaps = new Dictionary<(int PartIndex, int StaffNumber), Dictionary<INotationEvent, IStemmedSymbol>>();
-
-            foreach (var staff in system.Staves)
-            {
-                var key = (staff.PartIndex, staff.StaffNumber);
-                var map = new Dictionary<INotationEvent, IStemmedSymbol>(ReferenceEqualityComparer<INotationEvent>.Instance);
-
-                foreach (var measure in staff.Measures)
-                {
-                    foreach (var symbol in measure.Symbols)
-                    {
-                        switch (symbol)
-                        {
-                            case NoteLayoutSymbol n:
-                                map[n.Note] = n;
-                                break;
-                            case ChordLayoutSymbol c:
-                                map[c.Chord] = c;
-                                break;
-                        }
-                    }
-                }
-
-                staffSymbolMaps[key] = map;
-            }
+            var staffSymbolMaps = LayoutPassHelpers.BuildEventSymbolMaps(system);
 
             // For each part, emit slurs that have both endpoints in this system
             for (int partIndex = 0; partIndex < model.Parts.Count; partIndex++)
