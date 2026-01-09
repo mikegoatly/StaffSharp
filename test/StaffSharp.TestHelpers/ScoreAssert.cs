@@ -76,7 +76,7 @@ public static class ScoreAssert
         PitchClass expectedPitchClass,
         SymbolicDuration expectedDuration,
         int? expectedOctave = null,
-        TieType? expectedTie = null,
+        TieMarkerType? expectedTie = null,
         Tuplet? expectedTuplet = null,
         Accidental? expectedAccidental = null,
         IReadOnlyList<Decoration>? expectedDecorations = null)
@@ -95,7 +95,8 @@ public static class ScoreAssert
 
         if (expectedTie.HasValue)
         {
-            Assert.Equal(expectedTie.Value, note.Tie);
+            Assert.NotNull(note.TieMarker);
+            Assert.Equal(expectedTie.Value, note.TieMarker.Value.Type);
         }
 
         if (expectedTuplet != null)
@@ -139,7 +140,7 @@ public static class ScoreAssert
         this Chord chord,
         IEnumerable<PitchClass> expectedPitchClasses,
         SymbolicDuration expectedDuration,
-        TieType? expectedTie = null,
+        TieMarkerType? expectedTie = null,
         Tuplet? expectedTuplet = null)
     {
         ArgumentNullException.ThrowIfNull(chord);
@@ -149,7 +150,8 @@ public static class ScoreAssert
 
         if (expectedTie.HasValue)
         {
-            Assert.Equal(expectedTie.Value, chord.Tie);
+            Assert.NotNull(chord.TieMarker);
+            Assert.Equal(expectedTie.Value, chord.TieMarker.Value.Type);
         }
 
         if (expectedTuplet != null)
@@ -365,7 +367,7 @@ public sealed class EventSequenceAssertion
         PitchClass pitchClass,
         SymbolicDuration duration,
         int? octave = null,
-        TieType? tie = null,
+        TieMarkerType? tie = null,
         Tuplet? tuplet = null,
         Accidental? accidental = null)
     {
@@ -398,7 +400,7 @@ public sealed class EventSequenceAssertion
     public EventSequenceAssertion Chord(
         IEnumerable<PitchClass> pitchClasses,
         SymbolicDuration duration,
-        TieType? tie = null,
+        TieMarkerType? tie = null,
         Tuplet? tuplet = null)
     {
         Assert.True(_index < _events.Count, $"Expected chord at index {_index}, but only {_events.Count} events exist");

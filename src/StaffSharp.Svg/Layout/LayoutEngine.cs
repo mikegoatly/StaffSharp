@@ -22,7 +22,7 @@ public static class LayoutEngine
         new DotPositioningPass(),                   // Position augmentation dots (needs X positions)
         new StemAndBeamPass(),                      // Stems and beams (needs X positions for slanted beams)
         new ArticulationPlacementPass(),            // Position articulations/decorations (needs stem direction)
-        new TiePass(),                       // Creates tie/slur curves (needs final positions)
+        new TiePass(),                              // Creates tie curves from part-level spans (needs final positions)
         new SlurSpanPass(),                         // Creates slur curves from part-level spans (same-system only v1)
         new LayoutElementBoundsCalculationPass(),   // Calculates staff bounds (needed before system positioning)
         new SystemGenerationPass(),                 // Positions systems vertically using actual staff heights
@@ -95,11 +95,7 @@ public static class LayoutEngine
             // Set time signature (use measure-specific or fall back to score default)
             layoutMeasure.TimeSignature = firstMeasure.TimeSignature ?? metadata.TimeSignature;
 
-            // Carry slurs from the notation measure into the layout measure for later processing
-            if (firstMeasure.Slurs != null && firstMeasure.Slurs.Count > 0)
-            {
-                layoutMeasure.AddSlurs(firstMeasure.Slurs);
-            }
+            // Note: Slurs are now handled at part level via SlurSpanPass, not measure level
 
             // Add clef at the start of the first measure (before time 0)
             if (measureNumber == 1)

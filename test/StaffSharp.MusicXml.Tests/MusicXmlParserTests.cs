@@ -249,14 +249,10 @@ public class MusicXmlParserTests : ScoreTestBase
         Assert.Single(slurs);
 
         var slur = slurs[0];
-        Assert.Equal(3, slur.Events.Count);
-
+        
         // Verify the notes in the slur
-        var slurNotes = slur.Events.OfType<NotationNote>().ToList();
-        Assert.Equal(3, slurNotes.Count);
-        slurNotes[0].AssertNote(PitchClass.C, SymbolicDuration.Quarter, expectedOctave: 4);
-        slurNotes[1].AssertNote(PitchClass.D, SymbolicDuration.Quarter, expectedOctave: 4);
-        slurNotes[2].AssertNote(PitchClass.E, SymbolicDuration.Quarter, expectedOctave: 4);
+        ((NotationNote)slur.StartEvent).AssertNote(PitchClass.C, SymbolicDuration.Quarter, expectedOctave: 4);
+        ((NotationNote)slur.EndEvent).AssertNote(PitchClass.E, SymbolicDuration.Quarter, expectedOctave: 4);
 
         // Verify all 4 notes in measure
         Assert.Equal(4, allNotes.Count);
@@ -301,10 +297,6 @@ public class MusicXmlParserTests : ScoreTestBase
         Assert.Equal(1, span.EndStaffNumber);
         Assert.Equal(1, span.StartVoiceNumber);
         Assert.Equal(1, span.EndVoiceNumber);
-
-        // Measure-level slur should not exist across measures
-        Assert.Empty(part.Voices[0].Measures[0].Slurs);
-        Assert.Empty(part.Voices[0].Measures[1].Slurs);
     }
 
     [Fact]

@@ -2,22 +2,17 @@ namespace StaffSharp.Layout.Model;
 
 using StaffSharp.Notation;
 
+// TODO make these internal and expose List<T> rather than IReadOnlyList<T> for performance
 /// <summary>
 /// Represents a measure within a staff.
 /// </summary>
 public class LayoutMeasure : LayoutElement
 {
     public IReadOnlyList<LayoutSymbol> Symbols => _symbols;
-    private readonly List<LayoutSymbol> _symbols = new();
+    private readonly List<LayoutSymbol> _symbols = [];
 
     public IReadOnlyList<LayoutCurve> Curves => _curves;
-    private readonly List<LayoutCurve> _curves = new();
-
-    // Slurs carried over from the notation measure so layout passes can create slur curves
-    public IReadOnlyList<Slur> Slurs => _slurs;
-    private readonly List<Slur> _slurs = new();
-
-    internal void AddSlurs(IReadOnlyList<Slur> slurs) => _slurs.AddRange(slurs);
+    private readonly List<LayoutCurve> _curves = [];
 
     /// <summary>
     /// The time signature for this measure, if it differs from the score's default.

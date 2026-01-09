@@ -149,10 +149,10 @@ public class SvgExporterTests : VisualSnapshotTestBase
     public async Task Export_TiedNotes_RendersTiesCorrectly()
     {
         var notes = NotationEventBuilder.Create()
-            .C(tie: TieType.Start)
-            .C(tie: TieType.End)
-            .D(tie: TieType.Start)
-            .D(tie: TieType.End)
+            .C(tieMarker: TieMarkerType.Start)
+            .C(tieMarker: TieMarkerType.Stop)
+            .D(tieMarker: TieMarkerType.Start)
+            .D(tieMarker: TieMarkerType.Stop)
             .E()
             .Build();
 

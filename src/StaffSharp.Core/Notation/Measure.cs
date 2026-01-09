@@ -10,7 +10,6 @@ public class Measure
         IReadOnlyList<INotationEvent> events,
         TimeSignature? timeSignature = null,
         IReadOnlyList<int>? repeatVariants = null,
-        IReadOnlyList<Slur>? slurs = null,
         IReadOnlyList<Lyric>? lyrics = null,
         BarlineType? startBarline = null,
         BarlineType? endBarline = null,
@@ -20,7 +19,6 @@ public class Measure
         Events = events;
         TimeSignature = timeSignature;
         RepeatVariants = repeatVariants ?? [];
-        Slurs = slurs ?? [];
         Lyrics = lyrics ?? [];
         StartBarline = startBarline;
         EndBarline = endBarline;
@@ -37,11 +35,6 @@ public class Measure
     /// ABC notation: |1 ... :|2 ... :|
     /// </summary>
     public IReadOnlyList<int> RepeatVariants { get; }
-
-    /// <summary>
-    /// Slurs that group events within this measure.
-    /// </summary>
-    public IReadOnlyList<Slur> Slurs { get; }
 
     /// <summary>
     /// Lyric lines associated with this measure.

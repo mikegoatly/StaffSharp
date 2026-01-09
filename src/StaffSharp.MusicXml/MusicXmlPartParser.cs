@@ -9,10 +9,11 @@ using System.Xml.Linq;
 internal static class MusicXmlPartParser
 {
     /// <summary>
-    /// Parses a part element and returns a list of staves.
+    /// Parses a part element and returns a list of staves with tie and slur spans.
     /// </summary>
-    public static (List<Staff> Staves, List<SlurSpan> Slurs) ParsePart(XElement partElement, MusicXmlContext context)
+    public static (List<Staff> Staves, List<TieSpan> Ties, List<SlurSpan> Slurs) ParsePart(XElement partElement, MusicXmlContext context)
     {
+        var tieAggregator = new TieSpanAggregator();
         var slurAggregator = new SlurSpanAggregator();
         // Group measures by staff -> voice -> list of measures
         var staffData = new Dictionary<int, Dictionary<int, List<Measure>>>();
@@ -88,6 +89,6 @@ internal static class MusicXmlPartParser
                 ));
         }
 
-        return (staves, slurAggregator.GetSlurs());
+        return (staves, tieAggregator.GetTies(), slurAggregator.GetSlurs());
     }
 }

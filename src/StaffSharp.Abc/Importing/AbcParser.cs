@@ -109,70 +109,144 @@ public static partial class AbcParser
         var metadata = new ScoreMetadata(title, composer, keySignature, timeSignature, tempo);
         var part = new Part("Melody", Clef.Treble, voices);
 
-        // Populate part-level slur spans from per-measure slurs (same-system/measure for now)
+        // Build TieSpans and SlurSpans from markers on notes
+        BuildTieSpans(voices, part);
+        BuildSlurSpans(voices, part);
+
+        return new NotationScore(metadata, [part]);
+    }
+
+    /// <summary>
+    /// Builds TieSpan objects from TieMarkers on notes across all voices.
+    /// </summary>
+    private static void BuildTieSpans(List<Voice> voices, Part part)
+    {
         foreach (var voice in voices)
         {
+            var pendingTieStarts = new Dictionary<Pitch, INotationEvent>(); // Key by pitch for tie matching
+
             foreach (var measure in voice.Measures)
             {
-                if (measure.Slurs.Count == 0)
+                foreach (var noteEvent in measure.Events)
                 {
-                    continue;
-                }
+                    Pitch? pitch = noteEvent switch
+                    {
+                        NotationNote note => note.Pitch,
+                        Chord chord => chord.Pitches.Count > 0 ? chord.Pitches[0] : null,
+                        _ => null
+                    };
 
-                foreach (var slur in measure.Slurs)
-                {
-                    if (slur.Events.Count == 0)
+                    var tieMarker = noteEvent switch
+                    {
+                        NotationNote note => note.TieMarker,
+                        Chord chord => chord.TieMarker,
+                        _ => null
+                    };
+
+                    if (pitch is not { } nonNullPitch || tieMarker is not { } nonNullTieMarker)
                     {
                         continue;
                     }
 
-                    // Prefer note/chord endpoints; fall back to first/last event
-                    INotationEvent? start = null;
-                    INotationEvent? end = null;
+                    // After null check, pitch is guaranteed non-null
+                    switch (nonNullTieMarker.Type)
+                    {
+                        case TieMarkerType.Start:
+                            // Start a new tie
+                            pendingTieStarts[nonNullPitch] = noteEvent;
+                            break;
 
-                    for (int i = 0; i < slur.Events.Count && start == null; i++)
-                    {
-                        var ev = slur.Events[i];
-                        if (ev is NotationNote || ev is Chord)
-                        {
-                            start = ev;
-                        }
-                    }
-                    for (int i = slur.Events.Count - 1; i >= 0 && end == null; i--)
-                    {
-                        var ev = slur.Events[i];
-                        if (ev is NotationNote || ev is Chord)
-                        {
-                            end = ev;
-                        }
-                    }
+                        case TieMarkerType.Stop:
+                            // End a tie
+                            if (pendingTieStarts.TryGetValue(nonNullPitch, out var startEvent))
+                            {
+                                part.Ties.Add(new TieSpan(
+                                    startEvent,
+                                    noteEvent,
+                                    StartStaffNumber: 1,
+                                    EndStaffNumber: 1,
+                                    StartVoiceNumber: voice.Number,
+                                    EndVoiceNumber: voice.Number));
+                                pendingTieStarts.Remove(nonNullPitch);
+                            }
+                            break;
 
-                    if (start == null && slur.Events.Count > 0)
-                    {
-                        start = slur.Events[0];
-                    }
-                    if (end == null && slur.Events.Count > 0)
-                    {
-                        end = slur.Events[slur.Events.Count - 1];
-                    }
-
-                    if (start != null && end != null)
-                    {
-                        part.Slurs.Add(new SlurSpan(
-                            start,
-                            end,
-                            Number: null,
-                            IsDotted: slur.IsDotted,
-                            StartStaffNumber: 1,
-                            EndStaffNumber: 1,
-                            StartVoiceNumber: voice.Number,
-                            EndVoiceNumber: voice.Number));
+                        case TieMarkerType.Both:
+                            // End previous tie and start new tie (tie chain)
+                            if (pendingTieStarts.TryGetValue(nonNullPitch, out var prevStartEvent))
+                            {
+                                part.Ties.Add(new TieSpan(
+                                    prevStartEvent,
+                                    noteEvent,
+                                    StartStaffNumber: 1,
+                                    EndStaffNumber: 1,
+                                    StartVoiceNumber: voice.Number,
+                                    EndVoiceNumber: voice.Number));
+                            }
+                            // This note also starts the next tie
+                            pendingTieStarts[nonNullPitch] = noteEvent;
+                            break;
                     }
                 }
             }
         }
+    }
 
-        return new NotationScore(metadata, [part]);
+    /// <summary>
+    /// Builds SlurSpan objects from SlurMarkers on notes across all voices.
+    /// </summary>
+    private static void BuildSlurSpans(List<Voice> voices, Part part)
+    {
+        foreach (var voice in voices)
+        {
+            var pendingSlurStarts = new Dictionary<int, (INotationEvent Event, bool IsDotted)>(); // Key by slur number
+
+            foreach (var measure in voice.Measures)
+            {
+                foreach (var noteEvent in measure.Events)
+                {
+                    var slurMarkers = noteEvent switch
+                    {
+                        NotationNote note => note.SlurMarkers,
+                        Chord chord => chord.SlurMarkers,
+                        _ => Array.Empty<SlurMarker>()
+                    };
+
+                    foreach (var marker in slurMarkers)
+                    {
+                        switch (marker.Type)
+                        {
+                            case SlurMarkerType.Start:
+                                // Start a new slur
+                                pendingSlurStarts[marker.Number] = (noteEvent, marker.IsDotted);
+                                break;
+
+                            case SlurMarkerType.Stop:
+                                // End a slur
+                                if (pendingSlurStarts.TryGetValue(marker.Number, out var start))
+                                {
+                                    // Only create SlurSpan if start and end are different events (ignore single-note slurs)
+                                    if (!ReferenceEquals(start.Event, noteEvent))
+                                    {
+                                        part.Slurs.Add(new SlurSpan(
+                                            start.Event,
+                                            noteEvent,
+                                            Number: marker.Number,
+                                            IsDotted: start.IsDotted || marker.IsDotted,
+                                            StartStaffNumber: 1,
+                                            EndStaffNumber: 1,
+                                            StartVoiceNumber: voice.Number,
+                                            EndVoiceNumber: voice.Number));
+                                    }
+
+                                    pendingSlurStarts.Remove(marker.Number);
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static List<Measure> ParseNotes(
@@ -238,13 +312,12 @@ public static partial class AbcParser
                 var measureString = currentMeasureContent.ToString().Trim();
                 if (!string.IsNullOrWhiteSpace(measureString))
                 {
-                    var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
+                    var events = ParseMeasureEvents(measureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
                     if (events.Count > 0)
                     {
                         measures.Add(new Measure(
                             measureNumber++,
                             events,
-                            slurs: slurs,
                             repeatVariants: nextMeasureVariants,
                             startBarline: nextMeasureStartBarline,
                             endBarline: endBarline));
@@ -267,13 +340,12 @@ public static partial class AbcParser
         var finalMeasureString = currentMeasureContent.ToString().Trim();
         if (!string.IsNullOrWhiteSpace(finalMeasureString))
         {
-            var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
+            var events = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
             if (events.Count > 0)
             {
                 measures.Add(new Measure(
                     measureNumber++,
                     events,
-                    slurs: slurs,
                     repeatVariants: nextMeasureVariants,
                     startBarline: nextMeasureStartBarline));
             }
@@ -403,7 +475,7 @@ public static partial class AbcParser
         return variants;
     }
 
-    private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(
+    private static List<INotationEvent> ParseMeasureEvents(
         string measureString,
         Rational defaultNoteLength,
         KeySignature keySignature,
@@ -411,7 +483,6 @@ public static partial class AbcParser
         List<INotationEvent> globalEvents)
     {
         var events = new List<INotationEvent>();
-        var slurs = new List<Slur>();
         int index = 0;
         Rational? nextNoteMultiplier = null;
         Tuplet? activeTuplet = null;
@@ -463,9 +534,14 @@ public static partial class AbcParser
             }
 
             // Check for slur end
-            if (slurTracker.TryEndSlur(measureString, ref index, globalEvents, out var slur) && slur != null)
+            if (slurTracker.TryEndSlur(measureString, ref index))
             {
-                slurs.Add(slur);
+                // Apply Stop markers to the last event
+                if (events.Count > 0)
+                {
+                    events[events.Count - 1] = slurTracker.ApplyPendingStops(events[events.Count - 1]);
+                    globalEvents[globalEvents.Count - 1] = events[events.Count - 1];
+                }
                 continue;
             }
 
@@ -499,9 +575,11 @@ public static partial class AbcParser
                     }
                 }
 
+                // Apply pending slur Start markers
+                noteEvent = slurTracker.ApplyPendingStarts(noteEvent);
+
                 events.Add(noteEvent);
                 globalEvents.Add(noteEvent);
-                slurTracker.NotifyEventAdded(globalEvents.Count - 1);
             }
             else
             {
@@ -513,7 +591,8 @@ public static partial class AbcParser
         // Post-process: resolve tie endings
         TieTracker.ResolveTieEndings(events);
 
-        return (events, slurs);
+        // Note: Slurs are now stored as markers on notes, not as separate Slur objects
+        return events;
     }
 
     private static INotationEvent ApplyDurationMultiplier(INotationEvent noteEvent, Rational multiplier)
@@ -529,7 +608,7 @@ public static partial class AbcParser
                 chord.Pitches,
                 (chord.Duration.ToBeats() * multiplier).FromRational(),
                 chord.Velocity,
-                chord.Tie,
+                chord.TieMarker,
                 chord.GraceNote,
                 chord.Decorations,
                 chord.ChordSymbol,
@@ -555,7 +634,7 @@ public static partial class AbcParser
                 chord.Pitches,
                 new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet),
                 chord.Velocity,
-                chord.Tie,
+                chord.TieMarker,
                 chord.GraceNote,
                 chord.Decorations,
                 chord.ChordSymbol,

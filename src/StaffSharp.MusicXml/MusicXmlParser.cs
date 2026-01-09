@@ -57,10 +57,17 @@ internal static class MusicXmlParser
                 Tempo = metadata.Tempo
             };
 
-            // Parse the part's measures into staves and collect slur spans
-            var (staves, slurs) = MusicXmlPartParser.ParsePart(partElement, context);
+            // Parse the part's measures into staves and collect tie and slur spans
+            var (staves, ties, slurs) = MusicXmlPartParser.ParsePart(partElement, context);
 
             var part = new Part(partName, staves);
+            if (ties.Count > 0)
+            {
+                foreach (var span in ties)
+                {
+                    part.Ties.Add(span);
+                }
+            }
             if (slurs.Count > 0)
             {
                 foreach (var span in slurs)

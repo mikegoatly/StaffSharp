@@ -68,11 +68,6 @@ public class MeasureTests
             new(DirectionType.RehearsalMark, Placement.Above, "A")
         };
 
-        var slurs = new List<Slur>
-        {
-            new([new Rest(SymbolicDuration.Quarter), new Rest(SymbolicDuration.Quarter)])
-        };
-
         var lyrics = new List<Lyric>
         {
             new([new LyricSyllable("Test", LyricSyllableType.Standalone)])
@@ -85,7 +80,6 @@ public class MeasureTests
             events: [new Rest(SymbolicDuration.Quarter)],
             timeSignature: new TimeSignature(3, 4),
             repeatVariants: repeatVariants,
-            slurs: slurs,
             lyrics: lyrics,
             startBarline: BarlineType.RepeatStart,
             endBarline: BarlineType.DoubleBar,
@@ -94,7 +88,6 @@ public class MeasureTests
         Assert.Equal(5, measure.Number);
         Assert.Equal(new TimeSignature(3, 4), measure.TimeSignature);
         Assert.Equal(2, measure.RepeatVariants.Count);
-        Assert.Single(measure.Slurs);
         Assert.Single(measure.Lyrics);
         Assert.Equal(BarlineType.RepeatStart, measure.StartBarline);
         Assert.Equal(BarlineType.DoubleBar, measure.EndBarline);
