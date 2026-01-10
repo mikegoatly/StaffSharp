@@ -70,6 +70,10 @@ public class SvgScoreExporter : IScoreExporter
         // Noteheads are scaled to 1.0 staff space in height
         var targetHeight = 1.0 * staffSpace;
         var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
-        return glyph.Width * scale;
+
+        // Round scale to 2dp
+        // This ensures stem positions align with the actual rendered notehead width
+        var roundedScale = Math.Round(scale, 2);
+        return glyph.Width * roundedScale;
     }
 }
