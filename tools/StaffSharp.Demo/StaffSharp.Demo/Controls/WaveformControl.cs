@@ -25,6 +25,10 @@ public class WaveformControl : Control
     public static readonly StyledProperty<IBrush?> PlayheadBrushProperty =
         AvaloniaProperty.Register<WaveformControl, IBrush?>(nameof(PlayheadBrush), Brushes.Red);
 
+    private ReadOnlyMemory<float>? _cachedSamples;
+    private (float Min, float Max)[]? _downsampledData;
+    private int _downsampledWidth;
+
     public ReadOnlyMemory<float>? Samples
     {
         get => GetValue(SamplesProperty);
@@ -63,6 +67,45 @@ public class WaveformControl : Control
         AffectsRender<WaveformControl>(SamplesProperty, WaveformBrushProperty, BackgroundBrushProperty, PlaybackPositionProperty, PlayheadBrushProperty);
     }
 
+    private void UpdateDownsampledData(ReadOnlyMemory<float> samples, int targetWidth)
+    {
+        if (_cachedSamples.HasValue && 
+            _cachedSamples.Value.Length == samples.Length &&
+            _downsampledWidth == targetWidth &&
+            _downsampledData != null)
+        {
+            return;
+        }
+
+        _cachedSamples = samples;
+        _downsampledWidth = targetWidth;
+        _downsampledData = new (float Min, float Max)[targetWidth];
+
+        var samplesPerPixel = (double)samples.Length / targetWidth;
+        var span = samples.Span;
+
+        for (int x = 0; x < targetWidth; x++)
+        {
+            var startSample = (int)(x * samplesPerPixel);
+            var endSample = Math.Min((int)((x + 1) * samplesPerPixel), samples.Length);
+
+            if (startSample >= samples.Length)
+            {
+                break;
+            }
+
+            float min = 0, max = 0;
+            for (int i = startSample; i < endSample; i++)
+            {
+                var sample = span[i];
+                if (sample < min) min = sample;
+                if (sample > max) max = sample;
+            }
+
+            _downsampledData[x] = (min, max);
+        }
+    }
+
     public override void Render(DrawingContext context)
     {
         base.Render(context);
@@ -86,34 +129,20 @@ public class WaveformControl : Control
             return;
         }
 
-        // Calculate samples per pixel
-        var samplesPerPixel = samples.Length / width;
+        var targetWidth = (int)width;
+        UpdateDownsampledData(samples, targetWidth);
+
         var centerY2 = height / 2;
         var amplitude = height / 2 - 2; // Leave some margin
 
         // Draw waveform
-        if (WaveformBrush != null)
+        if (WaveformBrush != null && _downsampledData != null)
         {
             var pen = new Pen(WaveformBrush, 1);
 
-            for (int x = 0; x < (int)width; x++)
+            for (int x = 0; x < Math.Min(targetWidth, _downsampledData.Length); x++)
             {
-                var startSample = (int)(x * samplesPerPixel);
-                var endSample = Math.Min((int)((x + 1) * samplesPerPixel), samples.Length);
-
-                if (startSample >= samples.Length)
-                {
-                    break;
-                }
-
-                // Find min/max in this pixel column
-                float min = 0, max = 0;
-                for (int i = startSample; i < endSample; i++)
-                {
-                    var sample = samples.Span[i];
-                    if (sample < min) min = sample;
-                    if (sample > max) max = sample;
-                }
+                var (min, max) = _downsampledData[x];
 
                 // Draw vertical line from min to max
                 var y1 = centerY2 - max * amplitude;
