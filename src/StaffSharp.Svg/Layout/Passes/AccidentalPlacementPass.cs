@@ -9,7 +9,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Determines which notes need accidentals and positions them to avoid collisions.
 /// </summary>
-public class AccidentalPlacementPass : ILayoutPass
+internal class AccidentalPlacementPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

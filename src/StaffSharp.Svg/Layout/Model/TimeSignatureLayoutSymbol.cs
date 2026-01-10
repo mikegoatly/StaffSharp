@@ -1,14 +1,12 @@
 namespace StaffSharp.Layout.Model;
 
-using System;
-
 using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 
 /// <summary>
 /// Represents a positioned time signature.
 /// </summary>
-public sealed class TimeSignatureLayoutSymbol : LayoutSymbol
+internal sealed class TimeSignatureLayoutSymbol : LayoutSymbol
 {
     public required TimeSignature TimeSignature { get; init; }
 

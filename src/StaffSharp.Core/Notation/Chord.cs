@@ -10,11 +10,12 @@ public record Chord : INotationEvent
         IReadOnlyList<Pitch> pitches,
         SymbolicDuration duration,
         Velocity velocity,
-        TieType tie = TieType.None,
+        TieMarker? tieMarker = null,
         GraceNote? graceNote = null,
         IReadOnlyList<Decoration>? decorations = null,
         ChordSymbol? chordSymbol = null,
-        Annotation? annotation = null)
+        Annotation? annotation = null,
+        IReadOnlyList<SlurMarker>? slurMarkers = null)
     {
         ArgumentNullException.ThrowIfNull(pitches);
 
@@ -26,11 +27,12 @@ public record Chord : INotationEvent
         Pitches = pitches;
         Duration = duration;
         Velocity = velocity;
-        Tie = tie;
+        TieMarker = tieMarker;
         GraceNote = graceNote;
         Decorations = decorations ?? [];
         ChordSymbol = chordSymbol;
         Annotation = annotation;
+        SlurMarkers = slurMarkers ?? [];
     }
 
     /// <summary>
@@ -41,12 +43,13 @@ public record Chord : INotationEvent
     {
     }
 
-    public IReadOnlyList<Pitch> Pitches { get; }
-    public SymbolicDuration Duration { get; }
-    public Velocity Velocity { get; }
-    public TieType Tie { get; }
-    public GraceNote? GraceNote { get; }
-    public IReadOnlyList<Decoration> Decorations { get; }
-    public ChordSymbol? ChordSymbol { get; }
-    public Annotation? Annotation { get; }
+    public IReadOnlyList<Pitch> Pitches { get; init; }
+    public SymbolicDuration Duration { get; init; }
+    public Velocity Velocity { get; init; }
+    public TieMarker? TieMarker { get; init; }
+    public GraceNote? GraceNote { get; init; }
+    public IReadOnlyList<Decoration> Decorations { get; init; }
+    public ChordSymbol? ChordSymbol { get; init; }
+    public Annotation? Annotation { get; init; }
+    public IReadOnlyList<SlurMarker> SlurMarkers { get; init; }
 }

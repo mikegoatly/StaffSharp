@@ -1,15 +1,17 @@
+using StaffSharp.Notation;
+
 namespace StaffSharp.Layout.Model;
 
 /// <summary>
 /// Interface for layout symbols that have stems and may be part of beam groups.
 /// Provides information needed for proper articulation placement and other layout decisions.
 /// </summary>
-public interface IStemmedSymbol : ILayoutSymbol
+internal interface IStemmedSymbol : ILayoutSymbol
 {
     /// <summary>
     /// Stem information (position and direction).
     /// </summary>
-    StemInfo Stem { get; set;  }
+    StemInfo Stem { get; set; }
 
     /// <summary>
     /// Beam and flag information.
@@ -27,4 +29,9 @@ public interface IStemmedSymbol : ILayoutSymbol
     /// This is the lowest point of the symbol that articulations need to clear.
     /// </summary>
     double GetEffectiveBottomY();
+
+    /// <summary>
+    /// The symbolic duration of the stemmed symbol.
+    /// </summary>
+    SymbolicDuration Duration { get; }
 }

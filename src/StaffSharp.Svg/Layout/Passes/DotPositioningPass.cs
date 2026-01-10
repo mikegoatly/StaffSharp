@@ -10,7 +10,7 @@ using StaffSharp.Notation;
 /// Calculates positions for augmentation dots on notes, rests, and chords.
 /// Must run after HorizontalPositionPass since it needs final X positions.
 /// </summary>
-public class DotPositioningPass : ILayoutPass
+internal class DotPositioningPass : ILayoutPass
 {
     private const double DotSpacing = 0.5; // Space between multiple dots (in staff spaces)
     private const double DotOffset = 0.2;   // Offset from note head to first dot (in staff spaces)
@@ -56,7 +56,7 @@ public class DotPositioningPass : ILayoutPass
     private static void PositionNoteDots(NoteLayoutSymbol noteSymbol, SvgContext context)
     {
         // Calculate X positions for each dot
-        var noteHeadWidth = GetNoteHeadWidth(noteSymbol.Note.Duration.Base, context);
+        var noteHeadWidth = context.GetNoteheadWidth(noteSymbol.Note.Duration.Base);
         var baseX = noteSymbol.X + noteHeadWidth + (DotOffset * context.StaffSpace);
 
         // Y position: if note is on a line, move dot to the space above
@@ -94,7 +94,7 @@ public class DotPositioningPass : ILayoutPass
     private static void PositionChordDots(ChordLayoutSymbol chordSymbol, SvgContext context)
     {
         // Calculate X positions for each dot
-        var noteHeadWidth = GetNoteHeadWidth(chordSymbol.Chord.Duration.Base, context);
+        var noteHeadWidth = context.GetNoteheadWidth(chordSymbol.Chord.Duration.Base);
 
         // Find the maximum X shift from any notehead to account for chord notehead shifts
         var maxXShift = chordSymbol.NoteheadXShifts.Count > 0
@@ -119,12 +119,6 @@ public class DotPositioningPass : ILayoutPass
         }
 
         PositionAugmentationDots(chordSymbol, context, baseX, dotY);
-    }
-
-    private static double GetNoteHeadWidth(NoteDurationBase durationBase, SvgContext context)
-    {
-        // Note head width is approximately 1.4 staff spaces (based on glyph design)
-        return 1.4 * context.StaffSpace;
     }
 
     private static double GetRestWidth(NoteDurationBase durationBase, SvgContext context)

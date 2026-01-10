@@ -8,7 +8,7 @@ using StaffSharp.Layout;
 /// <summary>
 /// Renders a LayoutModel to SVG.
 /// </summary>
-public static class SvgRenderer
+internal static class SvgRenderer
 {
     private static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
 

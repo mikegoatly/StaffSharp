@@ -22,7 +22,7 @@ internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
             var y = i * context.StaffSpace;
             var x1 = staff.X;
             var x2 = staff.X + staff.Width;
-            group.Add(CreateLine(x1, y, x2, y));
+            group.Add(CreateLine(x1, y, x2, y, strokeWidth: 0.5));
         }
 
         // Render symbols

@@ -8,7 +8,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Groups notes into beam groups based on note durations and beat positions.
 /// </summary>
-public static class BeamGrouper
+internal static class BeamGrouper
 {
     /// <summary>
     /// Groups beamable notes in a measure, respecting voice boundaries and beat structure.
@@ -20,8 +20,6 @@ public static class BeamGrouper
         IEnumerable<LayoutSymbol> symbols,
         TimeSignature? timeSignature = null)
     {
-        ArgumentNullException.ThrowIfNull(symbols);
-
         // If no time signature provided, use simple voice-based grouping
         if (timeSignature == null)
         {

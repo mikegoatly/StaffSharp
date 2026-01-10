@@ -6,7 +6,7 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents a positioned note.
 /// </summary>
-public sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
+internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
 {
     public required NotationNote Note { get; init; }
 
@@ -18,8 +18,10 @@ public sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedS
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }
 
+    public SymbolicDuration Duration => Note.Duration;
+
     // Positioned decorations/articulations
-    public IList<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
+    public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
 
     /// <summary>
     /// Gets the effective top Y position accounting for stem, beam, and flags.

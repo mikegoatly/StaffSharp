@@ -5,20 +5,20 @@ using StaffSharp.Notation;
 /// <summary>
 /// Represents a measure within a staff.
 /// </summary>
-public class LayoutMeasure : LayoutElement
+internal class LayoutMeasure : LayoutElement
 {
-    public IReadOnlyList<LayoutSymbol> Symbols => _symbols;
-    private readonly List<LayoutSymbol> _symbols = new();
-
-    public IReadOnlyList<LayoutCurve> Curves => _curves;
-    private readonly List<LayoutCurve> _curves = new();
+    public List<LayoutSymbol> Symbols { get; } = [];
+    public List<LayoutCurve> Curves { get; } = [];
 
     /// <summary>
     /// The time signature for this measure, if it differs from the score's default.
     /// </summary>
     public TimeSignature? TimeSignature { get; set; }
 
-    internal void AddSymbol(LayoutSymbol symbol) => _symbols.Add(symbol);
-    internal void InsertSymbol(int index, LayoutSymbol symbol) => _symbols.Insert(index, symbol);
-    internal void AddCurve(LayoutCurve curve) => _curves.Add(curve);
+    public bool Contains(INotationEvent notationEvent)
+    {
+        return Symbols.Any(s => 
+            (s is NoteLayoutSymbol n && ReferenceEquals(n.Note, notationEvent))
+            || (s is ChordLayoutSymbol c && ReferenceEquals(c.Chord, notationEvent)));
+    }
 }

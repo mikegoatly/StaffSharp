@@ -40,11 +40,8 @@ internal static class StemCalculator
         // Calculate stem position
         var stemLength = StemLength * context.StaffSpace;
 
-        // Stem X position: fixed offset from notehead
-        // These match the rendering offsets: right edge for stem up, left edge for stem down
-        var stemX = stemUp
-            ? symbol.X + (context.StaffSpace + 1)  // Right edge for stem up
-            : symbol.X + 1; // Left edge for stem down
+        // Stem X position: proportional to notehead width
+        var stemX = GetStemX(symbol, context, stemUp);
 
         double stemY1 = stemAttachmentY;
         double stemY2 = stemUp
@@ -54,6 +51,12 @@ internal static class StemCalculator
         // Set stem info
         symbol.Stem = new StemInfo(stemX, stemY1, stemY2, stemUp);
         symbol.Beam = BeamInfo.None;
+    }
+
+    private static double GetStemX(IStemmedSymbol symbol, SvgContext context, bool stemUp)
+    {
+        var noteWidth = context.GetNoteheadWidth(symbol.Duration.Base);
+        return symbol.X + (stemUp ? noteWidth * 0.95 : noteWidth * 0.05);
     }
 
     /// <summary>
@@ -78,11 +81,6 @@ internal static class StemCalculator
 
             var beamCount = BeamGrouper.GetBeamCount(symbol);
 
-            // Stem X position: fixed offset from notehead
-            var stemX = stemUp
-                ? symbol.X + (context.StaffSpace + 1)  // Right edge for stem up
-                : symbol.X + 1; // Left edge for stem down
-
             // Calculate stem attachment point (where stem meets notehead)
             var noteheadY = symbol.Y;
             if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
@@ -97,6 +95,7 @@ internal static class StemCalculator
                 throw new ArgumentException("Symbol must implement IStemmedSymbol", nameof(layoutGroup));
             }
 
+            var stemX = GetStemX(stemmedSymbol, context, stemUp);
             stemmedSymbol.Stem = new StemInfo(stemX, stemY1, stemY1, stemUp); // Y2 will be updated
             stemmedSymbol.Beam = new BeamInfo(beamGroupId, i == 0, i == layoutGroup.Count - 1, beamCount, false, 0);
         }

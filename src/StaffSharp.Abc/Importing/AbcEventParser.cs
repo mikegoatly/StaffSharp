@@ -103,10 +103,10 @@ internal static class AbcEventParser
         var duration = ParseDuration(input, ref index, defaultNoteLength);
 
         // Parse tie (-)
-        TieType tie = TieType.None;
+        TieMarker? tieMarker = null;
         if (index < input.Length && input[index] == '-')
         {
-            tie = TieType.Start; // Mark as start of tie
+            tieMarker = new TieMarker(TieMarkerType.Start); // Mark as start of tie
             index++;
         }
 
@@ -120,7 +120,7 @@ internal static class AbcEventParser
                 pitch.GetValueOrDefault(),
                 symbolicDuration,
                 Velocity.MezzoForte,
-                tie,
+                tieMarker,
                 graceNote,
                 decorations.Count > 0 ? decorations : null);
             return true;
@@ -196,10 +196,10 @@ internal static class AbcEventParser
         var symbolicDuration = duration.FromRational();
 
         // Parse tie (-)
-        TieType tie = TieType.None;
+        TieMarker? tieMarker = null;
         if (index < input.Length && input[index] == '-')
         {
-            tie = TieType.Start;
+            tieMarker = new TieMarker(TieMarkerType.Start);
             index++;
         }
 
@@ -207,7 +207,7 @@ internal static class AbcEventParser
             pitches,
             symbolicDuration,
             Velocity.MezzoForte,
-            tie,
+            tieMarker,
             graceNote,
             decorations.Count > 0 ? decorations : null);
         return true;

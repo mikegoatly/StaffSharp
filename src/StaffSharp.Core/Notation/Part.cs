@@ -6,6 +6,9 @@ namespace StaffSharp.Notation;
 /// </summary>
 public class Part
 {
+    private readonly List<TieSpan> _ties = [];
+    private readonly List<SlurSpan> _slurs = [];
+
     /// <summary>
     /// Creates a new part with multiple staves (e.g., grand staff for piano).
     /// </summary>
@@ -49,4 +52,10 @@ public class Part
     /// All voices from all staves (for backward compatibility with single-staff code).
     /// </summary>
     public IReadOnlyList<Voice> Voices => Staves.SelectMany(s => s.Voices).ToList();
+
+    // Part-level slur spans (cross-measure/system/grand-staff capable)
+    public IList<SlurSpan> Slurs => _slurs;
+
+    // Part-level tie spans (cross-measure capable)
+    public IList<TieSpan> Ties => _ties;
 }

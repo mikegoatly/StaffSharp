@@ -158,10 +158,18 @@ public abstract class ScoreTestBase
     }
 
     /// <summary>
-    /// Gets all slurs from a specific measure.
+    /// Gets all slurs from a specific part.
     /// </summary>
-    protected static IReadOnlyList<Slur> GetSlurs(NotationScore score, int measureIndex = 0, int voiceIndex = 0, int partIndex = 0)
+    protected static IList<SlurSpan> GetSlurs(NotationScore score, int partIndex = 0)
     {
-        return GetMeasure(score, measureIndex, voiceIndex, partIndex).Slurs;
+        return score.Parts[partIndex].Slurs;
+    }
+
+    /// <summary>
+    /// Gets all ties from a specific part.
+    /// </summary>
+    protected static IList<TieSpan> GetTies(NotationScore score, int partIndex = 0)
+    {
+        return score.Parts[partIndex].Ties;
     }
 }

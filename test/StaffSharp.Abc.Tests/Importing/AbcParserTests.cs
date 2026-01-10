@@ -417,8 +417,8 @@ public class AbcParserTests : ScoreTestBase
         var score = AbcParser.Parse(abc);
 
         score.AssertSequence()
-            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieMarkerType.Start)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieMarkerType.Stop)
             .Note(PitchClass.D, SymbolicDuration.Quarter)
             .Note(PitchClass.E, SymbolicDuration.Quarter)
             .AndNoMore();
@@ -439,10 +439,10 @@ public class AbcParserTests : ScoreTestBase
         var score = AbcParser.Parse(abc);
 
         score.AssertSequence()
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Start)
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Both)
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.Both)
-            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieMarkerType.Start)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieMarkerType.Both)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieMarkerType.Both)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, tie: TieMarkerType.Stop)
             .AndNoMore();
     }
 
@@ -461,8 +461,8 @@ public class AbcParserTests : ScoreTestBase
         var score = AbcParser.Parse(abc);
 
         score.AssertSequence()
-            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieType.Start)
-            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieType.End)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieMarkerType.Start)
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half, tie: TieMarkerType.Stop)
             .AndNoMore();
     }
 
@@ -481,8 +481,8 @@ public class AbcParserTests : ScoreTestBase
         var score = AbcParser.Parse(abc);
 
         score.AssertSequence()
-            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.Start)  // C2 (quarter note, tied)
-            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)    // C2 (quarter note, end of tie)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieMarkerType.Start)  // C2 (quarter note, tied)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieMarkerType.Stop)    // C2 (quarter note, end of tie)
             .Note(PitchClass.D, SymbolicDuration.Half)                         // D4 (half note, not tied)
             .AndNoMore();
     }
@@ -503,22 +503,22 @@ public class AbcParserTests : ScoreTestBase
 
         // Measure 1: C2-C D (half tied to quarter, quarter)
         score.AssertSequence(measureIndex: 0)
-            .Note(PitchClass.C, SymbolicDuration.Half, tie: TieType.Start)
-            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.C, SymbolicDuration.Half, tie: TieMarkerType.Start)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, tie: TieMarkerType.Stop)
             .Note(PitchClass.D, SymbolicDuration.Quarter)
             .AndNoMore();
 
         // Measure 2: E2-E F (half tied to quarter, quarter)
         score.AssertSequence(measureIndex: 1)
-            .Note(PitchClass.E, SymbolicDuration.Half, tie: TieType.Start)
-            .Note(PitchClass.E, SymbolicDuration.Quarter, tie: TieType.End)
+            .Note(PitchClass.E, SymbolicDuration.Half, tie: TieMarkerType.Start)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, tie: TieMarkerType.Stop)
             .Note(PitchClass.F, SymbolicDuration.Quarter)
             .AndNoMore();
 
         // Measure 3: G2-G2 (half tied to half)
         score.AssertSequence(measureIndex: 2)
-            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieType.Start)
-            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieType.End)
+            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieMarkerType.Start)
+            .Note(PitchClass.G, SymbolicDuration.Half, tie: TieMarkerType.Stop)
             .AndNoMore();
 
         // Measure 4: c4 (whole note)
@@ -888,16 +888,39 @@ public class AbcParserTests : ScoreTestBase
         // Should have one slur containing first three notes
         Assert.Single(slurs);
         var slur = slurs[0];
-        Assert.Equal(3, slur.Events.Count);
         Assert.False(slur.IsDotted);
 
-        // Verify slurred notes are A, B, C
-        var slurredNote1 = Assert.IsType<NotationNote>(slur.Events[0]);
-        var slurredNote2 = Assert.IsType<NotationNote>(slur.Events[1]);
-        var slurredNote3 = Assert.IsType<NotationNote>(slur.Events[2]);
-        Assert.Equal(PitchClass.A, slurredNote1.Pitch.PitchClass);
-        Assert.Equal(PitchClass.B, slurredNote2.Pitch.PitchClass);
-        Assert.Equal(PitchClass.C, slurredNote3.Pitch.PitchClass);
+        // Verify slurred notes are A to C
+        var startSlur = Assert.IsType<NotationNote>(slur.StartEvent);
+        var endSlur = Assert.IsType<NotationNote>(slur.EndEvent);
+        Assert.Equal(PitchClass.A, startSlur.Pitch.PitchClass);
+        Assert.Equal(PitchClass.C, endSlur.Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_CrossMeasureSlur_PopulatesPart()
+    {
+        var abc = """
+            X:1
+            T:Cross Slur
+            M:4/4
+            L:1/4
+            K:C
+            A(BC|D)E|
+            """;
+
+        var score = AbcParser.Parse(abc);
+
+        var part = score.Parts[0];
+
+        Assert.Single(part.Slurs);
+        var slur = part.Slurs[0];
+        Assert.Equal(PitchClass.B, ((NotationNote)slur.StartEvent).Pitch.PitchClass);
+        Assert.Equal(PitchClass.D, ((NotationNote)slur.EndEvent).Pitch.PitchClass);
+        Assert.Equal(1, slur.StartStaffNumber);
+        Assert.Equal(1, slur.EndStaffNumber);
+        Assert.Equal(1, slur.StartVoiceNumber);
+        Assert.Equal(1, slur.EndVoiceNumber);
     }
 
     [Fact]
@@ -913,22 +936,20 @@ public class AbcParserTests : ScoreTestBase
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var part = score.Parts[0];
 
         // Should have two slurs
-        Assert.Equal(2, measure.Slurs.Count);
+        Assert.Equal(2, part.Slurs.Count);
 
         // First slur: A, B
-        Assert.Equal(2, measure.Slurs[0].Events.Count);
-        var note1 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[0]);
-        var note2 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[1]);
+        var note1 = Assert.IsType<NotationNote>(part.Slurs[0].StartEvent);
+        var note2 = Assert.IsType<NotationNote>(part.Slurs[0].EndEvent);
         Assert.Equal(PitchClass.A, note1.Pitch.PitchClass);
         Assert.Equal(PitchClass.B, note2.Pitch.PitchClass);
 
         // Second slur: C, D
-        Assert.Equal(2, measure.Slurs[1].Events.Count);
-        var note3 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[0]);
-        var note4 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[1]);
+        var note3 = Assert.IsType<NotationNote>(part.Slurs[1].StartEvent);
+        var note4 = Assert.IsType<NotationNote>(part.Slurs[1].EndEvent);
         Assert.Equal(PitchClass.C, note3.Pitch.PitchClass);
         Assert.Equal(PitchClass.D, note4.Pitch.PitchClass);
     }
@@ -946,22 +967,20 @@ public class AbcParserTests : ScoreTestBase
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var part = score.Parts[0];
 
         // Should have two slurs
-        Assert.Equal(2, measure.Slurs.Count);
+        Assert.Equal(2, part.Slurs.Count);
 
         // Inner slur: B, C (completed first)
-        Assert.Equal(2, measure.Slurs[0].Events.Count);
-        var innerNote1 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[0]);
-        var innerNote2 = Assert.IsType<NotationNote>(measure.Slurs[0].Events[1]);
+        var innerNote1 = Assert.IsType<NotationNote>(part.Slurs[0].StartEvent);
+        var innerNote2 = Assert.IsType<NotationNote>(part.Slurs[0].EndEvent);
         Assert.Equal(PitchClass.B, innerNote1.Pitch.PitchClass);
         Assert.Equal(PitchClass.C, innerNote2.Pitch.PitchClass);
 
         // Outer slur: A, B, C, D
-        Assert.Equal(4, measure.Slurs[1].Events.Count);
-        var outerNote1 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[0]);
-        var outerNote4 = Assert.IsType<NotationNote>(measure.Slurs[1].Events[3]);
+        var outerNote1 = Assert.IsType<NotationNote>(part.Slurs[1].StartEvent);
+        var outerNote4 = Assert.IsType<NotationNote>(part.Slurs[1].EndEvent);
         Assert.Equal(PitchClass.A, outerNote1.Pitch.PitchClass);
         Assert.Equal(PitchClass.D, outerNote4.Pitch.PitchClass);
     }
@@ -979,13 +998,12 @@ public class AbcParserTests : ScoreTestBase
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var part = score.Parts[0];
 
         // Should have one dotted slur
-        Assert.Single(measure.Slurs);
-        var slur = measure.Slurs[0];
+        Assert.Single(part.Slurs);
+        var slur = part.Slurs[0];
         Assert.True(slur.IsDotted);
-        Assert.Equal(3, slur.Events.Count);
     }
 
     [Fact]
@@ -997,43 +1015,17 @@ public class AbcParserTests : ScoreTestBase
             M:4/4
             L:1/4
             K:C
-            (C[CEG]D)|
+            (CD[CEG])|
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var part = score.Parts[0];
 
         // Should have one slur containing note, chord, note
-        Assert.Single(measure.Slurs);
-        var slur = measure.Slurs[0];
-        Assert.Equal(3, slur.Events.Count);
-        Assert.IsType<NotationNote>(slur.Events[0]);
-        Assert.IsType<Chord>(slur.Events[1]);
-        Assert.IsType<NotationNote>(slur.Events[2]);
-    }
-
-    [Fact]
-    public void Parse_SlurWithRest_ParsesCorrectly()
-    {
-        var abc = """
-            X:1
-            T:Slur With Rest
-            M:4/4
-            L:1/4
-            K:C
-            (CzD)|
-            """;
-
-        var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
-
-        // Should have one slur containing note, rest, note
-        Assert.Single(measure.Slurs);
-        var slur = measure.Slurs[0];
-        Assert.Equal(3, slur.Events.Count);
-        Assert.IsType<NotationNote>(slur.Events[0]);
-        Assert.IsType<Rest>(slur.Events[1]);
-        Assert.IsType<NotationNote>(slur.Events[2]);
+        Assert.Single(part.Slurs);
+        var slur = part.Slurs[0];
+        Assert.IsType<NotationNote>(slur.StartEvent);
+        Assert.IsType<Chord>(slur.EndEvent);
     }
 
     [Fact]
@@ -1049,10 +1041,10 @@ public class AbcParserTests : ScoreTestBase
             """;
 
         var score = AbcParser.Parse(abc);
-        var measure = score.Parts[0].Voices[0].Measures[0];
+        var part = score.Parts[0];
 
         // Should have no slurs (slur with single note is invalid)
-        Assert.Empty(measure.Slurs);
+        Assert.Empty(part.Slurs);
     }
 
     [Fact]

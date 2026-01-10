@@ -9,7 +9,7 @@ using StaffSharp.Layout.Services;
 /// Positions articulations and decorations on notes and chords.
 /// Must run after StemAndBeamPass since it needs stem direction information.
 /// </summary>
-public class ArticulationPlacementPass : ILayoutPass
+internal class ArticulationPlacementPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {

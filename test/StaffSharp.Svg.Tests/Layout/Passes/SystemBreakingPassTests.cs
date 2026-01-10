@@ -37,7 +37,7 @@ public class SystemBreakingPassTests
             Tempo: 120
         );
 
-        var model = new LayoutModel { Metadata = metadata };
+        var model = new LayoutModel { Metadata = metadata, Parts = [] };
         var system = new LayoutSystem();
 
         // Create treble staff with 8 measures - each is 80 units wide
@@ -58,7 +58,7 @@ public class SystemBreakingPassTests
 
         system.AddStaff(trebleStaff);
         system.AddStaff(bassStaff);
-        model.AddSystem(system);
+        model.Systems.Add(system);
 
         // Act
         var pass = new SystemBreakingPass();
@@ -109,7 +109,7 @@ public class SystemBreakingPassTests
             Tempo: 120
         );
 
-        var model = new LayoutModel { Metadata = metadata };
+        var model = new LayoutModel { Metadata = metadata, Parts = [] };
         var system = new LayoutSystem();
 
         var staff = CreateStaffWithMeasures(
@@ -119,7 +119,7 @@ public class SystemBreakingPassTests
         );
 
         system.AddStaff(staff);
-        model.AddSystem(system);
+        model.Systems.Add(system);
 
         // Act
         var pass = new SystemBreakingPass();
@@ -151,7 +151,7 @@ public class SystemBreakingPassTests
             Scale = 1.0
         };
 
-        var model = new LayoutModel();
+        var model = new LayoutModel { Parts = [] };
 
         // Act
         var pass = new SystemBreakingPass();
@@ -181,7 +181,7 @@ public class SystemBreakingPassTests
             Tempo: 120
         );
 
-        var model = new LayoutModel { Metadata = metadata };
+        var model = new LayoutModel { Metadata = metadata, Parts = [] };
         var system = new LayoutSystem();
 
         // Staff 1: 70 units per measure
@@ -196,7 +196,7 @@ public class SystemBreakingPassTests
         system.AddStaff(staff1);
         system.AddStaff(staff2);
         system.AddStaff(staff3);
-        model.AddSystem(system);
+        model.Systems.Add(system);
 
         // Act
         var pass = new SystemBreakingPass();
@@ -248,8 +248,8 @@ public class SystemBreakingPassTests
                 voice: 1
             );
 
-            measure.AddSymbol(noteSymbol);
-            staff.AddMeasure(measure);
+            measure.Symbols.Add(noteSymbol);
+            staff.Measures.Add(measure);
         }
 
         return staff;

@@ -12,7 +12,7 @@ internal static class MusicXmlMeasureParser
     /// Parses a measure element and returns measures grouped by staff number and voice number.
     /// Returns: Dictionary&lt;staffNumber, Dictionary&lt;voiceNumber, Measure&gt;&gt;
     /// </summary>
-    public static Dictionary<int, Dictionary<int, Measure>> ParseMeasure(XElement measureElement, MusicXmlContext context, int measureNumber)
+    public static Dictionary<int, Dictionary<int, Measure>> ParseMeasure(XElement measureElement, MusicXmlContext context, int measureNumber, SlurSpanAggregator? slurAggregator = null)
     {
         ArgumentNullException.ThrowIfNull(measureElement);
         ArgumentNullException.ThrowIfNull(context);
@@ -59,36 +59,10 @@ internal static class MusicXmlMeasureParser
 
                     voiceState.Events.Add(noteEvent);
 
-                    // Process slur information
-                    if (slurInfos != null)
+                    // Forward slur markers to aggregator for cross-measure span tracking
+                    if (slurAggregator != null && slurInfos != null)
                     {
-                        foreach (var slurInfo in slurInfos)
-                        {
-                            if (slurInfo.Type == SlurType.Start)
-                            {
-                                // Record the start index (current event)
-                                voiceState.ActiveSlurs[slurInfo.Number] = voiceState.Events.Count - 1;
-                            }
-                            else if (slurInfo.Type == SlurType.Stop)
-                            {
-                                // Find the start index and create a slur
-                                if (voiceState.ActiveSlurs.TryGetValue(slurInfo.Number, out var startIndex))
-                                {
-                                    var slurEvents = new List<INotationEvent>();
-                                    for (int i = startIndex; i < voiceState.Events.Count; i++)
-                                    {
-                                        slurEvents.Add(voiceState.Events[i]);
-                                    }
-
-                                    if (slurEvents.Count >= 2)
-                                    {
-                                        voiceState.Slurs.Add(new Slur(slurEvents));
-                                    }
-
-                                    voiceState.ActiveSlurs.Remove(slurInfo.Number);
-                                }
-                            }
-                        }
+                        slurAggregator.OnNote(noteEvent, staff, voice, slurInfos);
                     }
 
                     // Process lyric syllables
@@ -201,7 +175,6 @@ internal static class MusicXmlMeasureParser
             measureNumber,
             state.Events,
             repeatVariants: repeatVariants,
-            slurs: state.Slurs.Count > 0 ? state.Slurs : null,
             lyrics: lyrics,
             startBarline: startBarline,
             endBarline: endBarline,
@@ -214,8 +187,6 @@ internal static class MusicXmlMeasureParser
     private sealed class VoiceState
     {
         public List<INotationEvent> Events { get; } = [];
-        public Dictionary<int, int> ActiveSlurs { get; } = []; // slur number -> start event index
-        public List<Slur> Slurs { get; } = [];
         public Dictionary<int, List<LyricSyllable>> Lyrics { get; } = []; // lyric number -> syllables
     }
 }

@@ -71,8 +71,27 @@ internal static class MusicXmlNoteParser
         // Create note
         var note = new NotationNote(pitch, duration);
 
-        // Parse slurs
+        // Parse ties and slurs
+        var tieMarkerType = ParseTies(noteElement);
         var slurInfos = ParseSlurs(noteElement);
+
+        // Add tie marker if present
+        if (tieMarkerType.HasValue)
+        {
+            var tieMarker = new TieMarker(tieMarkerType.Value);
+            note = note with { TieMarker = tieMarker };
+        }
+
+        // Add slur markers if present
+        if (slurInfos != null && slurInfos.Count > 0)
+        {
+            var slurMarkers = slurInfos
+                .Select(info => new SlurMarker(
+                    info.Number,
+                    info.Type == SlurType.Start ? SlurMarkerType.Start : SlurMarkerType.Stop))
+                .ToList();
+            note = note with { SlurMarkers = slurMarkers };
+        }
 
         return (note, voiceNumber, staffNumber, slurInfos, lyricSyllables);
     }
@@ -147,6 +166,36 @@ internal static class MusicXmlNoteParser
         }
 
         return Tuplet.Triplet; // Default fallback
+    }
+
+    private static TieMarkerType? ParseTies(XElement noteElement)
+    {
+        var notationsElement = noteElement.Element("notations");
+        if (notationsElement == null)
+        {
+            return null;
+        }
+
+        // MusicXML has two tie elements: <tie> (affects sound) and <tied> (visual notation)
+        // We use <tied> for visual notation which is what we render
+        var tieElement = notationsElement.Elements("tied").FirstOrDefault();
+        if (tieElement == null)
+        {
+            return null;
+        }
+
+        var typeAttr = tieElement.Attribute("type");
+        if (typeAttr == null)
+        {
+            return null;
+        }
+
+        return typeAttr.Value switch
+        {
+            "start" => TieMarkerType.Start,
+            "stop" => TieMarkerType.Stop,
+            _ => null
+        };
     }
 
     private static List<SlurInfo>? ParseSlurs(XElement noteElement)

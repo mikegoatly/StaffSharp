@@ -134,19 +134,19 @@ public sealed class MeasurePartitioner
                 : measureEndBeat - currentBeat;
             var symbolicDuration = segmentDuration.FromRational();
 
-            // Determine tie type
-            var tieType = TieType.None;
+            // Determine tie marker
+            TieMarker? tieMarker = null;
             if (previousNote != null && remainingDuration > segmentDuration)
             {
-                tieType = TieType.Both; // Middle of a tie chain
+                tieMarker = new TieMarker(TieMarkerType.Both); // Middle of a tie chain
             }
             else if (previousNote != null)
             {
-                tieType = TieType.End; // Last note in tie chain
+                tieMarker = new TieMarker(TieMarkerType.Stop); // Last note in tie chain
             }
             else if (remainingDuration > segmentDuration)
             {
-                tieType = TieType.Start; // First note in tie chain
+                tieMarker = new TieMarker(TieMarkerType.Start); // First note in tie chain
             }
 
             var pitch = performanceEvent.Pitch.ToPitch();
@@ -156,7 +156,7 @@ public sealed class MeasurePartitioner
                 pitch,
                 symbolicDuration,
                 velocity,
-                tieType,
+                tieMarker,
                 GraceNote: null,
                 Decorations: null // IPerformanceEvent base interface doesn't include articulation data
             );
@@ -258,8 +258,7 @@ public sealed class MeasurePartitioner
         return new Measure(
             number: measureNumber,
             events: events,
-            timeSignature: null, // Only set if changed from previous measure
-            slurs: null,
+            timeSignature: null, // TODO: Only set if changed from previous measure
             lyrics: null
         );
     }

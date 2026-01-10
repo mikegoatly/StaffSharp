@@ -147,17 +147,17 @@ public sealed class MeasurePartitionerTests
 
         Assert.Equal(2, measures.Count);
 
-        // Measure 1 should have a note with TieType.Start
+        // Measure 1 should have a note with TieMarkerType.Start
         var measure1Events = measures[0].Events;
         Assert.Single(measure1Events);
         var note1 = Assert.IsType<NotationNote>(measure1Events[0]);
-        Assert.Equal(TieType.Start, note1.Tie);
+        Assert.Equal(TieMarkerType.Start, note1.TieMarker?.Type);
 
-        // Measure 2 should have a note with TieType.End
+        // Measure 2 should have a note with TieMarkerType.Stop
         var measure2Events = measures[1].Events;
         Assert.Single(measure2Events);
         var note2 = Assert.IsType<NotationNote>(measure2Events[0]);
-        Assert.Equal(TieType.End, note2.Tie);
+        Assert.Equal(TieMarkerType.Stop, note2.TieMarker?.Type);
     }
 
     [Fact]

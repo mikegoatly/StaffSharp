@@ -3,7 +3,7 @@ namespace StaffSharp.Layout.Model;
 /// <summary>
 /// Base class for layout elements.
 /// </summary>
-public abstract class LayoutElement : ILayoutElement
+internal abstract class LayoutElement : ILayoutElement
 {
     public double X { get; set; }
     public double Y { get; set; }

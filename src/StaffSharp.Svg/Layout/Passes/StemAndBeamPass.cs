@@ -35,7 +35,7 @@ internal class StemAndBeamPass : ILayoutPass
             .OfType<IStemmedSymbol>())
         {
             StemCalculator.CalculateStem(symbol, staffBaseline, context);
-            FlagCalculator.CalculateFlag(symbol, context);
+            FlagCalculator.CalculateFlag(symbol);
         }
 
         // Process beam groups
@@ -50,7 +50,7 @@ internal class StemAndBeamPass : ILayoutPass
                 // Cast to IStemmedSymbol since beam groups only contain stemmed symbols
                 var stemmedSymbol = (IStemmedSymbol)group[0];
                 StemCalculator.CalculateStem(stemmedSymbol, staffBaseline, context);
-                FlagCalculator.CalculateFlag(stemmedSymbol, context);
+                FlagCalculator.CalculateFlag(stemmedSymbol);
             }
         }
     }

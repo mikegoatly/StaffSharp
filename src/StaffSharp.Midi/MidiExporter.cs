@@ -168,7 +168,7 @@ public sealed class MidiExporter
         var totalDuration = note.Duration.ToBeats();
 
         // If this note starts a tie, accumulate duration from following tied notes
-        if (note.Tie == TieType.Start)
+        if (note.TieMarker is { Type: TieMarkerType.Start })
         {
             // Look ahead for tied notes
             for (int j = currentIndex + 1; j < timedEvents.Count; j++)
@@ -179,7 +179,7 @@ public sealed class MidiExporter
                     totalDuration += nextNote.Duration.ToBeats();
 
                     // If this note ends the tie, stop
-                    if (nextNote.Tie == TieType.None || nextNote.Tie == TieType.End)
+                    if (nextNote.TieMarker is { Type: TieMarkerType.Stop })
                     {
                         currentIndex = j; // Skip the tied notes we've accumulated
                         break;
@@ -219,7 +219,7 @@ public sealed class MidiExporter
         var totalDuration = chord.Duration.ToBeats();
 
         // If this chord starts a tie, accumulate duration
-        if (chord.Tie == TieType.Start)
+        if (chord.TieMarker is { Type: TieMarkerType.Start })
         {
             for (int j = currentIndex + 1; j < timedEvents.Count; j++)
             {
@@ -228,7 +228,7 @@ public sealed class MidiExporter
                 {
                     totalDuration += nextChord.Duration.ToBeats();
 
-                    if (nextChord.Tie == TieType.None || nextChord.Tie == TieType.End)
+                    if (nextChord.TieMarker is { Type: TieMarkerType.Stop })
                     {
                         currentIndex = j;
                         break;

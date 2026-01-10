@@ -1,7 +1,6 @@
 namespace StaffSharp.Abc.Importing;
 
 using StaffSharp;
-using StaffSharp.Abc.Importing;
 using StaffSharp.Notation;
 
 /// <summary>
@@ -109,7 +108,128 @@ public static partial class AbcParser
         var metadata = new ScoreMetadata(title, composer, keySignature, timeSignature, tempo);
         var part = new Part("Melody", Clef.Treble, voices);
 
+        // Build TieSpans and SlurSpans from markers on notes
+        BuildTieSpans(voices, part);
+        BuildSlurSpans(voices, part);
+
         return new NotationScore(metadata, [part]);
+    }
+
+    /// <summary>
+    /// Generic helper for building span objects from start/stop marker pairs across measures.
+    /// Handles the common pattern of iterating voices/measures/events and matching marker pairs.
+    /// </summary>
+    /// <typeparam name="TKey">The type of key used to match start and stop markers (e.g., Pitch for ties, int for slurs).</typeparam>
+    /// <typeparam name="TMarkerData">Additional data to carry from start marker to span creation.</typeparam>
+    private static void BuildSpansFromMarkers<TKey, TMarkerData>(
+        List<Voice> voices,
+        Func<INotationEvent, IEnumerable<(TKey Key, bool HasStart, bool HasStop, TMarkerData Data)>> extractMarkers,
+        Action<INotationEvent, INotationEvent, Voice, TKey, TMarkerData, TMarkerData> onMatch)
+        where TKey : notnull
+    {
+        foreach (var voice in voices)
+        {
+            var pendingStarts = new Dictionary<TKey, (INotationEvent Event, TMarkerData Data)>();
+
+            foreach (var noteEvent in voice.Measures.SelectMany(m => m.Events))
+            {
+                foreach (var (key, hasStart, hasStop, data) in extractMarkers(noteEvent))
+                {
+                    // Process stop first (for tie chains where Both means end previous + start next)
+                    if (hasStop && pendingStarts.TryGetValue(key, out var startInfo))
+                    {
+                        onMatch(startInfo.Event, noteEvent, voice, key, startInfo.Data, data);
+                        pendingStarts.Remove(key);
+                    }
+
+                    // Then process start
+                    if (hasStart)
+                    {
+                        pendingStarts[key] = (noteEvent, data);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds TieSpan objects from TieMarkers on notes across all voices.
+    /// </summary>
+    private static void BuildTieSpans(List<Voice> voices, Part part)
+    {
+        BuildSpansFromMarkers<Pitch, TieMarker>(
+            voices,
+            extractMarkers: noteEvent =>
+            {
+                if (noteEvent switch
+                {
+                    NotationNote note => (note.Pitch, note.TieMarker),
+                    Chord chord => (chord.Pitches.ElementAtOrDefault(0), chord.TieMarker),
+                    _ => (pitch: (Pitch?)null, tie: (TieMarker?)null)
+                } is { pitch: { } pitch, tie: { } tie })
+                {
+                    return [
+                        (
+                        Key: pitch,
+                        HasStart: tie.Type is TieMarkerType.Start or TieMarkerType.Both,
+                        HasStop: tie.Type is TieMarkerType.Stop or TieMarkerType.Both,
+                        Data: tie
+                    )
+                    ];
+                }
+                return [];
+            },
+            onMatch: (startEvent, endEvent, voice, pitch, startMarker, endMarker) =>
+            {
+                part.Ties.Add(new TieSpan(
+                    startEvent,
+                    endEvent,
+                    StartStaffNumber: 1,
+                    EndStaffNumber: 1,
+                    StartVoiceNumber: voice.Number,
+                    EndVoiceNumber: voice.Number));
+            });
+    }
+
+    /// <summary>
+    /// Builds SlurSpan objects from SlurMarkers on notes across all voices.
+    /// </summary>
+    private static void BuildSlurSpans(List<Voice> voices, Part part)
+    {
+        BuildSpansFromMarkers<int, SlurMarker>(
+            voices,
+            extractMarkers: noteEvent =>
+            {
+                var markers = noteEvent switch
+                {
+                    NotationNote note => note.SlurMarkers,
+                    Chord chord => chord.SlurMarkers,
+                    _ => []
+                };
+
+                return markers.Select(m => (
+                    Key: m.Number,
+                    HasStart: m.Type == SlurMarkerType.Start,
+                    HasStop: m.Type == SlurMarkerType.Stop,
+                    Data: m
+                ));
+            },
+            onMatch: (startEvent, endEvent, voice, number, startMarker, endMarker) =>
+            {
+                // Only create SlurSpan if start and end are different events (ignore single-note slurs)
+                if (!ReferenceEquals(startEvent, endEvent))
+                {
+                    part.Slurs.Add(new SlurSpan(
+                        startEvent,
+                        endEvent,
+                        Number: number,
+                        IsDotted: startMarker.IsDotted || endMarker.IsDotted,
+                        StartStaffNumber: 1,
+                        EndStaffNumber: 1,
+                        StartVoiceNumber: voice.Number,
+                        EndVoiceNumber: voice.Number));
+                }
+            });
     }
 
     private static List<Measure> ParseNotes(
@@ -118,6 +238,8 @@ public static partial class AbcParser
         KeySignature keySignature)
     {
         var measures = new List<Measure>();
+        var globalEvents = new List<INotationEvent>();
+        var slurTracker = new SlurTracker();
         var measureNumber = 1;
         var currentMeasureContent = new System.Text.StringBuilder();
         int index = 0;
@@ -173,13 +295,12 @@ public static partial class AbcParser
                 var measureString = currentMeasureContent.ToString().Trim();
                 if (!string.IsNullOrWhiteSpace(measureString))
                 {
-                    var (events, slurs) = ParseMeasureEvents(measureString, defaultNoteLength, keySignature);
+                    var events = ParseMeasureEvents(measureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
                     if (events.Count > 0)
                     {
                         measures.Add(new Measure(
                             measureNumber++,
                             events,
-                            slurs: slurs,
                             repeatVariants: nextMeasureVariants,
                             startBarline: nextMeasureStartBarline,
                             endBarline: endBarline));
@@ -202,13 +323,12 @@ public static partial class AbcParser
         var finalMeasureString = currentMeasureContent.ToString().Trim();
         if (!string.IsNullOrWhiteSpace(finalMeasureString))
         {
-            var (events, slurs) = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature);
+            var events = ParseMeasureEvents(finalMeasureString, defaultNoteLength, keySignature, slurTracker, globalEvents);
             if (events.Count > 0)
             {
                 measures.Add(new Measure(
                     measureNumber++,
                     events,
-                    slurs: slurs,
                     repeatVariants: nextMeasureVariants,
                     startBarline: nextMeasureStartBarline));
             }
@@ -249,7 +369,7 @@ public static partial class AbcParser
         return sb.ToString();
     }
 
-    private static (BarlineType? End, BarlineType? NextStart) ParseBarlineTypes(string barline)
+    private static (BarlineType End, BarlineType? NextStart) ParseBarlineTypes(string barline)
     {
         // ABC barline patterns (can start with |, [, or :):
         // |   - normal barline
@@ -260,7 +380,7 @@ public static partial class AbcParser
         // :: or :|: - repeat both
         // [|  - also a barline variant (treat as normal)
 
-        BarlineType? end = null;
+        BarlineType end;
         BarlineType? nextStart = null;
 
         // Check for repeat end first (patterns with : before last char)
@@ -338,11 +458,14 @@ public static partial class AbcParser
         return variants;
     }
 
-    private static (List<INotationEvent> Events, List<Slur> Slurs) ParseMeasureEvents(string measureString, Rational defaultNoteLength, KeySignature keySignature)
+    private static List<INotationEvent> ParseMeasureEvents(
+        string measureString,
+        Rational defaultNoteLength,
+        KeySignature keySignature,
+        SlurTracker slurTracker,
+        List<INotationEvent> globalEvents)
     {
         var events = new List<INotationEvent>();
-        var slurs = new List<Slur>();
-        var slurTracker = new SlurTracker();
         int index = 0;
         Rational? nextNoteMultiplier = null;
         Tuplet? activeTuplet = null;
@@ -394,9 +517,14 @@ public static partial class AbcParser
             }
 
             // Check for slur end
-            if (slurTracker.TryEndSlur(measureString, ref index, events, out var slur) && slur != null)
+            if (slurTracker.TryEndSlur(measureString, ref index))
             {
-                slurs.Add(slur);
+                // Apply Stop markers to the last event
+                if (events.Count > 0)
+                {
+                    events[^1] = slurTracker.ApplyPendingStops(events[^1]);
+                    globalEvents[^1] = events[^1];
+                }
                 continue;
             }
 
@@ -430,8 +558,11 @@ public static partial class AbcParser
                     }
                 }
 
+                // Apply pending slur Start markers
+                noteEvent = slurTracker.ApplyPendingStarts(noteEvent);
+
                 events.Add(noteEvent);
-                slurTracker.NotifyEventAdded(events.Count - 1);
+                globalEvents.Add(noteEvent);
             }
             else
             {
@@ -443,7 +574,8 @@ public static partial class AbcParser
         // Post-process: resolve tie endings
         TieTracker.ResolveTieEndings(events);
 
-        return (events, slurs);
+        // Note: Slurs are now stored as markers on notes, not as separate Slur objects
+        return events;
     }
 
     private static INotationEvent ApplyDurationMultiplier(INotationEvent noteEvent, Rational multiplier)
@@ -455,15 +587,10 @@ public static partial class AbcParser
             {
                 Duration = (note.Duration.ToBeats() * multiplier).FromRational()
             },
-            Chord chord => new Chord(
-                chord.Pitches,
-                (chord.Duration.ToBeats() * multiplier).FromRational(),
-                chord.Velocity,
-                chord.Tie,
-                chord.GraceNote,
-                chord.Decorations,
-                chord.ChordSymbol,
-                chord.Annotation),
+            Chord chord => chord with
+            {
+                Duration = (chord.Duration.ToBeats() * multiplier).FromRational()
+            },
             Rest rest => rest with
             {
                 Duration = (rest.Duration.ToBeats() * multiplier).FromRational()
@@ -481,15 +608,10 @@ public static partial class AbcParser
             {
                 Duration = new SymbolicDuration(note.Duration.Base, note.Duration.Dots, tuplet)
             },
-            Chord chord => new Chord(
-                chord.Pitches,
-                new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet),
-                chord.Velocity,
-                chord.Tie,
-                chord.GraceNote,
-                chord.Decorations,
-                chord.ChordSymbol,
-                chord.Annotation),
+            Chord chord => chord with
+            {
+                Duration = new SymbolicDuration(chord.Duration.Base, chord.Duration.Dots, tuplet)
+            },
             Rest rest => rest with
             {
                 Duration = new SymbolicDuration(rest.Duration.Base, rest.Duration.Dots, tuplet)
@@ -497,7 +619,4 @@ public static partial class AbcParser
             _ => noteEvent
         };
     }
-
-    [System.Text.RegularExpressions.GeneratedRegex(@"\|+\]?|\[\|")]
-    private static partial System.Text.RegularExpressions.Regex BarLineRegex();
 }

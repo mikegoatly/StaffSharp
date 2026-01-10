@@ -45,8 +45,8 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         // Render stem if required (whole notes don't have stems)
         if (symbol.Chord.Duration.Base != NoteDurationBase.Whole)
         {
-            RenderStem(group, symbol, context);
-            RenderFlag(group, symbol, context);
+            RenderStem(group, symbol);
+            RenderFlag(group, symbol);
         }
 
         // Render ledger lines if needed

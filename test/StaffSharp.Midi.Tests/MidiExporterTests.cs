@@ -204,8 +204,8 @@ public class MidiExporterTests : ScoreTestBase
     private static NotationScore BuildScoreWithTiedNotes()
     {
         var notes = NotationEventBuilder.Create()
-            .C(tie: TieType.Start)
-            .C(tie: TieType.End)
+            .C(tieMarker: TieMarkerType.Start)
+            .C(tieMarker: TieMarkerType.Stop)
             .Build();
 
         var metadata = new ScoreMetadata("Tied Notes", "Test", KeySignature.C, Notation.TimeSignature.CommonTime, 120);

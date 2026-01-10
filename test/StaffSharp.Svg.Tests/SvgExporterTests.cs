@@ -55,11 +55,10 @@ public class SvgExporterTests : VisualSnapshotTestBase
         await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
     }
 
-    
     [Fact]
     public async Task Export_EmptyScore_ProducesValidSvg()
     {
-        var score = CreateScore([], Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
+        var score = CreateScore(Array.Empty<INotationEvent>(), Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
 
         await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
     }
@@ -149,16 +148,58 @@ public class SvgExporterTests : VisualSnapshotTestBase
     public async Task Export_TiedNotes_RendersTiesCorrectly()
     {
         var notes = NotationEventBuilder.Create()
-            .C(tie: TieType.Start)
-            .C(tie: TieType.End)
-            .D(tie: TieType.Start)
-            .D(tie: TieType.End)
-            .E()
+            .C(tieMarker: TieMarkerType.Start)
+            .C(tieMarker: TieMarkerType.Stop)
+            .A(5, tieMarker: TieMarkerType.Start)
+            .A(5, tieMarker: TieMarkerType.Stop)
             .Build();
 
         var score = CreateScore(notes, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
 
         await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default, "class=\"tie\"");
+    }
+
+    [Fact]
+    public async Task Export_SlurredNotes_RendersTiesCorrectly()
+    {
+        // Test slurs within a single measure and across measures
+        // Slur in a single measure (under notes)
+        var measure1Notes = NotationEventBuilder.Create()
+            .C(4, slurMarker: SlurMarkerType.Start)
+            .D(4)
+            .E(4)
+            .F(4, slurMarker: SlurMarkerType.Stop)
+            .Build();
+        // Slur in a single measure (over notes) and starting another cross-measure slur
+        var measure2Notes = NotationEventBuilder.Create()
+            .F(5, slurMarker: SlurMarkerType.Start, slurNumber: 2)
+            .E(5)
+            .D(5, slurMarker: SlurMarkerType.Stop, slurNumber: 2)
+            .C(5, slurMarker: SlurMarkerType.Start, slurNumber: 3)
+            .Build();
+        var restNotes = NotationEventBuilder.Create()
+            .Rest(SymbolicDuration.Whole)
+            .Build();
+        var measure6Notes = NotationEventBuilder.Create()
+            .B(4, slurMarker: SlurMarkerType.Stop, slurNumber: 3)
+            .C(5)
+            .D(5)
+            .E(5)
+            .Build();
+
+        var measures = new List<Measure>
+        {
+            new(1, measure1Notes),
+            new(2, measure2Notes),
+            new(3, restNotes),
+            new(4, restNotes),
+            new(5, restNotes),
+            new(6, measure6Notes)
+        };
+
+        var score = CreateScore(measures, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
+
+        await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default, "class=\"slur\"");
     }
 
     [Fact]
@@ -226,7 +267,7 @@ public class SvgExporterTests : VisualSnapshotTestBase
             // Dotted quarter rest
             .Rest(dottedQuarter)
             // Dotted chord
-            .Chord(4, dottedQuarter, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G ])
+            .Chord(4, dottedQuarter, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G])
             .Build();
 
         var score = CreateScore(events, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
@@ -287,9 +328,9 @@ public class SvgExporterTests : VisualSnapshotTestBase
     {
         // Eighth note chords separated by quarter notes (won't beam)
         var notes = NotationEventBuilder.Create()
-            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G ])
+            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.C, PitchClass.E, PitchClass.G])
             .D(4, SymbolicDuration.Quarter)
-            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.D, PitchClass.F, PitchClass.A ])
+            .Chord(4, SymbolicDuration.Eighth, pitchClasses: [PitchClass.D, PitchClass.F, PitchClass.A])
             .E(4, SymbolicDuration.Quarter)
             .Build();
 
@@ -349,7 +390,6 @@ public class SvgExporterTests : VisualSnapshotTestBase
         var score = new NotationScore(metadata, [part]);
 
         await AssertMatchesSnapshotAsync(score, SnapshotOptions.Default);
-        
     }
 
     [Fact]
@@ -387,19 +427,19 @@ public class SvgExporterTests : VisualSnapshotTestBase
     }
 
     private static async Task AssertMatchesSnapshotAsync(
-        NotationScore score, 
-        SnapshotOptions options, 
+        NotationScore score,
+        SnapshotOptions options,
         string? expectedContentCheck = null,
         [CallerMemberName] string testName = "")
     {
         var exporter = new SvgScoreExporter();
         using var stream = new MemoryStream();
         await exporter.ExportAsync(
-            score, 
+            score,
             stream,
             new Dictionary<string, string>
             {
-                ["staffSpace"]= "15",
+                ["staffSpace"] = "15",
                 ["margins"] = "0,0,0,0",
                 ["maxWidth"] = "800"
             });
@@ -420,6 +460,104 @@ public class SvgExporterTests : VisualSnapshotTestBase
         var voice = new Voice(1, [new Measure(1, notes)]);
         var staff = new Staff(1, clef, [voice]);
         var part = new Part("Instrument", [staff]);
+
+        BuildTieAndSlurSpans(part);
+
         return new NotationScore(metadata, [part]);
+    }
+
+    private static NotationScore CreateScore(IReadOnlyList<Measure> measures, Clef clef, KeySignature key, TimeSignature timeSignature)
+    {
+        var metadata = new ScoreMetadata("Test Score", "Test", key, timeSignature, 120);
+        var voice = new Voice(1, measures);
+        var staff = new Staff(1, clef, [voice]);
+        var part = new Part("Instrument", [staff]);
+
+        BuildTieAndSlurSpans(part);
+
+        return new NotationScore(metadata, [part]);
+    }
+
+    /// <summary>
+    /// Helper to build TieSpan objects from TieMarkers on notes
+    /// </summary>
+    private static void BuildTieAndSlurSpans(Part part)
+    {
+        var voices = part.Voices;
+        var pendingTieStarts = new Dictionary<Pitch, INotationEvent>();
+        var pendingSlurStarts = new Dictionary<int, Stack<INotationEvent>>();
+
+        foreach (var noteEvent in voices.SelectMany(v => v.Measures).SelectMany(m => m.Events))
+        {
+            if (noteEvent switch
+            {
+                NotationNote note => (note.Pitch, note.TieMarker),
+                Chord chord => (chord.Pitches.ElementAtOrDefault(0), chord.TieMarker),
+                _ => (pitch: (Pitch?)null, tie: (TieMarker?)null)
+            } is { pitch: { } pitch, tie: { } tie })
+            {
+                // Process stop first (for tie chains)
+                bool hasStop = tie.Type is TieMarkerType.Stop or TieMarkerType.Both;
+                if (hasStop && pendingTieStarts.TryGetValue(pitch, out var startEvent))
+                {
+                    part.Ties.Add(new TieSpan(
+                        startEvent,
+                        noteEvent,
+                        StartStaffNumber: 1,
+                        EndStaffNumber: 1,
+                        StartVoiceNumber: 1,
+                        EndVoiceNumber: 1));
+
+                    pendingTieStarts.Remove(pitch);
+                }
+
+                // Then process start
+                if (tie.Type is TieMarkerType.Start or TieMarkerType.Both)
+                {
+                    pendingTieStarts[pitch] = noteEvent;
+                }
+            }
+
+            // Process slurs
+            if (noteEvent switch
+            {
+                NotationNote note => note.SlurMarkers,
+                Chord chord => chord.SlurMarkers,
+                _ => null
+            } is { } slurs)
+            {
+                foreach (var slur in slurs)
+                {
+                    // Process stop first
+                    if (slur.Type is SlurMarkerType.Stop
+                        && pendingSlurStarts.TryGetValue(slur.Number, out var stack)
+                        && stack.Count > 0)
+                    {
+                        var startEvent = stack.Pop();
+                        part.Slurs.Add(new SlurSpan(
+                            startEvent,
+                            noteEvent,
+                            slur.Number,
+                            slur.IsDotted,
+                            StartStaffNumber: 1,
+                            EndStaffNumber: 1,
+                            StartVoiceNumber: 1,
+                            EndVoiceNumber: 1));
+                    }
+
+                    // Then process start
+                    if (slur.Type is SlurMarkerType.Start)
+                    {
+                        if (!pendingSlurStarts.TryGetValue(slur.Number, out var value))
+                        {
+                            value = new Stack<INotationEvent>();
+                            pendingSlurStarts[slur.Number] = value;
+                        }
+
+                        value.Push(noteEvent);
+                    }
+                }
+            }
+        }
     }
 }

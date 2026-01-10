@@ -1,6 +1,6 @@
 ﻿namespace StaffSharp.Layout.Model
 {
-    public interface ILayoutSymbol : ILayoutElement
+    internal interface ILayoutSymbol : ILayoutElement
     {
         int LedgerLineCount { get; set; }
         bool LedgerLinesAbove { get; set; }
