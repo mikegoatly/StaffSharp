@@ -18,6 +18,8 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }
 
+    public SymbolicDuration Duration => Note.Duration;
+
     // Positioned decorations/articulations
     public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
 

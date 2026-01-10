@@ -67,9 +67,7 @@ public static class FlagPathBuilder
         {
             // Multiple flags (16th, 32nd, etc.) - smaller curves stacked
             for (int i = 0; i < flagCount; i++)
-            {
-                var yOffset = i * spacing;
-                
+            {              
                 if (i > 0)
                 {
                     // Move to next flag position

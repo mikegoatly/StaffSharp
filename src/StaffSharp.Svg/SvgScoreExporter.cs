@@ -58,7 +58,18 @@ public class SvgScoreExporter : IScoreExporter
             Scale = scale,
             Margins = new Margins(margins[0], margins[1], margins[2], margins[3]),
             StaffSpace = staffSpace,
-            BailAfterPass = bailAfterPass
+            BailAfterPass = bailAfterPass,
+            NoteHeadWholeWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadWhole, staffSpace),
+            NoteHeadHalfWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadHalf, staffSpace),
+            NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, staffSpace)
         };
+    }
+
+    private static double CalculateNoteheadWidth(GlyphInfo glyph, int staffSpace)
+    {
+        // Noteheads are scaled to 1.0 staff space in height
+        var targetHeight = 1.0 * staffSpace;
+        var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
+        return glyph.Width * scale;
     }
 }

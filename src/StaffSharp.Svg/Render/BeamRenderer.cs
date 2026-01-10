@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -123,22 +122,23 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, IStemm
                 else
                 {
                     // Extend both ways (centered) or default to left
-                    x1 = symbol.Stem.X - partialLength / 2;
-                    x2 = symbol.Stem.X + partialLength / 2;
-                    y1 = y - (partialLength / 2 * beamSlope);
-                    y2 = y + (partialLength / 2 * beamSlope);
+                    var halfLength = partialLength / 2;
+                    x1 = symbol.Stem.X - halfLength;
+                    x2 = symbol.Stem.X + halfLength;
+                    y1 = y - (halfLength * beamSlope);
+                    y2 = y + (halfLength * beamSlope);
                 }
 
                 // Create a slanted partial beam using polygon
                 var points = stemUp
-                    ? $"{x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x2.ToString(CultureInfo.InvariantCulture)},{y2.ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x2.ToString(CultureInfo.InvariantCulture)},{(y2 + beamThickness).ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x1.ToString(CultureInfo.InvariantCulture)},{(y1 + beamThickness).ToString(CultureInfo.InvariantCulture)}"
-                    : $"{x1.ToString(CultureInfo.InvariantCulture)},{y1.ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x2.ToString(CultureInfo.InvariantCulture)},{y2.ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x2.ToString(CultureInfo.InvariantCulture)},{(y2 + beamThickness).ToString(CultureInfo.InvariantCulture)} " +
-                      $"{x1.ToString(CultureInfo.InvariantCulture)},{(y1 + beamThickness).ToString(CultureInfo.InvariantCulture)}";
+                    ? $"{x1:F2},{y1:F2} " +
+                      $"{x2:F2},{y2:F2} " +
+                      $"{x2:F2},{y2 + beamThickness:F2)} " +
+                      $"{x1:F2},{y1 + beamThickness:F2)}"
+                    : $"{x1:F2},{y1:F2} " +
+                      $"{x2:F2},{y2:F2} " +
+                      $"{x2:F2},{y2 + beamThickness:F2)} " +
+                      $"{x1:F2},{y1 + beamThickness:F2)}";
 
                 group.Add(new XElement(SvgNamespace + "polygon",
                     new XAttribute("points", points),

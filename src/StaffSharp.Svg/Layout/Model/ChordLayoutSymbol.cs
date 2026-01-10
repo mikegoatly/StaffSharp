@@ -16,6 +16,8 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
     public List<double> AccidentalXOffsets { get; } = [];
     public List<double> AccidentalYPositions { get; } = [];
 
+    public SymbolicDuration Duration => Chord.Duration;
+
     // Stem and beam information (IStemmedSymbol implementation)
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }

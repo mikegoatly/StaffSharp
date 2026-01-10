@@ -1,6 +1,5 @@
 namespace StaffSharp.Render;
 
-using System.Globalization;
 using System.Xml.Linq;
 
 using StaffSharp;
@@ -19,12 +18,12 @@ internal abstract class LayoutElementRenderer<T>
     protected static XElement CreateLine(double x1, double y1, double x2, double y2, string stroke = "black", double strokeWidth = 1D)
     {
         return new XElement(SvgNamespace + "line",
-            new XAttribute("x1", x1.ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("y1", y1.ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("x2", x2.ToString(CultureInfo.InvariantCulture)),
-            new XAttribute("y2", y2.ToString(CultureInfo.InvariantCulture)),
+            new XAttribute("x1", $"{x1:F2}"),
+            new XAttribute("y1", $"{y1:F2}"),
+            new XAttribute("x2", $"{x2:F2}"),
+            new XAttribute("y2", $"{y2:F2}"),
             new XAttribute("stroke", stroke),
-            new XAttribute("stroke-width", strokeWidth.ToString(CultureInfo.InvariantCulture))
+            new XAttribute("stroke-width", $"{strokeWidth:F2}")
         );
     }
 
@@ -51,7 +50,10 @@ internal abstract class LayoutElementRenderer<T>
     /// </summary>
     protected static XElement? RenderGlyph(GlyphInfo glyph, double targetHeightInStaffSpaces, string? transform, SvgContext context)
     {
-        if (glyph.Path == null) return null;
+        if (glyph.Path == null)
+        {
+            return null;
+        }
 
         // Register this glyph for deduplication
         context.RegisterGlyph(glyph);
@@ -59,7 +61,7 @@ internal abstract class LayoutElementRenderer<T>
         var targetHeight = targetHeightInStaffSpaces * context.StaffSpace;
         var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
 
-        var scaleTransform = $"scale({scale.ToString(CultureInfo.InvariantCulture)})";
+        var scaleTransform = $"scale({scale:F2})";
         var finalTransform = string.IsNullOrEmpty(transform)
             ? scaleTransform
             : $"{transform} {scaleTransform}";
@@ -74,7 +76,7 @@ internal abstract class LayoutElementRenderer<T>
     /// <summary>
     /// Renders a stem for a note or chord symbol.
     /// </summary>
-    protected static void RenderStem(XElement group, IStemmedSymbol symbol, SvgContext context)
+    protected static void RenderStem(XElement group, IStemmedSymbol symbol)
     {
         // Stem X is calculated in layout pass and stored in symbol.Stem (absolute coordinates)
         // Convert to relative coordinates (relative to the note/chord group's transform)
@@ -93,7 +95,7 @@ internal abstract class LayoutElementRenderer<T>
     /// <summary>
     /// Renders flags for a note or chord symbol.
     /// </summary>
-    protected static void RenderFlag(XElement group, IStemmedSymbol symbol, SvgContext context)
+    protected static void RenderFlag(XElement group, IStemmedSymbol symbol)
     {
         if (!symbol.Beam.RequiresFlag || symbol.Beam.FlagCount == 0)
         {
@@ -245,8 +247,8 @@ internal abstract class LayoutElementRenderer<T>
         var renderedWidth = glyph.Width * scale;
 
         // For wide glyphs, offset left to center them
-        // Noteheads are approximately 1.5 staff spaces wide, centered at x=0
-        var noteheadWidth = 1.5 * context.StaffSpace;
+        // Use black notehead width as the standard (most common)
+        var noteheadWidth = context.NoteHeadBlackWidth;
 
         return decoration switch
         {
@@ -339,7 +341,7 @@ internal abstract class LayoutElementRenderer<T>
 
     protected static string CreateTranslate(double x, double y)
     {
-        return $"translate({x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)})";
+        return $"translate({x:F2},{y:F2})";
     }
 
     /// <summary>
@@ -370,7 +372,10 @@ internal abstract class LayoutElementRenderer<T>
     /// </summary>
     protected static void RenderDots(XElement group, AugmentationDottedLayoutSymbol symbol, SvgContext context)
     {
-        if (symbol.DotCount <= 0) return;
+        if (symbol.DotCount <= 0)
+        {
+            return;
+        }
 
         var dotY = symbol.DotY;
 

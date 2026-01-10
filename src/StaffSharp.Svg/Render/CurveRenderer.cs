@@ -13,8 +13,8 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
     {
         // Calculate thickness based on engraving standards
         var thickness = curve.IsTie
-            ? 0.12 * context.StaffSpace  // Ties thinner
-            : 0.15 * context.StaffSpace; // Slurs thicker
+            ? 0.18 * context.StaffSpace  // Ties thinner
+            : 0.22 * context.StaffSpace; // Slurs thicker
 
         var sx = curve.X;
         var sy = curve.Y;
@@ -43,6 +43,7 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
             // Control X at midpoint creates smooth curve with proper bulge
             cpx = (sx + ex) / 2.0;
             cpy = ey; // Same Y as end for horizontal tangent at exit
+            thickness /= 2.0; // Tapered end thinner
         }
         else if (curve.EndTaper == CurveEndTaper.End)
         {
@@ -51,12 +52,14 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
             // Control X at midpoint creates smooth curve with proper bulge
             cpx = (sx + ex) / 2.0;
             cpy = sy; // Same Y as start for horizontal tangent at entry
+            thickness /= 2.0; // Tapered end thinner
         }
         else // CurveEndTaper.None
         {
             // Middle segment - small bulge in center
             cpx = (sx + ex) / 2.0;
             cpy = (sy + ey) / 2.0 + splitCurveBulge;
+            thickness /= 2.0; // Tapered end thinner
         }
 
         // Create offset control points for thickness

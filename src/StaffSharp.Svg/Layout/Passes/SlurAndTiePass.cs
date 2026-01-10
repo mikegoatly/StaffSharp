@@ -101,18 +101,18 @@ internal sealed class SlurAndTiePass : ILayoutPass
 
         LayoutCurve curve;
 
-        var noteheadWidth = 1.2 * context.StaffSpace;
-
         if (startSymbolInfo is { Symbol: { } startSymbol, System: { } startSystem, Measure: { } startMeasure })
         {
             if (endSymbolInfo is { Symbol: { } endSymbol })
             {
                 // Case 1: Both endpoints in this system
+                var startHalfWidth = context.GetNoteheadWidth(startSymbol.Duration.Base) / 2.0;
+                var endHalfWidth = context.GetNoteheadWidth(endSymbol.Duration.Base) / 2.0;
                 curve = LayoutCurve.Create(
                     startSymbol,
-                    startSymbol.X + noteheadWidth,
+                    startSymbol.X + startHalfWidth,
                     startSymbol.Y,
-                    endSymbol.X,
+                    endSymbol.X + endHalfWidth,
                     endSymbol.Y,
                     context,
                     CurveEndTaper.Both,
@@ -128,9 +128,10 @@ internal sealed class SlurAndTiePass : ILayoutPass
                     ? startSymbol.Y + (context.StaffSpace * 2.0)
                     : startSymbol.Y - (context.StaffSpace * 2.0);
 
+                var startHalfWidth = context.GetNoteheadWidth(startSymbol.Duration.Base) / 2.0;
                 curve = LayoutCurve.Create(
                     startSymbol,
-                    startSymbol.X + noteheadWidth,
+                    startSymbol.X + startHalfWidth,
                     startSymbol.Y,
                     endX,
                     endY,
@@ -149,11 +150,12 @@ internal sealed class SlurAndTiePass : ILayoutPass
                 ? endSymbol.Y + (context.StaffSpace * 2.0)
                 : endSymbol.Y - (context.StaffSpace * 2.0);
 
+            var endHalfWidth = context.GetNoteheadWidth(endSymbol.Duration.Base) / 2.0;
             curve = LayoutCurve.Create(
                 endSymbol,
                 startX,
                 startY,
-                endSymbol.X,
+                endSymbol.X + endHalfWidth,
                 endSymbol.Y,
                 context,
                 CurveEndTaper.End,
