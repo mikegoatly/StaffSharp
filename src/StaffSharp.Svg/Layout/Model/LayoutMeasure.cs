@@ -17,15 +17,8 @@ internal class LayoutMeasure : LayoutElement
 
     public bool Contains(INotationEvent notationEvent)
     {
-        foreach (var symbol in Symbols)
-        {
-            if ((symbol is NoteLayoutSymbol n && ReferenceEquals(n.Note, notationEvent)) ||
-                (symbol is ChordLayoutSymbol c && ReferenceEquals(c.Chord, notationEvent)))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return Symbols.Any(s => 
+            (s is NoteLayoutSymbol n && ReferenceEquals(n.Note, notationEvent))
+            || (s is ChordLayoutSymbol c && ReferenceEquals(c.Chord, notationEvent)));
     }
 }

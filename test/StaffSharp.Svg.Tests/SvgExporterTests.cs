@@ -529,21 +529,20 @@ public class SvgExporterTests : VisualSnapshotTestBase
                 foreach (var slur in slurs)
                 {
                     // Process stop first
-                    if (slur.Type is SlurMarkerType.Stop)
+                    if (slur.Type is SlurMarkerType.Stop
+                        && pendingSlurStarts.TryGetValue(slur.Number, out var stack)
+                        && stack.Count > 0)
                     {
-                        if (pendingSlurStarts.TryGetValue(slur.Number, out var stack) && stack.Count > 0)
-                        {
-                            var startEvent = stack.Pop();
-                            part.Slurs.Add(new SlurSpan(
-                                startEvent,
-                                noteEvent,
-                                slur.Number,
-                                slur.IsDotted,
-                                StartStaffNumber: 1,
-                                EndStaffNumber: 1,
-                                StartVoiceNumber: 1,
-                                EndVoiceNumber: 1));
-                        }
+                        var startEvent = stack.Pop();
+                        part.Slurs.Add(new SlurSpan(
+                            startEvent,
+                            noteEvent,
+                            slur.Number,
+                            slur.IsDotted,
+                            StartStaffNumber: 1,
+                            EndStaffNumber: 1,
+                            StartVoiceNumber: 1,
+                            EndVoiceNumber: 1));
                     }
 
                     // Then process start

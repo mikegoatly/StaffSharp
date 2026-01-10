@@ -62,6 +62,7 @@ internal sealed class TieSpanAggregator
                             StartVoiceNumber: pending.VoiceNumber,
                             EndVoiceNumber: voiceNumber));
                     }
+
                     _active.Remove(key);
                 }
                 break;

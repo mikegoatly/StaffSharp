@@ -911,7 +911,6 @@ public class AbcParserTests : ScoreTestBase
 
         var score = AbcParser.Parse(abc);
 
-        var notes = GetNotes(score);
         var part = score.Parts[0];
 
         Assert.Single(part.Slurs);
