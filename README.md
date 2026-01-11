@@ -40,7 +40,7 @@ The codebase is organized into focused libraries:
 - **StaffSharp.Core** - Core types (`NoteEvent`, `Frequency`, `Rational` timing)
 - **StaffSharp.Audio** - DSP pipeline for audio analysis (pitch/onset detection)
 - **StaffSharp.MusicXml** - MusicXML parsing (Exporting TODO)
-- **StaffSharp.Abc** - ABC parsing (Exporting TODO)
+- **StaffSharp.Abc** - ABC parsing and exporting
 - **StaffSharp.Midi** - MIDI file generation (Parsing TODO)
 - **StaffSharp.Svg** - SVG score rendering (very much WIP)
 - **StaffSharp.Cli** - Command-line interface

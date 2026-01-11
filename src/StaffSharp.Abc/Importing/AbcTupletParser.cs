@@ -93,35 +93,10 @@ internal static class AbcTupletParser
         else
         {
             // Use default normalNotes based on actualNotes
-            normalNotes = GetDefaultNormalNotes(actualNotes);
+            normalNotes = AbcTupletHelper.GetDefaultNormalNotes(actualNotes);
         }
 
         tuplet = new Tuplet(actualNotes, normalNotes);
         return true;
-    }
-
-    private static int GetDefaultNormalNotes(int actualNotes)
-    {
-        // ABC standard defaults:
-        // 2 notes -> 3 (duplet)
-        // 3 notes -> 2 (triplet)
-        // 4 notes -> 3 (quadruplet)
-        // 5 notes -> 4 (quintuplet)
-        // 6 notes -> 4 (sextuplet)
-        // 7 notes -> 6 (septuplet)
-        // 8 notes -> 6 (octuplet)
-        // 9 notes -> 8 (nonuplet)
-        return actualNotes switch
-        {
-            2 => 3,
-            3 => 2,
-            4 => 3,
-            5 => 4,
-            6 => 4,
-            7 => 6,
-            8 => 6,
-            9 => 8,
-            _ => actualNotes - 1 // Fallback
-        };
     }
 }

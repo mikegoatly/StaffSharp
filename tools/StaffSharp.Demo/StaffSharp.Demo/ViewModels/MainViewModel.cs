@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using StaffSharp.Abc.Exporting;
 using StaffSharp.Audio;
 using StaffSharp.Demo.Services;
 using StaffSharp.Demo.Services.Audio;
@@ -221,8 +222,6 @@ public partial class MainViewModel : ViewModelBase
                 }
 
                 HasResult = true;
-
-                // TODO Generate ABC text
                 var svg = Task.Run(() =>
                 {
                     var svgExporter = new SvgScoreExporter();
@@ -231,7 +230,16 @@ public partial class MainViewModel : ViewModelBase
                         SettingsFlyout.Options.ExportOptions.ToDictionary());
                 });
 
+                var abc = Task.Run(() =>
+                {
+                    var abcExporter = new AbcScoreExporter();
+                    return abcExporter.ExportToStringAsync(
+                        result.Score,
+                        SettingsFlyout.Options.ExportOptions.ToDictionary());
+                });
+
                 SvgContent = await svg;
+                AbcText = await abc;
 
                 StatusMessage = $"Conversion complete! Title: {ScoreTitle}, Tempo: {DetectedTempo} BPM";
             }

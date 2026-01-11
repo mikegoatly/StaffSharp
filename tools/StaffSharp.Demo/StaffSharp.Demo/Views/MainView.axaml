@@ -195,14 +195,15 @@
                                 FontWeight="SemiBold"
                                 Text="ABC Notation" />
 
-                            <TextBlock
+                            <SelectableTextBlock
                                 Grid.Row="1"
                                 Margin="16"
-                                HorizontalAlignment="Center"
+                                HorizontalAlignment="Left"
                                 VerticalAlignment="Center"
+                                FontFamily="Consolas,Courier New,monospace"
                                 IsVisible="{Binding HasResult}"
                                 Text="{Binding AbcText}"
-                                TextAlignment="Center" />
+                                TextAlignment="Left" />
                         </Grid>
                     </Border>
 
