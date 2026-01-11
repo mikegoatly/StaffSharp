@@ -1,96 +1,337 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="using:StaffSharp.Demo.ViewModels"
-             xmlns:controls="using:StaffSharp.Demo.Controls"
-             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
-             x:Class="StaffSharp.Demo.Views.MainView"
-             x:DataType="vm:MainViewModel">
-  <Design.DataContext>
-    <vm:MainViewModel />
-  </Design.DataContext>
+﻿<UserControl
+    x:Class="StaffSharp.Demo.Views.MainView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:StaffSharp.Demo.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:views="using:StaffSharp.Demo.Views"
+    xmlns:vm="using:StaffSharp.Demo.ViewModels"
+    d:DesignHeight="800"
+    d:DesignWidth="1200"
+    x:DataType="vm:MainViewModel"
+    mc:Ignorable="d">
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
 
-  <Grid RowDefinitions="Auto,*,Auto">
-    <!-- Toolbar -->
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10">
-      <Button Content="Open Audio (.wav)" Command="{Binding OpenAudioFileCommand}" />
-      <Button Content="Open ABC" Command="{Binding OpenAbcFileCommand}" />
-      <Separator />
-      <Button Content="Save SVG" Command="{Binding SaveSvgCommand}" />
-      <Button Content="Save MIDI" Command="{Binding SaveMidiCommand}" />
-      <Separator />
-      <Button Content="Reset Settings" Command="{Binding ResetSettingsCommand}" />
-      <Button Content="Apply Settings" Command="{Binding ApplySettingsCommand}" />
-    </StackPanel>
+    <Panel>
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!--  Toolbar  -->
+            <Border
+                Grid.Row="0"
+                Padding="8"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <StackPanel.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="FontSize" Value="11" />
+                        </Style>
+                        <Style Selector="Rectangle">
+                            <Setter Property="VerticalAlignment" Value="Stretch" />
+                            <Setter Property="Width" Value="1" />
+                            <Setter Property="Fill" Value="DarkGray" />
+                        </Style>
+                    </StackPanel.Styles>
+                    <Button
+                        Classes="accent"
+                        Command="{Binding OpenFileCommand}"
+                        Content="📂 Open" />
 
-    <!-- Content -->
-    <Grid Grid.Row="1" ColumnDefinitions="250,*" Margin="10">
-      <!-- Settings Panel -->
-      <ScrollViewer Grid.Column="0">
-        <StackPanel Spacing="10" Margin="0,0,10,0">
-          <TextBlock Text="Processing Options" FontWeight="Bold" FontSize="16" />
-          
-          <TextBlock Text="YIN Pitch Detection" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <TextBlock Text="Threshold:" />
-          <NumericUpDown Value="{Binding Options.YinThreshold}" 
-                        Minimum="0.01" Maximum="0.5" Increment="0.01" 
-                        FormatString="F2" />
-          
-          <TextBlock Text="Onset Detection" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <TextBlock Text="Threshold:" />
-          <NumericUpDown Value="{Binding Options.OnsetThreshold}" 
-                        Minimum="0.5" Maximum="5.0" Increment="0.1" 
-                        FormatString="F1" />
-          <TextBlock Text="Window Size:" />
-          <NumericUpDown Value="{Binding Options.OnsetWindowSize}" 
-                        Minimum="512" Maximum="8192" Increment="512" />
-          
-          <TextBlock Text="Tempo &amp; Rhythm" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <TextBlock Text="Tempo Hint (0=auto):" />
-          <NumericUpDown Value="{Binding Options.TempoHint}" 
-                        Minimum="0" Maximum="300" Increment="1" />
-          <TextBlock Text="Subdivision:" />
-          <NumericUpDown Value="{Binding Options.Subdivision}" 
-                        Minimum="4" Maximum="64" Increment="4" />
-          
-          <TextBlock Text="SVG Rendering" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <TextBlock Text="Width:" />
-          <NumericUpDown Value="{Binding Options.SvgWidth}" 
-                        Minimum="400" Maximum="2400" Increment="100" />
-          <CheckBox Content="Show Debug Bounds" 
-                   IsChecked="{Binding Options.ShowDebugBounds}" />
-          
-          <TextBlock Text="Status" FontWeight="SemiBold" Margin="0,10,0,0" />
-          <TextBlock Text="{Binding InputFilePath}" TextWrapping="Wrap" FontSize="10" />
-          <TextBlock Text="{Binding DetectedTempo, StringFormat='Tempo: {0} BPM'}" />
-        </StackPanel>
-      </ScrollViewer>
+                    <Rectangle Classes="Separator" />
 
-      <!-- Main Content Area -->
-      <Grid Grid.Column="1" RowDefinitions="200,*">
-        <!-- Waveform -->
-        <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Margin="0,0,0,10">
-          <controls:WaveformControl Samples="{Binding WaveformSamples}" />
+                    <Button Command="{Binding PlayAudioCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock IsVisible="{Binding !IsPlaying}" Text="▶" />
+                            <TextBlock IsVisible="{Binding IsPlaying}" Text="⏸" />
+                            <TextBlock IsVisible="{Binding !IsPlaying}" Text="Play" />
+                            <TextBlock IsVisible="{Binding IsPlaying}" Text="Pause" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding StopPlaybackCommand}" Content="⏹ Stop" />
+
+                    <Rectangle Classes="Separator" />
+
+                    <Button
+                        Command="{Binding PlayScoreCommand}"
+                        Content="🎵 Play Score"
+                        ToolTip.Tip="Synthesize and play the detected score" />
+
+                    <Rectangle Classes="Separator" />
+
+                    <Button
+                        Classes="accent"
+                        Command="{Binding RecordCommand}"
+                        IsVisible="{Binding !IsRecording}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Foreground="Red" Text="🔴" />
+                            <TextBlock Text="Record" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        Classes="accent"
+                        Command="{Binding StopRecordingCommand}"
+                        IsVisible="{Binding IsRecording}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="⏹" />
+                            <TextBlock Text="Stop Recording" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        Command="{Binding SaveRecordingCommand}"
+                        Content="💾 Save"
+                        IsEnabled="{Binding HasRecording}" />
+
+                    <Rectangle Classes="Separator" />
+
+                    <Button IsEnabled="{Binding HasResult}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="💾 Save as" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="8"
+                                    Text="▼" />
+                            </StackPanel>
+                        </Button.Content>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Command="{Binding SaveSvgCommand}" Header="SVG" />
+                                <MenuItem Command="{Binding SaveAbcCommand}" Header="ABC Notation" />
+                                <MenuItem Command="{Binding SaveMidiCommand}" Header="MIDI" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <Button IsEnabled="{Binding HasResult}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="📋 Copy as" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="8"
+                                    Text="▼" />
+                            </StackPanel>
+                        </Button.Content>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Command="{Binding CopySvgCommand}" Header="SVG" />
+                                <MenuItem Command="{Binding CopyAbcCommand}" Header="ABC Notation" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <Rectangle Classes="Separator" />
+
+                    <Button
+                        Command="{Binding SettingsFlyout.ToggleFlyoutCommand}"
+                        Content="⚙ Settings"
+                        ToolTip.Tip="Configure processing options" />
+                </StackPanel>
+            </Border>
+
+            <!--  Main Content  -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto,350">
+                <!--  Left: SVG Display  -->
+                <Border
+                    Grid.Column="0"
+                    Margin="8"
+                    Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                    ClipToBounds="True"
+                    CornerRadius="4">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock
+                            Grid.Row="0"
+                            Padding="12,8"
+                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                            FontWeight="SemiBold"
+                            Text="Musical Notation (SVG)" />
+
+                        <ScrollViewer
+                            Grid.Row="1"
+                            HorizontalScrollBarVisibility="Auto"
+                            VerticalScrollBarVisibility="Auto">
+                            <Panel>
+                                <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
+
+                                <!--  Loading indicator  -->
+                                <StackPanel
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding IsProcessing}"
+                                    Spacing="8">
+                                    <ProgressBar Width="200" IsIndeterminate="True" />
+                                    <TextBlock HorizontalAlignment="Center" Text="{Binding StatusMessage}" />
+                                </StackPanel>
+                            </Panel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!--  Splitter  -->
+                <GridSplitter
+                    Grid.Column="1"
+                    Width="4"
+                    Background="Transparent" />
+
+                <!--  Right: ABC and Waveform  -->
+                <Grid Grid.Column="2" RowDefinitions="*,Auto,*">
+                    <!--  ABC Notation  -->
+                    <Border
+                        Grid.Row="0"
+                        Margin="8,8,8,4"
+                        Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                        CornerRadius="4">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock
+                                Grid.Row="0"
+                                Padding="12,8"
+                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                FontWeight="SemiBold"
+                                Text="ABC Notation" />
+
+                            <TextBlock
+                                Grid.Row="1"
+                                Margin="16"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding HasResult}"
+                                Text="{Binding AbcText}"
+                                TextAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <!--  Splitter  -->
+                    <GridSplitter
+                        Grid.Row="1"
+                        Height="4"
+                        Background="Transparent" />
+
+                    <!--  Waveform  -->
+                    <Border
+                        Grid.Row="2"
+                        Margin="8,4,8,8"
+                        Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                        CornerRadius="4">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock
+                                Grid.Row="0"
+                                Padding="12,8"
+                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                FontWeight="SemiBold"
+                                Text="Audio Waveform" />
+
+                            <Panel Grid.Row="1" Margin="8">
+                                <controls:WaveformControl
+                                    PlaybackPosition="{Binding PlaybackPosition}"
+                                    PlayheadBrush="Red"
+                                    Samples="{Binding WaveformSamples.Samples}"
+                                    WaveformBrush="{DynamicResource SystemAccentColor}" />
+
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                    IsVisible="{Binding WaveformSamples, Converter={x:Static ObjectConverters.IsNull}}"
+                                    Text="No audio loaded" />
+                            </Panel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!--  Status Bar  -->
+            <Border
+                Grid.Row="2"
+                Padding="12,6"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Text="{Binding StatusMessage}" />
+
+                    <TextBlock
+                        Grid.Column="1"
+                        Margin="16,0"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                        IsVisible="{Binding InputFilePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Text="{Binding InputFilePath, StringFormat='File: {0}'}" />
+
+                    <TextBlock
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                        IsVisible="{Binding HasResult}"
+                        Text="{Binding DetectedTempo, StringFormat='Tempo: {0} BPM'}" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!--  Settings Flyout  -->
+        <Border
+            HorizontalAlignment="Right"
+            VerticalAlignment="Stretch"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="1,0,0,0"
+            IsVisible="{Binding SettingsFlyout.IsOpen}"
+            ZIndex="100">
+            <Border.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+                </Transitions>
+            </Border.Transitions>
+            <Grid Width="400" RowDefinitions="Auto,*,Auto">
+                <!--  Flyout Header  -->
+                <Border
+                    Grid.Row="0"
+                    Padding="16,12"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Text="Processing Settings" />
+                        <Button
+                            Grid.Column="1"
+                            Command="{Binding SettingsFlyout.ToggleFlyoutCommand}"
+                            Content="✕"
+                            ToolTip.Tip="Close" />
+                    </Grid>
+                </Border>
+
+                <!--  Settings Content  -->
+                <views:SettingsFlyout Grid.Row="1" DataContext="{Binding SettingsFlyout}" />
+
+                <!--  Flyout Footer  -->
+                <Border
+                    Grid.Row="2"
+                    Padding="16"
+                    Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    BorderThickness="0,1,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                            Classes="accent"
+                            Command="{Binding SettingsFlyout.ApplySettingsCommand}"
+                            Content="Apply Settings" />
+                        <Button Command="{Binding SettingsFlyout.ResetToDefaultsCommand}" Content="Reset to Defaults" />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
-
-        <!-- Score SVG -->
-        <ScrollViewer Grid.Row="1">
-          <controls:SvgContentControl SvgContent="{Binding SvgContent}" 
-                                     Stretch="Uniform" />
-        </ScrollViewer>
-      </Grid>
-    </Grid>
-
-    <!-- Status Bar -->
-    <Border Grid.Row="2" Background="#F0F0F0" BorderBrush="Gray" BorderThickness="0,1,0,0">
-      <Grid ColumnDefinitions="*,Auto" Height="30">
-        <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" 
-                  VerticalAlignment="Center" Margin="10,0" />
-        <ProgressBar Grid.Column="1" Width="100" Margin="10,0"
-                    IsIndeterminate="{Binding IsProcessing}" 
-                    IsVisible="{Binding IsProcessing}" />
-      </Grid>
-    </Border>
-  </Grid>
+    </Panel>
 </UserControl>

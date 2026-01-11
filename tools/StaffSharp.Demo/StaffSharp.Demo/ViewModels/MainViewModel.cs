@@ -1,271 +1,528 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-using StaffSharp;
+using StaffSharp.Audio;
 using StaffSharp.Demo.Services;
-using StaffSharp.Midi;
+using StaffSharp.Demo.Services.Audio;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Demo.ViewModels;
 
-public sealed partial class MainViewModel : ViewModelBase, IDisposable
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1001:Types that own disposable fields should be disposable", Justification = "Cleanup method is called explicitly")]
+public partial class MainViewModel : ViewModelBase
 {
-    private readonly ConversionService _conversionService = new();
-    private CancellationTokenSource? _cancellationTokenSource;
-    private NotationScore? _currentScore;
+    private const int RecordingSampleRate = 44100;
+
+    private readonly ConversionService _conversionService;
+    private readonly IAudioService _audioService;
+    private readonly ClipboardService _clipboardService;
+    private CancellationTokenSource? _conversionCts;
 
     [ObservableProperty]
-    public partial ProcessingOptions Options { get; set; } = new();
+    public partial SettingsFlyoutViewModel SettingsFlyout { get; set; }
 
     [ObservableProperty]
-    public partial string? SvgContent { get; set; }
-    
-    [ObservableProperty]
-    public partial ReadOnlyMemory<float>? WaveformSamples { get; set; }
+    [NotifyPropertyChangedFor(nameof(HasRecording))]
+    public partial AudioBuffer? RecordedSamples { get; set; }
 
     [ObservableProperty]
+    public partial string StatusMessage { get; set; } = "Ready. Open a file to begin.";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertFileCommand))]
+    public partial bool IsProcessing { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConvertFileCommand))]
     public partial string? InputFilePath { get; set; }
 
     [ObservableProperty]
-    public partial string StatusMessage { get; set; } = "Ready";
+    [NotifyCanExecuteChangedFor(nameof(PlayScoreCommand))]
+    public partial NotationScore? Score { get; set; }
 
     [ObservableProperty]
-    public partial bool IsProcessing { get; set; }
+    [NotifyCanExecuteChangedFor(nameof(PlayAudioCommand))]
+    public partial AudioBuffer? WaveformSamples { get; set; }
+
+    [ObservableProperty]
+    public partial AudioBuffer? SynthesizedSamples { get; set; }
+
+    [ObservableProperty]
+    public partial double PlaybackPosition { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PlayAudioCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StopPlaybackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PlayScoreCommand))]
+    public partial bool IsPlaying { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsPaused { get; set; }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RecordCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StopRecordingCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PlayScoreCommand))]
+    public partial bool IsRecording { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasResult { get; set; }
+
+    [ObservableProperty]
+    public partial string? AbcText { get; set; }
+
+    [ObservableProperty]
+    public partial string? SvgContent { get; set; }
+
+    [ObservableProperty]
+    public partial string? ScoreTitle { get; set; }
 
     [ObservableProperty]
     public partial int DetectedTempo { get; set; }
 
-    [RelayCommand]
-    private async Task OpenAudioFileAsync()
+    [ObservableProperty]
+    public partial TimeSpan RecordingDuration { get; set; }
+
+    // Required for file picker
+    public IStorageProvider? StorageProvider { get; set; }
+
+    public bool HasRecording => RecordedSamples is not null;
+
+    public MainViewModel()
     {
-        try
-        {
-            if (PickFileAsync == null) return;
+        _clipboardService = ClipboardService.Instance;
+        _conversionService = new ConversionService();
+        _conversionService.StatusChanged += OnConversionStatusChanged;
 
-            var file = await PickFileAsync(["wav"], "Open Audio File");
-            if (file == null) return;
+        _audioService = AudioService.Instance;
+        _audioService.PlaybackStateChanged += OnPlaybackStateChanged;
 
-            InputFilePath = file;
-            await ProcessAudioAsync(file);
-        }
-        catch (Exception ex)
+        _audioService.PositionChanged += OnPositionChanged;
+
+        SettingsFlyout = new SettingsFlyoutViewModel();
+        SettingsFlyout.SettingsApplied += OnSettingsApplied;
+    }
+
+    private void OnPlaybackStateChanged(PlaybackState state)
+    {
+        Dispatcher.UIThread.Invoke(() =>
         {
-            StatusMessage = $"Error: {ex.Message}";
+            IsPlaying = state == PlaybackState.Playing;
+            IsPaused = state == PlaybackState.Paused;
+        });
+    }
+
+    private void OnPositionChanged(TimeSpan position)
+    {
+        if (_audioService.Duration.TotalSeconds > 0)
+        {
+            Dispatcher.UIThread.Post(() =>
+                PlaybackPosition = position.TotalSeconds / _audioService.Duration.TotalSeconds);
         }
     }
 
-    [RelayCommand]
-    private async Task OpenAbcFileAsync()
+    private void OnSettingsApplied(ProcessingOptions options)
     {
-        try
+        // Re-process existing content if available
+        if (RecordedSamples is not null)
         {
-            if (PickFileAsync == null) return;
-
-            var file = await PickFileAsync(["abc"], "Open ABC File");
-            if (file == null) return;
-
-            InputFilePath = file;
-            var content = await File.ReadAllTextAsync(file);
-            await ProcessAbcAsync(content);
+            _ = AnalyzeRecordingAsync(RecordedSamples);
         }
-        catch (Exception ex)
+        else if (!string.IsNullOrEmpty(InputFilePath) && WaveformSamples is not null)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            _ = ConvertFileAsync();
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanSaveScore), AllowConcurrentExecutions = false)]
-    private async Task SaveSvgAsync(CancellationToken cancellationToken)
+    private void OnConversionStatusChanged(ImportProgress status)
     {
-        if (_currentScore == null || string.IsNullOrEmpty(SvgContent)) return;
+        Dispatcher.UIThread.Post(() => StatusMessage = $"[{status.StepName}] {status.Message}");
+    }
+
+    [RelayCommand]
+    private async Task OpenFileAsync()
+    {
+        if (StorageProvider == null)
+        {
+            return;
+        }
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Open Audio or Notation File",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Audio Files") { Patterns = ["*.wav"] },
+                new FilePickerFileType("ABC Notation") { Patterns = ["*.abc"] },
+                new FilePickerFileType("All Supported") { Patterns = ["*.wav", "*.abc"] }
+            ]
+        });
+
+        if (files.Count > 0)
+        {
+            var file = files[0];
+            InputFilePath = file.Path.LocalPath;
+            await ConvertFileAsync();
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConvert))]
+    private async Task ConvertFileAsync()
+    {
+        if (string.IsNullOrEmpty(InputFilePath))
+        {
+            return;
+        }
+
+        await ConvertAsync(ct => _conversionService.ConvertAsync(InputFilePath, SettingsFlyout.Options, ct));
+    }
+
+    private void BeginAudioProcessing()
+    {
+        IsProcessing = true;
+        HasResult = false;
+        Score = null;
+        WaveformSamples = null;
+        AbcText = null;
+        SvgContent = null;
+    }
+
+    private async Task AnalyzeRecordingAsync(AudioBuffer samples)
+    {
+        // Set the waveform samples for display
+        WaveformSamples = samples;
+
+        await ConvertAsync(ct => _conversionService.ConvertAsync(samples, SettingsFlyout.Options, ct));
+
+    }
+
+    private async Task ConvertAsync(Func<CancellationToken, Task<ConversionResult>> convertAsync)
+    {
+        var cts = await CreateNewCancellationTokenAsync();
+        BeginAudioProcessing();
 
         try
         {
-            if (SaveFileAsync == null)
+            var result = await convertAsync(cts.Token);
+
+            if (result.Success)
             {
+                Score = result.Score;
+                ScoreTitle = result.Score.Metadata.Title ?? Path.GetFileNameWithoutExtension(InputFilePath);
+                DetectedTempo = result.Score.Metadata.Tempo;
+
+                if (result.SourceAudio != null)
+                {
+                    WaveformSamples = result.SourceAudio;
+                }
+
+                HasResult = true;
+
+                // TODO Generate ABC text
+                var svg = Task.Run(() =>
+                {
+                    var svgExporter = new SvgScoreExporter();
+                    return svgExporter.ExportToStringAsync(
+                        result.Score,
+                        SettingsFlyout.Options.ExportOptions.ToDictionary());
+                });
+
+                SvgContent = await svg;
+
+                StatusMessage = $"Conversion complete! Title: {ScoreTitle}, Tempo: {DetectedTempo} BPM";
+            }
+            else
+            {
+                StatusMessage = "Conversion failed. Check diagnostics for details.";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Conversion cancelled.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task<CancellationTokenSource> CreateNewCancellationTokenAsync()
+    {
+        if (_conversionCts is not null)
+        {
+            await _conversionCts.CancelAsync();
+        }
+
+        _conversionCts = new CancellationTokenSource();
+
+        return _conversionCts;
+    }
+
+    private bool CanConvert() => !string.IsNullOrEmpty(InputFilePath) && !IsProcessing;
+
+    [RelayCommand(CanExecute = nameof(CanPlayAudio))]
+    private void PlayAudio()
+    {
+        if (WaveformSamples is not null)
+        {
+            if (IsPlaying)
+            {
+                _audioService.PausePlayback();
+            }
+            else if (IsPaused)
+            {
+                _audioService.ResumePlayback();
+            }
+            else
+            {
+                _audioService.PlayAudioBuffer(WaveformSamples);
+            }
+        }
+    }
+
+    private bool CanPlayAudio() => WaveformSamples != null && !IsRecording;
+
+    [RelayCommand(CanExecute = nameof(CanStopPlayback))]
+    private void StopPlayback()
+    {
+        _audioService.StopPlayback();
+    }
+
+    private bool CanStopPlayback() => IsPlaying;
+
+    [RelayCommand(CanExecute = nameof(CanPlayScore))]
+    private void PlayScore()
+    {
+        if (Score == null)
+        {
+            return;
+        }
+
+        // TODO: Implement score synthesis
+        StatusMessage = "Score playback not yet implemented";
+
+        // Placeholder for future synthesis implementation:
+        // var synthesizer = new ScoreSynthesizer();
+        // var audioBuffer = synthesizer.Synthesize(Score, sampleRate: 44100);
+        // SynthesizedSamples = audioBuffer.Samples.ToArray();
+        // _audioService.PlaySamples(SynthesizedSamples, 44100, 1);
+    }
+
+    private bool CanPlayScore() => Score != null && !IsRecording && !IsPlaying;
+
+    [RelayCommand(CanExecute = nameof(CanRecord))]
+    private void Record()
+    {
+        RecordedSamples = null;
+        IsRecording = true;
+        StatusMessage = "Recording... Press Stop Recording when done.";
+        _audioService.StartRecording(RecordingSampleRate, 1);
+    }
+
+    private bool CanRecord() => !IsRecording && !IsPlaying;
+
+    [RelayCommand(CanExecute = nameof(CanStopRecording))]
+    private async Task StopRecordingAsync()
+    {
+        var buffer = _audioService.StopRecording();
+
+        IsRecording = false;
+
+        if (buffer != null && buffer.SampleCount > 0)
+        {
+            RecordedSamples = buffer;
+            RecordingDuration = TimeSpan.FromSeconds(buffer.DurationSeconds);
+            StatusMessage = $"Recording complete! Duration: {RecordingDuration.TotalSeconds:F1}s - Analyzing...";
+
+            // Automatically analyze the recorded audio
+            await AnalyzeRecordingAsync(buffer);
+        }
+        else
+        {
+            StatusMessage = "Recording stopped (no audio captured).";
+        }
+    }
+
+    private bool CanStopRecording() => IsRecording;
+
+    [RelayCommand]
+    private async Task SaveRecordingAsync()
+    {
+        if (StorageProvider == null || RecordedSamples is null)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save Recording as WAV",
+            SuggestedFileName = $"recording_{DateTime.Now:yyyyMMdd_HHmmss}.wav",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("WAV Audio") { Patterns = ["*.wav"] }
+            ]
+        });
+
+        if (file != null)
+        {
+            try
+            {
+                await using var stream = await file.OpenWriteAsync();
+                RecordedSamples.Save(stream);
+                StatusMessage = $"Saved recording to {file.Name}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error saving recording: {ex.Message}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveSvgAsync()
+    {
+        if (StorageProvider == null || Score == null)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save SVG File",
+            SuggestedFileName = $"{ScoreTitle ?? "output"}.svg",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("SVG Image") { Patterns = ["*.svg"] }
+            ]
+        });
+
+        if (file != null)
+        {
+            try
+            {
+                StatusMessage = "Generating SVG...";
+                await _conversionService.ExportAsync(file.Path.LocalPath, Score, SettingsFlyout.Options);
+                StatusMessage = $"Saved SVG to {file.Name}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error saving SVG: {ex.Message}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveAbcAsync()
+    {
+        if (StorageProvider == null || Score == null)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions()
+            {
+                DefaultExtension = ".abc",
+                FileTypeChoices =
+            [
+                new FilePickerFileType("ABC Notation") { Patterns = ["*.abc"] }
+            ]
+            });
+
+        if (file != null)
+        {
+            using var stream = await file.OpenWriteAsync();
+            using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(AbcText);
+            StatusMessage = $"Saved ABC to {file.Name}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveMidiAsync()
+    {
+        if (StorageProvider == null || Score == null)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save MIDI File",
+            SuggestedFileName = $"{ScoreTitle ?? "output"}.mid",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("MIDI File") { Patterns = ["*.mid", "*.midi"] }
+            ]
+        });
+
+        if (file != null)
+        {
+            StatusMessage = "Generating MIDI...";
+            await _conversionService.ExportAsync(file.Path.LocalPath, Score, SettingsFlyout.Options);
+            StatusMessage = $"Saved MIDI to {file.Name}";
+        }
+    }
+
+
+    [RelayCommand]
+    private async Task CopySvgAsync()
+    {
+        if (Score == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_clipboardService.IsAvailable)
+            {
+                StatusMessage = "Clipboard not available";
                 return;
             }
 
-            var file = await SaveFileAsync(["svg"], "Save SVG");
-            if (file == null) return;
+            StatusMessage = "Generating SVG...";
 
-            await File.WriteAllTextAsync(file, SvgContent, cancellationToken);
-            StatusMessage = "SVG saved successfully";
+            // Generate SVG to memory stream
+            using var memoryStream = new MemoryStream();
+            var svgExporter = new SvgScoreExporter();
+            await svgExporter.ExportAsync(Score, memoryStream, SettingsFlyout.Options.ExportOptions.ToDictionary());
+
+            memoryStream.Position = 0;
+            using var reader = new StreamReader(memoryStream);
+            var svgContent = await reader.ReadToEndAsync();
+
+            await _clipboardService.SetTextAsync(svgContent);
+            StatusMessage = "SVG copied to clipboard";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error saving SVG: {ex.Message}";
-        }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanSaveScore), AllowConcurrentExecutions = false)]
-    private async Task SaveMidiAsync(CancellationToken cancellationToken)
-    {
-        if (_currentScore == null) return;
-
-        try
-        {
-            if (SaveFileAsync == null) return;
-
-            var file = await SaveFileAsync(["mid", "midi"], "Save MIDI");
-            if (file == null) return;
-
-            var exporter = new MidiScoreExporter();
-            using var stream = File.Create(file);
-
-            // TODO expose options for MIDI export
-            await exporter.ExportAsync(_currentScore, stream, cancellationToken: cancellationToken);
-
-            StatusMessage = "MIDI saved successfully";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error saving MIDI: {ex.Message}";
+            StatusMessage = $"Error copying SVG: {ex.Message}";
         }
     }
 
     [RelayCommand]
-    private void ApplySettings()
+    private async Task CopyAbcAsync()
     {
-        if (!string.IsNullOrEmpty(InputFilePath))
+        if (this.AbcText is not null)
         {
-            if (InputFilePath.EndsWith(".abc", StringComparison.OrdinalIgnoreCase))
-            {
-                _ = Task.Run(async () =>
-                {
-                    var content = await File.ReadAllTextAsync(InputFilePath);
-                    await ProcessAbcAsync(content);
-                });
-            }
-            else if (InputFilePath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
-            {
-                _ = ProcessAudioAsync(InputFilePath);
-            }
+            await _clipboardService.SetTextAsync(this.AbcText);
         }
     }
 
-    [RelayCommand]
-    private void ResetSettings()
+
+    public void Cleanup()
     {
-        Options.ResetToDefaults();
+        _conversionCts?.Cancel();
+        _conversionCts?.Dispose();
+        _audioService.Dispose();
     }
-
-    private bool CanSaveScore() => _currentScore != null;
-
-    private async Task ProcessAudioAsync(string filePath)
-    {
-        if (_cancellationTokenSource != null)
-        {
-            await _cancellationTokenSource.CancelAsync();
-        }
-        _cancellationTokenSource = new CancellationTokenSource();
-
-        try
-        {
-            IsProcessing = true;
-            StatusMessage = "Processing audio...";
-
-            var result = await _conversionService.ConvertAudioAsync(filePath, Options, _cancellationTokenSource.Token);
-
-            _currentScore = result.Score;
-            WaveformSamples = result.AudioSamples;
-            DetectedTempo = result.DetectedTempo;
-
-            await RenderScoreAsync(_cancellationTokenSource.Token);
-
-            StatusMessage = $"Audio processed successfully (Tempo: {DetectedTempo} BPM)";
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Processing cancelled";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Processing failed: {ex.Message}";
-        }
-        finally
-        {
-            IsProcessing = false;
-            SaveSvgCommand.NotifyCanExecuteChanged();
-            SaveMidiCommand.NotifyCanExecuteChanged();
-        }
-    }
-
-    private async Task ProcessAbcAsync(string abcContent)
-    {
-        if (_cancellationTokenSource != null)
-        {
-            await _cancellationTokenSource.CancelAsync();
-        }
-        _cancellationTokenSource = new CancellationTokenSource();
-
-        try
-        {
-            IsProcessing = true;
-            StatusMessage = "Processing ABC notation...";
-
-            var result = await _conversionService.ConvertAbcAsync(abcContent, _cancellationTokenSource.Token);
-
-            _currentScore = result.Score;
-            WaveformSamples = null;
-            DetectedTempo = result.DetectedTempo;
-
-            await RenderScoreAsync(_cancellationTokenSource.Token);
-
-            StatusMessage = "ABC processed successfully";
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Processing cancelled";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Processing failed: {ex.Message}";
-        }
-        finally
-        {
-            IsProcessing = false;
-            SaveSvgCommand.NotifyCanExecuteChanged();
-            SaveMidiCommand.NotifyCanExecuteChanged();
-        }
-    }
-
-    private async Task RenderScoreAsync(CancellationToken token)
-    {
-        if (_currentScore == null) return;
-
-        try
-        {
-            var exporter = new SvgScoreExporter();
-            using var stream = new MemoryStream();
-
-            // Configure SVG options from UI settings
-            var svgOptions = new Dictionary<string, string>
-            {
-                ["maxWidth"] = Options.SvgWidth.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["staffSpace"] = "10",
-                ["margins"] = "20,20,20,20",
-                ["scale"] = "1.0"
-            };
-
-            await exporter.ExportAsync(_currentScore, stream, svgOptions, token);
-
-            stream.Position = 0;
-            using var reader = new StreamReader(stream);
-            SvgContent = await reader.ReadToEndAsync(token);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error rendering SVG: {ex.Message}";
-        }
-    }
-
-    public void Dispose()
-    {
-        _cancellationTokenSource?.Dispose();
-    }
-
-    // File picker delegates - injected from view
-    public Func<string[], string, Task<string?>>? PickFileAsync { get; set; }
-    public Func<string[], string, Task<string?>>? SaveFileAsync { get; set; }
 }

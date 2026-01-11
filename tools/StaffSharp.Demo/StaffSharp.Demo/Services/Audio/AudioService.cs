@@ -24,9 +24,10 @@ public sealed class AudioService : IAudioService, IDisposable
     private List<float>? _recordingBuffer;
     private readonly object _recordingLock = new();
 
+    public static IAudioService Instance { get; set; } = new AudioService();
+
     public Action<PlaybackState>? PlaybackStateChanged { get; set; }
     public Action<TimeSpan>? PositionChanged { get; set; }
-    public Action<float[]>? RecordingComplete { get; set; }
 
     public bool IsPlaying { get; private set; }
     public bool IsRecording { get; private set; }
@@ -53,21 +54,6 @@ public sealed class AudioService : IAudioService, IDisposable
         _playbackBuffer = audioBuffer.Samples.ToArray();
         _sampleRate = audioBuffer.SampleRate;
         _channels = audioBuffer.Channels;
-        _playbackPosition = 0;
-
-        StartPlayback();
-    }
-
-    /// <summary>
-    /// Plays audio from raw samples.
-    /// </summary>
-    public void PlaySamples(float[] samples, int sampleRate, int channels)
-    {
-        StopPlayback();
-
-        _playbackBuffer = samples;
-        _sampleRate = sampleRate;
-        _channels = channels;
         _playbackPosition = 0;
 
         StartPlayback();
@@ -211,10 +197,12 @@ public sealed class AudioService : IAudioService, IDisposable
     /// <summary>
     /// Stops recording and returns the recorded samples.
     /// </summary>
-    public float[]? StopRecording()
+    public AudioBuffer? StopRecording()
     {
         if (!IsRecording || _recordingStream == null)
+        {
             return null;
+        }
 
         _recordingCts?.Cancel();
         IsRecording = false;
@@ -228,43 +216,14 @@ public sealed class AudioService : IAudioService, IDisposable
 
         _recordingStream = null;
 
-        float[]? result;
+        AudioBuffer? result;
         lock (_recordingLock)
         {
-            result = _recordingBuffer?.ToArray();
+            result = _recordingBuffer != null ? new AudioBuffer([.. _recordingBuffer], _sampleRate, _channels) : null;
             _recordingBuffer = null;
         }
 
-        if (result != null)
-        {
-            RecordingComplete?.Invoke(result);
-        }
-
         return result;
-    }
-
-    /// <summary>
-    /// Gets the recorded samples as an AudioBuffer (stops recording first).
-    /// </summary>
-    public AudioBuffer? GetRecordedAudioBufferAndStop()
-    {
-        var samples = StopRecording();
-        if (samples == null || samples.Length == 0)
-            return null;
-
-        return new AudioBuffer(samples, _sampleRate, _channels);
-    }
-
-    /// <summary>
-    /// Returns a copy of the recorded audio buffer (does not stop recording).
-    /// Call StopRecording() first, then use this to retrieve samples.
-    /// </summary>
-    public float[] GetRecordedAudioBuffer()
-    {
-        lock (_recordingLock)
-        {
-            return _recordingBuffer?.ToArray() ?? Array.Empty<float>();
-        }
     }
 
     public void PausePlayback()

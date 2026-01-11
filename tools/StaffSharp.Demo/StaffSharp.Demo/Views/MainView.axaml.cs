@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 
+using StaffSharp.Demo.Services;
 using StaffSharp.Demo.ViewModels;
 
 namespace StaffSharp.Demo.Views;
@@ -10,54 +11,30 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-        DataContextChanged += OnDataContextChanged;
     }
 
-    private void OnDataContextChanged(object? sender, System.EventArgs e)
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        if (DataContext is MainViewModel viewModel)
+        base.OnAttachedToVisualTree(e);
+
+        // Provide StorageProvider and initialize clipboard when the view is attached
+        if (DataContext is MainViewModel vm && TopLevel.GetTopLevel(this) is { } topLevel)
         {
-            viewModel.PickFileAsync = PickFileAsync;
-            viewModel.SaveFileAsync = SaveFileAsync;
+            vm.StorageProvider = topLevel.StorageProvider;
+
+            // Initialize the static clipboard service instance
+            ClipboardService.Instance.Initialize(topLevel);
         }
     }
 
-    private async Task<string?> PickFileAsync(string[] extensions, string title)
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
+        base.OnDetachedFromVisualTree(e);
 
-        var fileTypes = new FilePickerFileType(title)
+        // Cleanup when view is detached
+        if (DataContext is MainViewModel vm)
         {
-            Patterns = extensions.Select(ext => $"*.{ext}").ToArray()
-        };
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = title,
-            FileTypeFilter = new[] { fileTypes },
-            AllowMultiple = false
-        });
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
-    }
-
-    private async Task<string?> SaveFileAsync(string[] extensions, string title)
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var fileTypes = new FilePickerFileType(title)
-        {
-            Patterns = extensions.Select(ext => $"*.{ext}").ToArray()
-        };
-
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = title,
-            FileTypeChoices = new[] { fileTypes }
-        });
-
-        return file?.Path.LocalPath;
+            vm.Cleanup();
+        }
     }
 }

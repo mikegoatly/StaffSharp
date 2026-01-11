@@ -44,6 +44,44 @@ public sealed class AudioBuffer
     /// </summary>
     public int SampleCount => Samples.Length;
 
+    public void Save(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream);
+
+        int bitsPerSample = 16;
+        int bytesPerSample = bitsPerSample / 8;
+        int byteRate = SampleRate * Channels * bytesPerSample;
+        int blockAlign = Channels * bytesPerSample;
+        int dataSize = Samples.Length * bytesPerSample;
+
+        // RIFF header
+        writer.Write(['R', 'I', 'F', 'F']);
+        writer.Write(36 + dataSize);
+        writer.Write(['W', 'A', 'V', 'E']);
+
+        // fmt subchunk
+        writer.Write(['f', 'm', 't', ' ']);
+        writer.Write(16); // Subchunk1Size for PCM
+        writer.Write((short)1); // AudioFormat (PCM)
+        writer.Write((short)Channels);
+        writer.Write(SampleRate);
+        writer.Write(byteRate);
+        writer.Write((short)blockAlign);
+        writer.Write((short)bitsPerSample);
+
+        // data subchunk
+        writer.Write(['d', 'a', 't', 'a']);
+        writer.Write(dataSize);
+
+        // Convert float samples to 16-bit PCM
+        foreach (var sample in Samples.Span)
+        {
+            var clampedSample = Math.Clamp(sample, -1.0f, 1.0f);
+            var pcmSample = (short)(clampedSample * short.MaxValue);
+            writer.Write(pcmSample);
+        }
+    }
+
     /// <summary>
     /// Normalizes the audio volume so the peak amplitude matches the target.
     /// </summary>

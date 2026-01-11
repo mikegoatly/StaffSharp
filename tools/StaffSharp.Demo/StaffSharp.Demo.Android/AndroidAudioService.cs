@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Android.Media;
 
-namespace StaffSharp.Demo.Services.Audio;
-
-#if ANDROID
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Android.Media;
 using Avalonia.Threading;
 
-namespace NoteNet.Demo.Services;
+using StaffSharp.Audio;
+
+using Encoding = Android.Media.Encoding;
+
+namespace StaffSharp.Demo.Services.Audio;
 
 /// <summary>
 /// Android-specific audio service implementation using AudioTrack and AudioRecord.
 /// </summary>
-public sealed class AndroidAudioService : IAudioService
+public sealed class AndroidAudioService : IAudioService, IDisposable
 {
+#pragma warning disable CA2213 // Disposable fields should be disposed - False positive?
     private AudioTrack? _audioTrack;
+#pragma warning restore CA2213 // Disposable fields should be disposed
     private AudioRecord? _audioRecord;
     private float[]? _playbackBuffer;
     private int _playbackPosition;
@@ -35,9 +31,8 @@ public sealed class AndroidAudioService : IAudioService
     private List<float>? _recordingBuffer;
     private readonly object _recordingLock = new();
 
-    public event Action<PlaybackState>? PlaybackStateChanged;
-    public event Action<TimeSpan>? PositionChanged;
-    public event Action<float[]>? RecordingComplete;
+    public Action<PlaybackState>? PlaybackStateChanged { get; set; }
+    public Action<TimeSpan>? PositionChanged { get; set; }
 
     public bool IsPlaying { get; private set; }
     public bool IsRecording { get; private set; }
@@ -48,9 +43,9 @@ public sealed class AndroidAudioService : IAudioService
         ? TimeSpan.FromSeconds((double)_playbackPosition / _channels / _sampleRate)
         : TimeSpan.Zero;
 
-    public void PlayAudioBuffer(NoteNet.Core.AudioBuffer audioBuffer)
+    public void PlayAudioBuffer(AudioBuffer audioBuffer)
     {
-        Stop();
+        StopPlayback();
 
         _playbackBuffer = audioBuffer.Samples.ToArray();
         _sampleRate = audioBuffer.SampleRate;
@@ -60,21 +55,12 @@ public sealed class AndroidAudioService : IAudioService
         StartPlayback();
     }
 
-    public void PlaySamples(float[] samples, int sampleRate, int channels)
-    {
-        Stop();
-
-        _playbackBuffer = samples;
-        _sampleRate = sampleRate;
-        _channels = channels;
-        _playbackPosition = 0;
-
-        StartPlayback();
-    }
-
     private void StartPlayback()
     {
-        if (_playbackBuffer == null) return;
+        if (_playbackBuffer == null)
+        {
+            return;
+        }
 
         var channelConfig = _channels == 1 ? ChannelOut.Mono : ChannelOut.Stereo;
         var minBufferSize = AudioTrack.GetMinBufferSize(
@@ -84,12 +70,14 @@ public sealed class AndroidAudioService : IAudioService
 
         var bufferSize = Math.Max(minBufferSize, 4096);
 
-        var audioAttributes = new AudioAttributes.Builder()!
+        using var audioAttBuilder = new AudioAttributes.Builder();
+        var audioAttributes = audioAttBuilder
             .SetUsage(AudioUsageKind.Media)!
             .SetContentType(AudioContentType.Music)!
             .Build();
 
-        var audioFormat = new AudioFormat.Builder()!
+        using var audioFmtBuilder = new AudioFormat.Builder();
+        var audioFormat = audioFmtBuilder
             .SetEncoding(Encoding.PcmFloat)!
             .SetSampleRate(_sampleRate)!
             .SetChannelMask(channelConfig)!
@@ -125,7 +113,7 @@ public sealed class AndroidAudioService : IAudioService
 
                 var samplesToWrite = Math.Min(chunkSize, samplesRemaining);
                 var written = _audioTrack?.Write(_playbackBuffer, _playbackPosition, samplesToWrite, WriteMode.Blocking) ?? 0;
-                
+
                 if (written > 0)
                 {
                     _playbackPosition += written;
@@ -143,7 +131,7 @@ public sealed class AndroidAudioService : IAudioService
         }, token);
     }
 
-    public void Pause()
+    public void PausePlayback()
     {
         if (_audioTrack != null && IsPlaying)
         {
@@ -153,7 +141,7 @@ public sealed class AndroidAudioService : IAudioService
         }
     }
 
-    public void Resume()
+    public void ResumePlayback()
     {
         if (_audioTrack != null && !IsPlaying)
         {
@@ -163,7 +151,7 @@ public sealed class AndroidAudioService : IAudioService
         }
     }
 
-    public void Stop()
+    public void StopPlayback()
     {
         if (_playbackCts != null)
         {
@@ -189,7 +177,10 @@ public sealed class AndroidAudioService : IAudioService
 
     public void Seek(TimeSpan position)
     {
-        if (_playbackBuffer == null || _sampleRate <= 0) return;
+        if (_playbackBuffer == null || _sampleRate <= 0)
+        {
+            return;
+        }
 
         var sample = (int)(position.TotalSeconds * _sampleRate * _channels);
         _playbackPosition = Math.Clamp(sample, 0, _playbackBuffer.Length);
@@ -240,7 +231,7 @@ public sealed class AndroidAudioService : IAudioService
 
         if (_audioRecord.State != State.Initialized)
         {
-            _audioRecord?.Release();
+            _audioRecord.Release();
             _audioRecord = null;
             return;
         }
@@ -274,10 +265,12 @@ public sealed class AndroidAudioService : IAudioService
         }, token);
     }
 
-    public float[]? StopRecording()
+    public AudioBuffer? StopRecording()
     {
         if (!IsRecording || _audioRecord == null)
+        {
             return null;
+        }
 
         IsRecording = false;
         _recordingCts?.Cancel();
@@ -285,52 +278,38 @@ public sealed class AndroidAudioService : IAudioService
 
         try
         {
-            _audioRecord?.Stop();
-            _audioRecord?.Release();
+            _audioRecord.Stop();
+            _audioRecord.Release();
         }
         catch { }
 
         _audioRecord = null;
 
-        float[]? result;
+        AudioBuffer? result;
         lock (_recordingLock)
         {
-            result = _recordingBuffer?.ToArray();
+            result = _recordingBuffer != null ? new AudioBuffer(_recordingBuffer.ToArray(), _sampleRate, _channels) : null;
             _recordingBuffer = null;
-        }
-
-        if (result != null)
-        {
-            RecordingComplete?.Invoke(result);
         }
 
         return result;
     }
 
-    public NoteNet.Core.AudioBuffer? GetRecordedAudioBufferAndStop()
-    {
-        var samples = StopRecording();
-        if (samples == null || samples.Length == 0)
-            return null;
-
-        return new NoteNet.Core.AudioBuffer(samples, _sampleRate, _channels);
-    }
-
-    public float[] GetRecordedAudioBuffer()
-    {
-        lock (_recordingLock)
-        {
-            return _recordingBuffer?.ToArray() ?? Array.Empty<float>();
-        }
-    }
-
     public void Dispose()
     {
-        if (_isDisposed) return;
-        _isDisposed = true;
+        if (_isDisposed)
+        {
+            return;
+        }
 
-        Stop();
+        StopPlayback();
         StopRecording();
+
+        _audioTrack?.Dispose();
+        _audioRecord?.Dispose();
+        _playbackCts?.Dispose();
+        _recordingCts?.Dispose();
+
+        _isDisposed = true;
     }
 }
-#endif

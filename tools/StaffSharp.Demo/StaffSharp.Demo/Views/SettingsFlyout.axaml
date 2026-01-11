@@ -1,0 +1,45 @@
+<UserControl
+    x:Class="StaffSharp.Demo.Views.SettingsFlyout"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:StaffSharp.Demo.ViewModels"
+    Width="400"
+    d:DesignHeight="600"
+    d:DesignWidth="400"
+    x:DataType="vm:SettingsFlyoutViewModel"
+    mc:Ignorable="d">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.subheading">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Styles>
+
+    <Design.DataContext>
+        <vm:SettingsFlyoutViewModel />
+    </Design.DataContext>
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="16">
+            <TextBlock Classes="heading" Text="Processing Settings" />
+            <StackPanel Spacing="8">
+                <TextBlock Classes="subheading" Text="Rendering" />
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                    <TextBlock VerticalAlignment="Center" Text="SVG Width" />
+                    <NumericUpDown
+                        Grid.Column="1"
+                        Width="120"
+                        Increment="100"
+                        Maximum="3000"
+                        Minimum="400"
+                        Value="{Binding Options.ExportOptions.MaxWidth}" />
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

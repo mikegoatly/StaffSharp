@@ -9,7 +9,6 @@ public interface IAudioService : IDisposable
 {
     Action<PlaybackState>? PlaybackStateChanged { get; set; }
     Action<TimeSpan>? PositionChanged { get; set; }
-    Action<float[]>? RecordingComplete { get; set; }
 
     bool IsPlaying { get; }
     bool IsRecording { get; }
@@ -17,14 +16,11 @@ public interface IAudioService : IDisposable
     TimeSpan Position { get; }
 
     void PlayAudioBuffer(AudioBuffer audioBuffer);
-    void PlaySamples(float[] samples, int sampleRate, int channels);
     void PausePlayback();
     void ResumePlayback();
     void StopPlayback();
     void Seek(TimeSpan position);
 
     void StartRecording(int sampleRate = 44100, int channels = 1);
-    float[]? StopRecording();
-    AudioBuffer? GetRecordedAudioBufferAndStop();
-    float[] GetRecordedAudioBuffer();
+    AudioBuffer? StopRecording();
 }
