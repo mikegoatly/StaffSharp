@@ -1,0 +1,29 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Training data (large files)
+data/
+!data/.gitkeep
+
+# Model checkpoints (large files)
+models/
+!models/.gitkeep
+
+# Logs and outputs
+logs/
+runs/
+*.log
+
+# Temporary files
+*.npy
+*.npz
+*.tmp
