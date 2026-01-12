@@ -145,6 +145,49 @@ public sealed class AudioBuffer
 
         return new AudioBuffer(monoSamples, SampleRate, 1);
     }
+
+    /// <summary>
+    /// Resamples the audio to a target sample rate using linear interpolation.
+    /// Returns the same buffer if already at the target sample rate.
+    /// </summary>
+    /// <param name="targetSampleRate">The desired sample rate in Hz.</param>
+    /// <returns>A new resampled AudioBuffer, or the original if no change is needed.</returns>
+    public AudioBuffer Resample(int targetSampleRate)
+    {
+        if (targetSampleRate <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
+        }
+
+        if (SampleRate == targetSampleRate)
+        {
+            return this;
+        }
+
+        var samples = Samples.ToArray();
+        var ratio = (double)targetSampleRate / SampleRate;
+        var newLength = (int)(samples.Length * ratio);
+        var resampled = new float[newLength];
+
+        // Simple linear interpolation resampling
+        for (int i = 0; i < newLength; i++)
+        {
+            var srcIndex = i / ratio;
+            var srcIndexInt = (int)srcIndex;
+            var frac = (float)(srcIndex - srcIndexInt);
+
+            if (srcIndexInt + 1 < samples.Length)
+            {
+                resampled[i] = (samples[srcIndexInt] * (1 - frac)) + (samples[srcIndexInt + 1] * frac);
+            }
+            else if (srcIndexInt < samples.Length)
+            {
+                resampled[i] = samples[srcIndexInt];
+            }
+        }
+
+        return new AudioBuffer(resampled, targetSampleRate, Channels);
+    }
 }
 
 
