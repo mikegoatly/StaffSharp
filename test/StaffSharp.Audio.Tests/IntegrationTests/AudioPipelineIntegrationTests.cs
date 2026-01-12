@@ -11,7 +11,7 @@ namespace StaffSharp.Audio.Tests.IntegrationTests
         [Fact]
         public async Task ParsingCScale_ResultsInExpectedScore()
         {
-            var score = await ExtractScoreFromAudio("c-scale-44100-mono.wav");
+            var score = await ExtractScoreFromAudio(@"Scales\c-scale-44100-mono.wav");
 
             // We are expecting a score with 8 quarter notes: C4, D4, E4, F4, G4, A4, B4, C5 over two measures.
 
@@ -30,8 +30,7 @@ namespace StaffSharp.Audio.Tests.IntegrationTests
 
         private async Task<NotationScore> ExtractScoreFromAudio(string testFile, AudioPipelineOptions? options = null)
         {
-            var inputStream = typeof(AudioPipelineIntegrationTests).Assembly.GetManifestResourceStream($"StaffSharp.Audio.Tests.IntegrationTests.TestData.{testFile}")
-                            ?? throw new InvalidOperationException($"Test file '{testFile}' not found as embedded resource.");
+            using var inputStream = File.OpenRead(@$"TestData\{testFile}");
 
             options = (options ?? AudioPipelineOptions.Default) with
             {

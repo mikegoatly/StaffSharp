@@ -1,0 +1,144 @@
+{
+  "Title": null,
+  "Tempo": 82,
+  "TimeSignature": {
+    "BeatsPerMeasure": 3,
+    "BeatUnit": 4
+  },
+  "Staves": [
+    {
+      "StaffIndex": 0,
+      "Measures": [
+        {
+          "MeasureIndex": 0,
+          "Events": [
+            {
+              "Type": "Rest",
+              "Duration": "Quarter"
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 9,
+                "Octave": 4,
+                "MidiNote": 69
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.26544148
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 6,
+                "Octave": 4,
+                "MidiNote": 66
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.16243319
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 4,
+                "Octave": 4,
+                "MidiNote": 64
+              },
+              "Duration": "Quarter",
+              "Velocity": 0.4014366
+            }
+          ]
+        },
+        {
+          "MeasureIndex": 1,
+          "Events": [
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 4,
+                "Octave": 4,
+                "MidiNote": 64
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.451197
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 4,
+                "Octave": 5,
+                "MidiNote": 76
+              },
+              "Duration": "Sixteenth",
+              "Velocity": 0.34822413
+            },
+            {
+              "Type": "Rest",
+              "Duration": "Eighth"
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 9,
+                "Octave": 4,
+                "MidiNote": 69
+              },
+              "Duration": "Sixteenth",
+              "Velocity": 0.18267895
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 6,
+                "Octave": 4,
+                "MidiNote": 66
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.17022435
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 4,
+                "Octave": 4,
+                "MidiNote": 64
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.29476085
+            },
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 2,
+                "Octave": 4,
+                "MidiNote": 62
+              },
+              "Duration": "Eighth",
+              "Velocity": 0.3176584,
+              "Tie": "Start"
+            }
+          ]
+        },
+        {
+          "MeasureIndex": 2,
+          "Events": [
+            {
+              "Type": "Note",
+              "Pitch": {
+                "PitchClass": 2,
+                "Octave": 4,
+                "MidiNote": 62
+              },
+              "Duration": "Quarter",
+              "Velocity": 0.3176584,
+              "Tie": "End"
+            },
+            {
+              "Type": "Rest",
+              "Duration": "Half"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

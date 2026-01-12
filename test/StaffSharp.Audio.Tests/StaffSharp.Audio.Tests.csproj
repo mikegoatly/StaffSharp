@@ -5,14 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="IntegrationTests\TestData\c-scale-44100-mono.wav" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="IntegrationTests\TestData\c-scale-44100-mono.wav" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
@@ -32,7 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="TestHelpers\" />
+    <!-- Include shared test data files -->
+    <None Include="..\TestData\Audio\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>IntegrationTests\TestData\Audio\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
   </ItemGroup>
+
 
 </Project>
