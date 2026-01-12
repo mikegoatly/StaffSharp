@@ -17,7 +17,11 @@ public sealed class AbcScoreExporter : IScoreExporter
         new ExportOption(
             "defaultNoteLength",
             "Default note length (L: header). Format: \"1/8\", \"1/4\", \"1/16\". (ABC only)",
-            "1/8")
+            "1/8"),
+        new ExportOption(
+            "compactOutput",
+            "Use compact output with no spaces between notes. Format: \"true\" or \"false\". (ABC only)",
+            "true")
     ];
 
     public async Task ExportAsync(
@@ -32,18 +36,34 @@ public sealed class AbcScoreExporter : IScoreExporter
         // Parse options
         var exportOptions = new AbcExportOptions();
 
-        if (options != null && options.TryGetValue("defaultNoteLength", out var defaultNoteLengthValue))
+        if (options != null)
         {
-            // Parse format like "1/8" or "1/4"
-            var parts = defaultNoteLengthValue.Split('/');
-            if (parts.Length == 2 &&
-                int.TryParse(parts[0], out var numerator) &&
-                int.TryParse(parts[1], out var denominator))
+            // Parse defaultNoteLength
+            if (options.TryGetValue("defaultNoteLength", out var defaultNoteLengthValue))
             {
-                exportOptions = exportOptions with
+                // Parse format like "1/8" or "1/4"
+                var parts = defaultNoteLengthValue.Split('/');
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0], out var numerator) &&
+                    int.TryParse(parts[1], out var denominator))
                 {
-                    DefaultNoteLength = Rational.Create(numerator, denominator)
-                };
+                    exportOptions = exportOptions with
+                    {
+                        DefaultNoteLength = Rational.Create(numerator, denominator)
+                    };
+                }
+            }
+
+            // Parse compactOutput
+            if (options.TryGetValue("compactOutput", out var compactOutputValue))
+            {
+                if (bool.TryParse(compactOutputValue, out var compactOutput))
+                {
+                    exportOptions = exportOptions with
+                    {
+                        CompactOutput = compactOutput
+                    };
+                }
             }
         }
 

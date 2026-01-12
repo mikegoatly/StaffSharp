@@ -19,4 +19,15 @@ internal sealed record AbcExportOptions
     /// Common values: 1/8, 1/4, 1/16.
     /// </remarks>
     public Rational DefaultNoteLength { get; init; } = Rational.Create(1, 8);
+
+    /// <summary>
+    /// Gets whether to use compact output (no spaces between notes).
+    /// Default is true (compact format).
+    /// </summary>
+    /// <remarks>
+    /// - true: Compact format like "CDEFGAB|" (default)
+    /// - false: Spaced format like "C D E F G A B|"
+    /// Both are valid ABC notation; spacing is purely for readability.
+    /// </remarks>
+    public bool CompactOutput { get; init; } = true;
 }

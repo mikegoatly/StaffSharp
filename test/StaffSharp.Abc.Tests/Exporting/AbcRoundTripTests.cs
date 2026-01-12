@@ -424,6 +424,66 @@ public class AbcRoundTripTests : ScoreTestBase
         await AssertRoundTripEquivalent(originalAbc);
     }
 
+    [Fact]
+    public async Task Export_CompactOutput_ProducesCompactFormat()
+    {
+        // Arrange
+        var originalAbc = """
+            X:1
+            T:Test
+            M:4/4
+            L:1/8
+            Q:120
+            K:C
+            C D E F|
+            """;
+
+        var importer = new AbcScoreImporter();
+        var score = await ImportFromString(importer, originalAbc);
+
+        // Act - Export with compact output (default)
+        var exporter = new AbcScoreExporter();
+        var exportedAbc = await ExportToString(exporter, score);
+
+        // Assert - Should have no spaces between notes
+        Assert.Contains("CDEF|", exportedAbc);
+        Assert.DoesNotContain("C D E F|", exportedAbc);
+    }
+
+    [Fact]
+    public async Task Export_SpacedOutput_ProducesSpacedFormat()
+    {
+        // Arrange
+        var originalAbc = """
+            X:1
+            T:Test
+            M:4/4
+            L:1/8
+            Q:120
+            K:C
+            C D E F|
+            """;
+
+        var importer = new AbcScoreImporter();
+        var score = await ImportFromString(importer, originalAbc);
+
+        var exporter = new AbcScoreExporter();
+        using var stream = new MemoryStream();
+
+        // Act - Export with spaced output
+        var options = new Dictionary<string, string>
+        {
+            { "compactOutput", "false" }
+        };
+        await exporter.ExportAsync(score, stream, options);
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        var exportedAbc = await reader.ReadToEndAsync();
+
+        // Assert - Should have spaces between notes
+        Assert.Contains("C D E F|", exportedAbc);
+    }
+
     private static async Task<Notation.NotationScore> ImportFromString(
         AbcScoreImporter importer,
         string abcContent)

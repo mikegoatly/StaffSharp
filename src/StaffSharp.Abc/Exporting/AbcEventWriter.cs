@@ -57,10 +57,15 @@ internal static class AbcEventWriter
             }
 
             // Write events
-            foreach (var evt in measure.Events)
+            for (int e = 0; e < measure.Events.Count; e++)
             {
-                WriteEvent(sb, evt, markerMap, options, ref activeTuplet, ref tupletNotesRemaining);
-                sb.Append(' '); // Space between events for readability
+                WriteEvent(sb, measure.Events[e], markerMap, options, ref activeTuplet, ref tupletNotesRemaining);
+
+                // Add space after event if not compact mode and not last event
+                if (!options.CompactOutput && e < measure.Events.Count - 1)
+                {
+                    sb.Append(' ');
+                }
             }
 
             // Write end barline
