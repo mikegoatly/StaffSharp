@@ -104,6 +104,9 @@ def create_test_model(output_path: str, mel_bins: int = 229, piano_keys: int = 8
         print(f"    - {name} with shape (batch, time, {piano_keys})")
 
     # Export to ONNX
+    import os
+    # Suppress verbose output to avoid Unicode issues on Windows
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
     torch.onnx.export(
         model,
         dummy_input,
@@ -111,12 +114,13 @@ def create_test_model(output_path: str, mel_bins: int = 229, piano_keys: int = 8
         input_names=input_names,
         output_names=output_names,
         dynamic_axes=dynamic_axes,
-        opset_version=14,  # Use a stable opset version
+        opset_version=18,  # Use opset 18 to avoid conversion warnings
         do_constant_folding=True,
-        export_params=True
+        export_params=True,
+        verbose=False  # Suppress verbose output
     )
 
-    print(f"\n✓ Model saved to: {output_path}")
+    print(f"\nModel saved to: {output_path}")
 
     # Verify the exported model
     verify_model(output_path)
@@ -133,7 +137,7 @@ def verify_model(model_path: str):
         # Load and check the model
         model = onnx.load(model_path)
         onnx.checker.check_model(model)
-        print("  ✓ Model structure is valid")
+        print("  Model structure is valid")
 
         # Test inference with ONNX Runtime
         session = ort.InferenceSession(model_path)
@@ -158,13 +162,13 @@ def verify_model(model_path: str):
             print(f"    - {output_meta.name}: shape={output_data.shape}, " +
                   f"range=[{output_data.min():.3f}, {output_data.max():.3f}]")
 
-        print("\n✓ Model verification successful!")
+        print("\nModel verification successful!")
 
     except ImportError as e:
-        print(f"\n⚠ Verification skipped: {e}")
+        print(f"\nVerification skipped: {e}")
         print("  Install onnx and onnxruntime to verify: pip install onnx onnxruntime")
     except Exception as e:
-        print(f"\n✗ Verification failed: {e}")
+        print(f"\nVerification failed: {e}")
         raise
 
 
