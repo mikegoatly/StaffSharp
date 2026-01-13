@@ -32,14 +32,15 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
     {
         ArgumentNullException.ThrowIfNull(audio);
 
-        // 1. Resample audio to target sample rate if needed
-        var processedAudio = audio.Resample(_options.SampleRate);
-
-        // 2. Convert to mono if needed
+        // 1. Convert to mono first (matches librosa.load(mono=True) behavior)
+        var processedAudio = audio;
         if (processedAudio.Channels > 1)
         {
             processedAudio = processedAudio.ToMono();
         }
+
+        // 2. Resample audio to target sample rate if needed
+        processedAudio = processedAudio.Resample(_options.SampleRate);
 
         // 3. Compute STFT (Short-Time Fourier Transform)
         var stft = ComputeStft(processedAudio);
@@ -88,9 +89,12 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             Fourier.Forward(complexBuffer, FourierOptions.Default);
 
             // Store only positive frequencies (first half + Nyquist)
+            // Note: MathNet.Numerics uses sqrt(N) normalization (unitary), but librosa uses no normalization.
+            // We multiply by sqrt(frame size) to match librosa's normalization.
+            var scale = MathF.Sqrt(_options.FrameSize);
             for (int i = 0; i < _fftBins; i++)
             {
-                stft[frameIdx, i] = complexBuffer[i];
+                stft[frameIdx, i] = complexBuffer[i] * scale;
             }
         }
 
@@ -162,54 +166,65 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
                 $"for sample rate {_options.SampleRate} Hz");
         }
 
+        // Create FFT bin frequencies (matches librosa.fft_frequencies)
+        var fftFreqs = new float[_fftBins];
+        for (int i = 0; i < _fftBins; i++)
+        {
+            fftFreqs[i] = i * _options.SampleRate / (float)_options.FrameSize;
+        }
+
         // Convert min/max frequencies to mel scale
         var minMel = HzToMel(_options.MinFrequency);
         var maxMel = HzToMel(_options.MaxFrequency);
 
-        // Create mel bin edges (linearly spaced in mel scale)
-        var melPoints = new float[_options.MelBins + 2];
+        // Create mel bin edges (linearly spaced in mel scale) - matches librosa.mel_frequencies
+        var melFreqs = new float[_options.MelBins + 2];
         var melStep = (maxMel - minMel) / (_options.MelBins + 1);
-        for (int i = 0; i < melPoints.Length; i++)
+        for (int i = 0; i < melFreqs.Length; i++)
         {
-            melPoints[i] = minMel + (i * melStep);
+            melFreqs[i] = MelToHz(minMel + (i * melStep));
         }
 
-        // Convert mel points back to Hz and then to FFT bin indices
-        var freqPoints = new float[melPoints.Length];
-        var binPoints = new int[melPoints.Length];
-        for (int i = 0; i < melPoints.Length; i++)
+        // Compute differences between adjacent mel frequencies (fdiff in librosa)
+        var fdiff = new float[melFreqs.Length - 1];
+        for (int i = 0; i < fdiff.Length; i++)
         {
-            freqPoints[i] = MelToHz(melPoints[i]);
-            binPoints[i] = (int)(freqPoints[i] * _options.FrameSize / _options.SampleRate);
-
-            // Clamp to valid FFT bin range
-            if (binPoints[i] >= _fftBins)
-                binPoints[i] = _fftBins - 1;
+            fdiff[i] = melFreqs[i + 1] - melFreqs[i];
         }
 
-        // Create triangular filters
-        for (int m = 0; m < _options.MelBins; m++)
+        // Create ramps array: outer subtraction of melFreqs and fftFreqs
+        // ramps[i, j] = melFreqs[i] - fftFreqs[j]
+        var ramps = new float[melFreqs.Length, _fftBins];
+        for (int i = 0; i < melFreqs.Length; i++)
         {
-            var leftBin = binPoints[m];
-            var centerBin = binPoints[m + 1];
-            var rightBin = binPoints[m + 2];
-
-            // Rising slope from left to center
-            for (int bin = leftBin; bin < centerBin && bin < _fftBins; bin++)
+            for (int j = 0; j < _fftBins; j++)
             {
-                if (centerBin > leftBin)
-                {
-                    filterbank[m, bin] = (float)(bin - leftBin) / (centerBin - leftBin);
-                }
+                ramps[i, j] = melFreqs[i] - fftFreqs[j];
             }
+        }
 
-            // Falling slope from center to right
-            for (int bin = centerBin; bin < rightBin && bin < _fftBins; bin++)
+        // Build triangular filters (matches librosa exactly)
+        for (int i = 0; i < _options.MelBins; i++)
+        {
+            // lower = -ramps[i] / fdiff[i]
+            // upper = ramps[i + 2] / fdiff[i + 1]
+            // weights[i] = max(0, min(lower, upper))
+            for (int j = 0; j < _fftBins; j++)
             {
-                if (rightBin > centerBin)
-                {
-                    filterbank[m, bin] = (float)(rightBin - bin) / (rightBin - centerBin);
-                }
+                float lower = -ramps[i, j] / fdiff[i];
+                float upper = ramps[i + 2, j] / fdiff[i + 1];
+                filterbank[i, j] = MathF.Max(0, MathF.Min(lower, upper));
+            }
+        }
+
+        // Apply Slaney normalization (matches librosa's norm='slaney')
+        // enorm = 2.0 / (mel_f[2:n_mels+2] - mel_f[:n_mels])
+        for (int i = 0; i < _options.MelBins; i++)
+        {
+            float enorm = 2.0f / (melFreqs[i + 2] - melFreqs[i]);
+            for (int j = 0; j < _fftBins; j++)
+            {
+                filterbank[i, j] *= enorm;
             }
         }
 

@@ -1,6 +1,9 @@
 namespace StaffSharp.MachineLearning.Tests.ML.Features;
 
+using System.Globalization;
+
 using StaffSharp.Audio;
+using StaffSharp.Audio.IO;
 using StaffSharp.MachineLearning.ML.Features;
 using StaffSharp.MachineLearning.Options;
 using StaffSharp.TestHelpers.Builders;
@@ -245,5 +248,103 @@ public sealed class MelSpectrogramExtractorTests
         // Assert
         Assert.Equal(melBins, features.GetLength(1));
         Assert.True(features.GetLength(0) > 0);
+    }
+
+    [Fact(Skip = "Manual validation test - Phase 1 validation complete with acceptable accuracy")]
+    public async Task ExtractFeatures_ExportForPythonValidation()
+    {
+        // Arrange - load the polyphonic chord test file
+        var testDataPath = Path.Combine("..", "..", "..", "..", "TestData", "Audio", "Chords", "c-chord-d-chord-c-chord-44100-stereo-24bit-pcm.wav");
+        var audioPath = Path.GetFullPath(testDataPath);
+
+        Assert.True(File.Exists(audioPath), $"Test audio file not found at: {audioPath}");
+
+        using var stream = File.OpenRead(audioPath);
+        var audio = await WavReader.ReadAsync(stream);
+
+        Console.WriteLine($"Original audio: {audio.SampleCount} samples, {audio.SampleRate} Hz, {audio.Channels} channels");
+        Console.WriteLine($"Audio range: min={GetMin(audio.Samples.Span):F6}, max={GetMax(audio.Samples.Span):F6}");
+
+        var extractor = new MelSpectrogramExtractor();
+
+        // Act
+        var features = extractor.ExtractFeatures(audio);
+
+        // Save features to a text file that Python can read
+        var outputPath = Path.Combine(Path.GetTempPath(), "csharp_mel_features.txt");
+        await SaveFeaturesToTextAsync(features, outputPath);
+
+        // Assert
+        Assert.True(File.Exists(outputPath), "Features file should be created");
+
+        // Output intermediate statistics
+        Console.WriteLine($"\nFeature statistics:");
+        Console.WriteLine($"  Shape: ({features.GetLength(0)}, {features.GetLength(1)})");
+        var (min, max, mean) = GetStats(features);
+        Console.WriteLine($"  Min: {min:F6}, Max: {max:F6}, Mean: {mean:F6}");
+
+        // Output information for manual validation
+        Console.WriteLine($"\nFeatures exported to: {outputPath}");
+        Console.WriteLine($"Audio file: {audioPath}");
+        Console.WriteLine($"\nTo validate, run:");
+        Console.WriteLine($"python training/scripts/validate_features.py \"{audioPath}\" \"{outputPath}\"");
+    }
+
+    private static float GetMin(ReadOnlySpan<float> span)
+    {
+        float min = float.MaxValue;
+        foreach (var val in span)
+            if (val < min) min = val;
+        return min;
+    }
+
+    private static float GetMax(ReadOnlySpan<float> span)
+    {
+        float max = float.MinValue;
+        foreach (var val in span)
+            if (val > max) max = val;
+        return max;
+    }
+
+    private static (float min, float max, float mean) GetStats(float[,] array)
+    {
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        double sum = 0;
+        int count = 0;
+
+        for (int i = 0; i < array.GetLength(0); i++)
+        {
+            for (int j = 0; j < array.GetLength(1); j++)
+            {
+                var val = array[i, j];
+                if (val < min) min = val;
+                if (val > max) max = val;
+                sum += val;
+                count++;
+            }
+        }
+
+        return (min, max, (float)(sum / count));
+    }
+
+    private static async Task SaveFeaturesToTextAsync(float[,] features, string path)
+    {
+        using var writer = new StreamWriter(path);
+
+        // Write dimensions
+        await writer.WriteLineAsync($"{features.GetLength(0)} {features.GetLength(1)}");
+
+        // Write data (one row per line, space-separated)
+        for (int t = 0; t < features.GetLength(0); t++)
+        {
+            for (int m = 0; m < features.GetLength(1); m++)
+            {
+                if (m > 0)
+                    await writer.WriteAsync(' ');
+                await writer.WriteAsync(features[t, m].ToString("G9", CultureInfo.InvariantCulture));
+            }
+            await writer.WriteLineAsync();
+        }
     }
 }

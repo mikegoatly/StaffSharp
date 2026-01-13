@@ -24,3 +24,11 @@ dotnet_diagnostic.CA1861.severity = none
 # CA2007: Consider calling ConfigureAwait on the awaited task
 # Suppressed for test projects since synchronization context doesn't matter in tests
 dotnet_diagnostic.CA2007.severity = none
+
+# CA1303: Do not pass literals as localized parameters
+# Test output doesn't need localization
+dotnet_diagnostic.CA1303.severity = none
+
+# CA1814: Prefer jagged arrays over multidimensional
+# Test code working with naturally 2D data (features, etc.)
+dotnet_diagnostic.CA1814.severity = none
