@@ -106,12 +106,14 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         var numFrames = stft.GetLength(0);
         var powerSpec = new float[numFrames, _fftBins];
 
+        // Process row by row for better cache locality
         for (int t = 0; t < numFrames; t++)
         {
             for (int f = 0; f < _fftBins; f++)
             {
-                var magnitude = stft[t, f].Magnitude;
-                powerSpec[t, f] = (float)(magnitude * magnitude);
+                // Use Real^2 + Imaginary^2 directly (faster than Magnitude property)
+                var c = stft[t, f];
+                powerSpec[t, f] = (float)((c.Real * c.Real) + (c.Imaginary * c.Imaginary));
             }
         }
 

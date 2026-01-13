@@ -6,3 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 
 // Array properties in records are immutable by design in this context
 [assembly: SuppressMessage("Performance", "CA1819:Properties should not return arrays", Justification = "Record properties with arrays are effectively immutable in this API design")]
+
+// SessionOptions is owned by InferenceSession after construction and is disposed with the session
+[assembly: SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "~M:StaffSharp.MachineLearning.ML.Models.OnnxPolyphonicTranscriber.#ctor(System.String,StaffSharp.MachineLearning.Options.PolyphonicTranscriptionOptions)", Justification = "SessionOptions is owned by InferenceSession and disposed with it")]
