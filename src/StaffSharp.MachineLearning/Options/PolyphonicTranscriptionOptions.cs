@@ -24,6 +24,13 @@ public sealed record PolyphonicTranscriptionOptions
     public float OnsetThreshold { get; init; } = 0.5f;
 
     /// <summary>
+    /// Threshold for offset detection (0.0-1.0).
+    /// Higher values = stricter note release detection.
+    /// Default: 0.5
+    /// </summary>
+    public float OffsetThreshold { get; init; } = 0.5f;
+
+    /// <summary>
     /// Threshold for frame activation (0.0-1.0).
     /// Higher values = stricter note activation requirement.
     /// Default: 0.5

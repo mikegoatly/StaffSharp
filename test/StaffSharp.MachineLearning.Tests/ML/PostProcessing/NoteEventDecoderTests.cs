@@ -11,6 +11,28 @@ public sealed class NoteEventDecoderTests
     private const int HopSize = 512;
     private const int FrameRate = SampleRate / HopSize; // 31.25 fps
 
+    // Helper method to create test results with correct signature
+    private static PolyphonicTranscriptionResult CreateResult(
+        float[,] pianoRoll,
+        float[,] onsetRoll,
+        float[,]? offsetRoll = null,
+        float[,]? velocityRoll = null,
+        int? frameRate = null,
+        int? sampleRate = null)
+    {
+        var numFrames = pianoRoll.GetLength(0);
+        var numKeys = pianoRoll.GetLength(1);
+        
+        return new PolyphonicTranscriptionResult(
+            PianoRoll: pianoRoll,
+            OnsetRoll: onsetRoll,
+            OffsetRoll: offsetRoll ?? new float[numFrames, numKeys],
+            VelocityRoll: velocityRoll ?? new float[numFrames, numKeys],
+            FrameRate: frameRate ?? FrameRate,
+            SampleRate: sampleRate ?? SampleRate
+        );
+    }
+
     [Fact]
     public void Decode_WithNullResult_ThrowsArgumentNullException()
     {
@@ -26,12 +48,9 @@ public sealed class NoteEventDecoderTests
     {
         // Arrange
         var decoder = new NoteEventDecoder();
-        var result = new PolyphonicTranscriptionResult(
-            PianoRoll: new float[10, 80], // Wrong key count
-            OnsetRoll: new float[10, 88],
-            VelocityRoll: new float[10, 88],
-            FrameRate: FrameRate,
-            SampleRate: SampleRate
+        var result = CreateResult(
+            pianoRoll: new float[10, 80], // Wrong key count
+            onsetRoll: new float[10, 88]
         );
 
         // Act & Assert
@@ -44,12 +63,9 @@ public sealed class NoteEventDecoderTests
     {
         // Arrange
         var decoder = new NoteEventDecoder();
-        var result = new PolyphonicTranscriptionResult(
-            PianoRoll: new float[10, 88],
-            OnsetRoll: new float[10, 80], // Wrong key count
-            VelocityRoll: new float[10, 88],
-            FrameRate: FrameRate,
-            SampleRate: SampleRate
+        var result = CreateResult(
+            pianoRoll: new float[10, 88],
+            onsetRoll: new float[10, 80] // Wrong key count
         );
 
         // Act & Assert
@@ -65,6 +81,7 @@ public sealed class NoteEventDecoderTests
         var result = new PolyphonicTranscriptionResult(
             PianoRoll: new float[10, 88],
             OnsetRoll: new float[10, 88],
+            OffsetRoll: new float[10, 88],
             VelocityRoll: new float[10, 80], // Wrong key count
             FrameRate: FrameRate,
             SampleRate: SampleRate
@@ -80,12 +97,10 @@ public sealed class NoteEventDecoderTests
     {
         // Arrange
         var decoder = new NoteEventDecoder();
-        var result = new PolyphonicTranscriptionResult(
-            PianoRoll: new float[10, 88],
-            OnsetRoll: new float[10, 88],
-            VelocityRoll: new float[10, 88],
-            FrameRate: 0, // Invalid
-            SampleRate: SampleRate
+        var result = CreateResult(
+            pianoRoll: new float[10, 88],
+            onsetRoll: new float[10, 88],
+            frameRate: 0 // Invalid
         );
 
         // Act & Assert
@@ -98,12 +113,9 @@ public sealed class NoteEventDecoderTests
     {
         // Arrange
         var decoder = new NoteEventDecoder();
-        var result = new PolyphonicTranscriptionResult(
-            PianoRoll: new float[0, 88],
-            OnsetRoll: new float[0, 88],
-            VelocityRoll: new float[0, 88],
-            FrameRate: FrameRate,
-            SampleRate: SampleRate
+        var result = CreateResult(
+            pianoRoll: new float[0, 88],
+            onsetRoll: new float[0, 88]
         );
 
         // Act
@@ -126,6 +138,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Onset at frame 5
@@ -139,7 +152,7 @@ public sealed class NoteEventDecoderTests
         }
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -163,6 +176,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // First note: frames 5-14
@@ -178,7 +192,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -207,6 +221,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // All notes start at frame 5 and last 10 frames
@@ -219,7 +234,7 @@ public sealed class NoteEventDecoderTests
         }
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -246,6 +261,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // First onset at frame 5
@@ -260,7 +276,7 @@ public sealed class NoteEventDecoderTests
         // Continues to frame 20
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -295,6 +311,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Weak onset (below threshold)
@@ -304,7 +321,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -329,6 +346,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Strong onset
@@ -340,7 +358,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 0.7f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -369,6 +387,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Very short note (2 frames = ~64ms at 31.25 fps)
@@ -378,7 +397,7 @@ public sealed class NoteEventDecoderTests
         pianoRoll[6, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -397,6 +416,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Onset with zero velocity
@@ -406,7 +426,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -425,6 +445,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Note starts at frame 5 and continues to the end
@@ -434,7 +455,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -454,6 +475,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Create notes in non-chronological key order
@@ -473,7 +495,7 @@ public sealed class NoteEventDecoderTests
         }
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -497,6 +519,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Velocity exceeding valid range
@@ -506,7 +529,7 @@ public sealed class NoteEventDecoderTests
             pianoRoll[i, keyIndex] = 1.0f;
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);
@@ -525,6 +548,7 @@ public sealed class NoteEventDecoderTests
 
         var pianoRoll = new float[numFrames, 88];
         var onsetRoll = new float[numFrames, 88];
+        var offsetRoll = new float[numFrames, 88];
         var velocityRoll = new float[numFrames, 88];
 
         // Create a note on every piano key
@@ -537,7 +561,7 @@ public sealed class NoteEventDecoderTests
         }
 
         var result = new PolyphonicTranscriptionResult(
-            pianoRoll, onsetRoll, velocityRoll, FrameRate, SampleRate);
+            pianoRoll, onsetRoll, offsetRoll, velocityRoll, FrameRate, SampleRate);
 
         // Act
         var notes = decoder.Decode(result);

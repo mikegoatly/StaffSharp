@@ -250,7 +250,7 @@ public sealed class MelSpectrogramExtractorTests
         Assert.True(features.GetLength(0) > 0);
     }
 
-    [Fact(Skip = "Manual validation test - Phase 1 validation complete with acceptable accuracy")]
+    [Fact]
     public async Task ExtractFeatures_ExportForPythonValidation()
     {
         // Arrange - load the polyphonic chord test file
