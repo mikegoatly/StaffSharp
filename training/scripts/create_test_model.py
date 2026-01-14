@@ -23,6 +23,7 @@ class DummyOnsetsFramesModel(nn.Module):
     Input: (batch, time, mel_bins) - mel spectrogram features
     Outputs:
         - onset_probs: (batch, time, 88) - onset probabilities
+        - offset_probs: (batch, time, 88) - offset probabilities
         - frame_probs: (batch, time, 88) - frame activation probabilities
         - velocities: (batch, time, 88) - normalized velocities [0-1]
 
@@ -38,6 +39,7 @@ class DummyOnsetsFramesModel(nn.Module):
         # Simple linear projections to convert mel spectrogram to piano roll outputs
         # These are not trained, just initialized randomly for testing
         self.onset_projection = nn.Linear(mel_bins, piano_keys)
+        self.offset_projection = nn.Linear(mel_bins, piano_keys)
         self.frame_projection = nn.Linear(mel_bins, piano_keys)
         self.velocity_projection = nn.Linear(mel_bins, piano_keys)
 
@@ -49,11 +51,14 @@ class DummyOnsetsFramesModel(nn.Module):
             mel_spectrogram: (batch, time, mel_bins) input tensor
 
         Returns:
-            Tuple of (onset_probs, frame_probs, velocities)
+            Tuple of (onset_probs, offset_probs, frame_probs, velocities)
         """
         # Project to piano key space
         # Onsets: sigmoid to get probabilities [0, 1]
         onset_probs = torch.sigmoid(self.onset_projection(mel_spectrogram))
+
+        # Offsets: sigmoid to get probabilities [0, 1]
+        offset_probs = torch.sigmoid(self.offset_projection(mel_spectrogram))
 
         # Frames: sigmoid to get probabilities [0, 1]
         frame_probs = torch.sigmoid(self.frame_projection(mel_spectrogram))
@@ -61,7 +66,7 @@ class DummyOnsetsFramesModel(nn.Module):
         # Velocities: sigmoid to get normalized values [0, 1]
         velocities = torch.sigmoid(self.velocity_projection(mel_spectrogram))
 
-        return onset_probs, frame_probs, velocities
+        return onset_probs, offset_probs, frame_probs, velocities
 
 
 def create_test_model(output_path: str, mel_bins: int = 229, piano_keys: int = 88):
@@ -87,12 +92,13 @@ def create_test_model(output_path: str, mel_bins: int = 229, piano_keys: int = 8
 
     # Define input/output names
     input_names = ['input']
-    output_names = ['onset_probs', 'frame_probs', 'velocities']
+    output_names = ['onset_probs', 'offset_probs', 'frame_probs', 'velocities']
 
     # Define dynamic axes (batch and time can vary)
     dynamic_axes = {
         'input': {0: 'batch', 1: 'time'},
         'onset_probs': {0: 'batch', 1: 'time'},
+        'offset_probs': {0: 'batch', 1: 'time'},
         'frame_probs': {0: 'batch', 1: 'time'},
         'velocities': {0: 'batch', 1: 'time'}
     }

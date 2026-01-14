@@ -80,10 +80,12 @@ public sealed class NoteEventDecoder
         for (int frameIndex = 0; frameIndex < numFrames; frameIndex++)
         {
             var onsetProb = result.OnsetRoll[frameIndex, keyIndex];
+            var offsetProb = result.OffsetRoll[frameIndex, keyIndex];
             var frameProb = result.PianoRoll[frameIndex, keyIndex];
             var velocity = result.VelocityRoll[frameIndex, keyIndex];
 
             var isOnset = onsetProb >= _options.OnsetThreshold;
+            var isOffset = offsetProb >= _options.OffsetThreshold;
             var isActive = frameProb >= _options.FrameThreshold;
 
             // Case 1: New onset detected
@@ -105,8 +107,8 @@ public sealed class NoteEventDecoder
                 activeNoteStartFrame = frameIndex;
                 activeNoteVelocity = velocity;
             }
-            // Case 2: Active note becomes inactive
-            else if (activeNoteStartFrame.HasValue && !isActive)
+            // Case 2: Explicit offset detected or active note becomes inactive
+            else if (activeNoteStartFrame.HasValue && (isOffset || !isActive))
             {
                 TryCreateNote(
                     midiNote,
@@ -185,6 +187,13 @@ public sealed class NoteEventDecoder
         {
             throw new ArgumentException(
                 $"Onset roll must have {PianoKeyCount} keys, got {result.OnsetRoll.GetLength(1)}",
+                nameof(result));
+        }
+
+        if (result.OffsetRoll.GetLength(1) != PianoKeyCount)
+        {
+            throw new ArgumentException(
+                $"Offset roll must have {PianoKeyCount} keys, got {result.OffsetRoll.GetLength(1)}",
                 nameof(result));
         }
 

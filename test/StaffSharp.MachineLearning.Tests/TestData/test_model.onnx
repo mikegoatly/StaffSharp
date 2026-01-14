@@ -1,5 +1,5 @@
 
-pytorch	2.9.1+cpu:ûV
+pytorch2.11.0.dev20260113+cu130:∂r
 È
 input
 val_0val_1node_MatMul_1"MatMulJ{
@@ -7,7 +7,7 @@
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J∆
 pkg.torch.onnx.fx_node´%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_onset_projection_weight, %p_onset_projection_bias), kwargs = {})J@
 pkg.torch.onnx.name_scopes"['', 'onset_projection', 'linear']J≤
-pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 56, in forward
+pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 58, in forward
     onset_probs = torch.sigmoid(self.onset_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
@@ -18,7 +18,7 @@
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J∆
 pkg.torch.onnx.fx_node´%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_onset_projection_weight, %p_onset_projection_bias), kwargs = {})J@
 pkg.torch.onnx.name_scopes"['', 'onset_projection', 'linear']J≤
-pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 56, in forward
+pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 58, in forward
     onset_probs = torch.sigmoid(self.onset_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
@@ -28,126 +28,176 @@
 pkg.torch.onnx.class_hierarchy;['__main__.DummyOnsetsFramesModel', 'aten.sigmoid.default']Jâ
 pkg.torch.onnx.fx_nodeo%sigmoid : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear,), kwargs = {})J-
 pkg.torch.onnx.name_scopes['', 'sigmoid']J∫
-pkg.torch.onnx.stack_traceõFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 56, in forward
+pkg.torch.onnx.stack_traceõFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 58, in forward
     onset_probs = torch.sigmoid(self.onset_projection(mel_spectrogram))
+ı
+input
+val_2val_3node_MatMul_3"MatMulJ~
+	namespaceq: __main__.DummyOnsetsFramesModel/offset_projection: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJ~
+pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J 
+pkg.torch.onnx.fx_nodeØ%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_offset_projection_weight, %p_offset_projection_bias), kwargs = {})JC
+pkg.torch.onnx.name_scopes%['', 'offset_projection', 'linear_1']J¥
+pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 61, in forward
+    offset_probs = torch.sigmoid(self.offset_projection(mel_spectrogram))
+  File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+Ü
+val_3
+offset_projection.biaslinear_1node_linear_1"AddJ~
+	namespaceq: __main__.DummyOnsetsFramesModel/offset_projection: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJ~
+pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J 
+pkg.torch.onnx.fx_nodeØ%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_offset_projection_weight, %p_offset_projection_bias), kwargs = {})JC
+pkg.torch.onnx.name_scopes%['', 'offset_projection', 'linear_1']J¥
+pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 61, in forward
+    offset_probs = torch.sigmoid(self.offset_projection(mel_spectrogram))
+  File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+‡
+linear_1offset_probsnode_sigmoid_1"SigmoidJN
+	namespaceA: __main__.DummyOnsetsFramesModel/sigmoid_1: aten.sigmoid.defaultJ]
+pkg.torch.onnx.class_hierarchy;['__main__.DummyOnsetsFramesModel', 'aten.sigmoid.default']Jç
+pkg.torch.onnx.fx_nodes%sigmoid_1 : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_1,), kwargs = {})J/
+pkg.torch.onnx.name_scopes['', 'sigmoid_1']Jº
+pkg.torch.onnx.stack_traceùFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 61, in forward
+    offset_probs = torch.sigmoid(self.offset_projection(mel_spectrogram))
 Ô
 input
-val_2val_3node_MatMul_3"MatMulJ}
-	namespacep: __main__.DummyOnsetsFramesModel/frame_projection: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJ~
+val_4val_5node_MatMul_5"MatMulJ}
+	namespacep: __main__.DummyOnsetsFramesModel/frame_projection: torch.nn.modules.linear.Linear/linear_2: aten.linear.defaultJ~
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J»
-pkg.torch.onnx.fx_node≠%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_frame_projection_weight, %p_frame_projection_bias), kwargs = {})JB
-pkg.torch.onnx.name_scopes$['', 'frame_projection', 'linear_1']J≤
-pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 59, in forward
+pkg.torch.onnx.fx_node≠%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_frame_projection_weight, %p_frame_projection_bias), kwargs = {})JB
+pkg.torch.onnx.name_scopes$['', 'frame_projection', 'linear_2']J≤
+pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 64, in forward
     frame_probs = torch.sigmoid(self.frame_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
 ˇ
-val_3
-frame_projection.biaslinear_1node_linear_1"AddJ}
-	namespacep: __main__.DummyOnsetsFramesModel/frame_projection: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJ~
+val_5
+frame_projection.biaslinear_2node_linear_2"AddJ}
+	namespacep: __main__.DummyOnsetsFramesModel/frame_projection: torch.nn.modules.linear.Linear/linear_2: aten.linear.defaultJ~
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J»
-pkg.torch.onnx.fx_node≠%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_frame_projection_weight, %p_frame_projection_bias), kwargs = {})JB
-pkg.torch.onnx.name_scopes$['', 'frame_projection', 'linear_1']J≤
-pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 59, in forward
+pkg.torch.onnx.fx_node≠%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_frame_projection_weight, %p_frame_projection_bias), kwargs = {})JB
+pkg.torch.onnx.name_scopes$['', 'frame_projection', 'linear_2']J≤
+pkg.torch.onnx.stack_traceìFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 64, in forward
     frame_probs = torch.sigmoid(self.frame_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
 ›
-linear_1frame_probsnode_sigmoid_1"SigmoidJN
-	namespaceA: __main__.DummyOnsetsFramesModel/sigmoid_1: aten.sigmoid.defaultJ]
+linear_2frame_probsnode_sigmoid_2"SigmoidJN
+	namespaceA: __main__.DummyOnsetsFramesModel/sigmoid_2: aten.sigmoid.defaultJ]
 pkg.torch.onnx.class_hierarchy;['__main__.DummyOnsetsFramesModel', 'aten.sigmoid.default']Jç
-pkg.torch.onnx.fx_nodes%sigmoid_1 : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_1,), kwargs = {})J/
-pkg.torch.onnx.name_scopes['', 'sigmoid_1']J∫
-pkg.torch.onnx.stack_traceõFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 59, in forward
+pkg.torch.onnx.fx_nodes%sigmoid_2 : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_2,), kwargs = {})J/
+pkg.torch.onnx.name_scopes['', 'sigmoid_2']J∫
+pkg.torch.onnx.stack_traceõFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 64, in forward
     frame_probs = torch.sigmoid(self.frame_projection(mel_spectrogram))
 ˛
 input
-val_4val_5node_MatMul_5"MatMulJÄ
-	namespaces: __main__.DummyOnsetsFramesModel/velocity_projection: torch.nn.modules.linear.Linear/linear_2: aten.linear.defaultJ~
+val_6val_7node_MatMul_7"MatMulJÄ
+	namespaces: __main__.DummyOnsetsFramesModel/velocity_projection: torch.nn.modules.linear.Linear/linear_3: aten.linear.defaultJ~
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']JŒ
-pkg.torch.onnx.fx_node≥%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_velocity_projection_weight, %p_velocity_projection_bias), kwargs = {})JE
-pkg.torch.onnx.name_scopes'['', 'velocity_projection', 'linear_2']J¥
-pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 62, in forward
+pkg.torch.onnx.fx_node≥%linear_3 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_velocity_projection_weight, %p_velocity_projection_bias), kwargs = {})JE
+pkg.torch.onnx.name_scopes'['', 'velocity_projection', 'linear_3']J¥
+pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 67, in forward
     velocities = torch.sigmoid(self.velocity_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
 ë
-val_5
-velocity_projection.biaslinear_2node_linear_2"AddJÄ
-	namespaces: __main__.DummyOnsetsFramesModel/velocity_projection: torch.nn.modules.linear.Linear/linear_2: aten.linear.defaultJ~
+val_7
+velocity_projection.biaslinear_3node_linear_3"AddJÄ
+	namespaces: __main__.DummyOnsetsFramesModel/velocity_projection: torch.nn.modules.linear.Linear/linear_3: aten.linear.defaultJ~
 pkg.torch.onnx.class_hierarchy\['__main__.DummyOnsetsFramesModel', 'torch.nn.modules.linear.Linear', 'aten.linear.default']JŒ
-pkg.torch.onnx.fx_node≥%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_velocity_projection_weight, %p_velocity_projection_bias), kwargs = {})JE
-pkg.torch.onnx.name_scopes'['', 'velocity_projection', 'linear_2']J¥
-pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 62, in forward
+pkg.torch.onnx.fx_node≥%linear_3 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%mel_spectrogram, %p_velocity_projection_weight, %p_velocity_projection_bias), kwargs = {})JE
+pkg.torch.onnx.name_scopes'['', 'velocity_projection', 'linear_3']J¥
+pkg.torch.onnx.stack_traceïFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 67, in forward
     velocities = torch.sigmoid(self.velocity_projection(mel_spectrogram))
   File "C:\Users\mikeg\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
 ﬁ
-linear_2
-velocitiesnode_sigmoid_2"SigmoidJN
-	namespaceA: __main__.DummyOnsetsFramesModel/sigmoid_2: aten.sigmoid.defaultJ]
+linear_3
+velocitiesnode_sigmoid_3"SigmoidJN
+	namespaceA: __main__.DummyOnsetsFramesModel/sigmoid_3: aten.sigmoid.defaultJ]
 pkg.torch.onnx.class_hierarchy;['__main__.DummyOnsetsFramesModel', 'aten.sigmoid.default']Jç
-pkg.torch.onnx.fx_nodes%sigmoid_2 : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_2,), kwargs = {})J/
-pkg.torch.onnx.name_scopes['', 'sigmoid_2']Jº
-pkg.torch.onnx.stack_traceùFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 62, in forward
+pkg.torch.onnx.fx_nodes%sigmoid_3 : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_3,), kwargs = {})J/
+pkg.torch.onnx.name_scopes['', 'sigmoid_3']Jº
+pkg.torch.onnx.stack_traceùFile "C:\dev\StaffSharp\training\scripts\create_test_model.py", line 67, in forward
     velocities = torch.sigmoid(self.velocity_projection(mel_spectrogram))
 main_graph*[XBonset_projection.biasj 
 locationtest_model.onnx.dataj
 offset0j
-length352p*]XBframe_projection.biasj 
+length352p*^XBoffset_projection.biasj 
 locationtest_model.onnx.dataj
 offset352j
-length352p*`XBvelocity_projection.biasj 
+length352p*]XBframe_projection.biasj 
 locationtest_model.onnx.dataj
 offset704j
+length352p*aXBvelocity_projection.biasj 
+locationtest_model.onnx.dataj
+offset1056j
 length352p*SÂXBval_0j 
 locationtest_model.onnx.dataj
-offset1056j
+offset1408j
 length80608p*TÂXBval_2j 
 locationtest_model.onnx.dataj
-offset81664j
+offset82016j
 length80608p*UÂXBval_4j 
 locationtest_model.onnx.dataj
-offset162272j
-length80608pZ’
-input
-
-s55
-s7
+offset162624j
+length80608p*UÂXBval_6j 
+locationtest_model.onnx.dataj
+offset243232j
+length80608pZŸ
+input
+
+batch
+time
 Â"=
 /pkg.torch.export.graph_signature.InputSpec.kind
 USER_INPUT"=
 5pkg.torch.export.graph_signature.InputSpec.persistentNone"4
-!pkg.torch.onnx.original_node_namemel_spectrogrambï
-onset_probs
-
-s55
-s7
+!pkg.torch.onnx.original_node_namemel_spectrogrambô
+onset_probs
+
+batch
+time
 X"?
 0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT",
-!pkg.torch.onnx.original_node_namesigmoidbó
-frame_probs
-
-s55
-s7
+!pkg.torch.onnx.original_node_namesigmoidbú
+offset_probs
+
+batch
+time
 X"?
 0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT".
-!pkg.torch.onnx.original_node_name	sigmoid_1bñ
+!pkg.torch.onnx.original_node_name	sigmoid_1bõ
+frame_probs
+
+batch
+time
+X"?
+0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT".
+!pkg.torch.onnx.original_node_name	sigmoid_2bö
 
-velocities
-
-s55
-s7
+velocities
+
+batch
+time
 X"?
 0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT".
-!pkg.torch.onnx.original_node_name	sigmoid_2jﬁ
+!pkg.torch.onnx.original_node_name	sigmoid_3jﬁ
 onset_projection.bias
 
 
 X"<
 /pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
 5pkg.torch.export.graph_signature.InputSpec.persistentNone"<
-!pkg.torch.onnx.original_node_namep_onset_projection_biasjﬁ
+!pkg.torch.onnx.original_node_namep_onset_projection_biasj‡
+offset_projection.bias
+
+
+X"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"=
+!pkg.torch.onnx.original_node_namep_offset_projection_biasjﬁ
 frame_projection.bias
 
 
@@ -166,51 +216,68 @@ velocities
 	
 Â
 X"C
-$pkg.onnxscript.optimizer.folded_from['onset_projection.weight']j]
+$pkg.onnxscript.optimizer.folded_from['onset_projection.weight']j^
 val_2
+	
+Â
+X"D
+$pkg.onnxscript.optimizer.folded_from['offset_projection.weight']j]
+val_4
 	
 Â
 X"C
 $pkg.onnxscript.optimizer.folded_from['frame_projection.weight']j`
-val_4
+val_6
 	
 Â
 X"F
-$pkg.onnxscript.optimizer.folded_from['velocity_projection.weight']j 
-val_1
-
-s55
-s7
-Xj!
-linear
-
-s55
-s7
-Xj 
-val_3
-
-s55
-s7
-Xj#
-linear_1
-
-s55
-s7
-Xj 
-val_5
-
-s55
-s7
-Xj#
-linear_2
-
-s55
-s7
-XÇÕ
-0pkg.torch.export.ExportedProgram.graph_signatureò
+$pkg.onnxscript.optimizer.folded_from['velocity_projection.weight']j$
+val_1
+
+batch
+time
+Xj%
+linear
+
+batch
+time
+Xj$
+val_3
+
+batch
+time
+Xj'
+linear_1
+
+batch
+time
+Xj$
+val_5
+
+batch
+time
+Xj'
+linear_2
+
+batch
+time
+Xj$
+val_7
+
+batch
+time
+Xj'
+linear_3
+
+batch
+time
+XÇ
+0pkg.torch.export.ExportedProgram.graph_signatureª
 # inputs
 p_onset_projection_weight: PARAMETER target='onset_projection.weight'
 p_onset_projection_bias: PARAMETER target='onset_projection.bias'
+p_offset_projection_weight: PARAMETER target='offset_projection.weight'
+p_offset_projection_bias: PARAMETER target='offset_projection.bias'
 p_frame_projection_weight: PARAMETER target='frame_projection.weight'
 p_frame_projection_bias: PARAMETER target='frame_projection.bias'
 p_velocity_projection_weight: PARAMETER target='velocity_projection.weight'
@@ -221,6 +288,7 @@ mel_spectrogram: USER_INPUT
 sigmoid: USER_OUTPUT
 sigmoid_1: USER_OUTPUT
 sigmoid_2: USER_OUTPUT
+sigmoid_3: USER_OUTPUT
 Ç]
 2pkg.torch.export.ExportedProgram.range_constraints'{s55: VR[0, int_oo], s7: VR[0, int_oo]}B
  

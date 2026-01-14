@@ -98,13 +98,14 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         var inputTensor = ConvertToTensor(features);
 
         // 3. Run inference
-        var (onsetProbs, frameProbs, velocities) = RunInference(inputTensor);
+        var (onsetProbs, offsetProbs, frameProbs, velocities) = RunInference(inputTensor);
 
         // 4. Validate output shapes
-        ValidateOutputShapes(onsetProbs, frameProbs, velocities, numFrames);
+        ValidateOutputShapes(onsetProbs, offsetProbs, frameProbs, velocities, numFrames);
 
         // 5. Convert from (batch, time, keys) to (time, keys)
         var onsetRoll = ExtractBatch(onsetProbs);
+        var offsetRoll = ExtractBatch(offsetProbs);
         var pianoRoll = ExtractBatch(frameProbs);
         var velocityRoll = ExtractBatch(velocities);
 
@@ -114,6 +115,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         return new PolyphonicTranscriptionResult(
             pianoRoll,
             onsetRoll,
+            offsetRoll,
             velocityRoll,
             frameRate,
             _options.FeatureOptions.SampleRate);
@@ -139,7 +141,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         return tensor;
     }
 
-    private (float[,,] onsets, float[,,] frames, float[,,] velocities) RunInference(DenseTensor<float> inputTensor)
+    private (float[,,] onsets, float[,,] offsets, float[,,] frames, float[,,] velocities) RunInference(DenseTensor<float> inputTensor)
     {
         // Get input name (typically "input" or "mel_spectrogram")
         var inputName = _session.InputNames[0];
@@ -153,14 +155,15 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         // Run inference
         using var results = _session.Run(inputs);
 
-        // Extract outputs (expected names: onset_probs, frame_probs, velocities)
+        // Extract outputs (expected names: onset_probs, offset_probs, frame_probs, velocities)
         var outputDict = results.ToDictionary(r => r.Name, r => (DisposableNamedOnnxValue)r);
 
         var onsets = ExtractOutput(outputDict, "onset_probs");
+        var offsets = ExtractOutput(outputDict, "offset_probs");
         var frames = ExtractOutput(outputDict, "frame_probs");
         var velocities = ExtractOutput(outputDict, "velocities");
 
-        return (onsets, frames, velocities);
+        return (onsets, offsets, frames, velocities);
     }
 
     private static float[,,] ExtractOutput(Dictionary<string, DisposableNamedOnnxValue> outputs, string name)
@@ -224,7 +227,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         }
 
         // Validate outputs
-        var expectedOutputs = new[] { "onset_probs", "frame_probs", "velocities" };
+        var expectedOutputs = new[] { "onset_probs", "offset_probs", "frame_probs", "velocities" };
         var actualOutputs = _session.OutputNames.ToHashSet();
 
         foreach (var expected in expectedOutputs)
@@ -240,25 +243,27 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
 
     private static void ValidateOutputShapes(
         float[,,] onsets,
+        float[,,] offsets,
         float[,,] frames,
         float[,,] velocities,
         int expectedTimeFrames)
     {
         // Check batch size
-        if (onsets.GetLength(0) != 1 || frames.GetLength(0) != 1 || velocities.GetLength(0) != 1)
+        if (onsets.GetLength(0) != 1 || offsets.GetLength(0) != 1 || frames.GetLength(0) != 1 || velocities.GetLength(0) != 1)
         {
             throw new InvalidOperationException("Expected batch size of 1");
         }
 
         // Check time dimension
         var onsetTime = onsets.GetLength(1);
+        var offsetTime = offsets.GetLength(1);
         var frameTime = frames.GetLength(1);
         var velocityTime = velocities.GetLength(1);
 
-        if (onsetTime != frameTime || onsetTime != velocityTime)
+        if (onsetTime != offsetTime || onsetTime != frameTime || onsetTime != velocityTime)
         {
             throw new InvalidOperationException(
-                $"Time dimensions mismatch: onsets={onsetTime}, frames={frameTime}, velocities={velocityTime}");
+                $"Time dimensions mismatch: onsets={onsetTime}, offsets={offsetTime}, frames={frameTime}, velocities={velocityTime}");
         }
 
         // Note: The model may output slightly different number of frames due to padding/convolution
@@ -266,13 +271,14 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
 
         // Check key dimension (should be 88 piano keys)
         var onsetKeys = onsets.GetLength(2);
+        var offsetKeys = offsets.GetLength(2);
         var frameKeys = frames.GetLength(2);
         var velocityKeys = velocities.GetLength(2);
 
-        if (onsetKeys != PianoKeyCount || frameKeys != PianoKeyCount || velocityKeys != PianoKeyCount)
+        if (onsetKeys != PianoKeyCount || offsetKeys != PianoKeyCount || frameKeys != PianoKeyCount || velocityKeys != PianoKeyCount)
         {
             throw new InvalidOperationException(
-                $"Expected {PianoKeyCount} piano keys, got onsets={onsetKeys}, frames={frameKeys}, velocities={velocityKeys}");
+                $"Expected {PianoKeyCount} piano keys, got onsets={onsetKeys}, offsets={offsetKeys}, frames={frameKeys}, velocities={velocityKeys}");
         }
     }
 
