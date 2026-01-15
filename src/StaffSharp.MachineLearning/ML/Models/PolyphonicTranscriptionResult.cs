@@ -24,6 +24,7 @@ namespace StaffSharp.MachineLearning.ML.Models;
 /// <param name="FrameRate">
 /// Number of frames per second (Hz).
 /// Computed as SampleRate / HopSize.
+/// Uses double precision to avoid rounding errors (e.g., 16000 / 512 = 31.25 Hz).
 /// </param>
 /// <param name="SampleRate">
 /// Audio sample rate used for feature extraction (Hz).
@@ -33,7 +34,7 @@ public sealed record PolyphonicTranscriptionResult(
     float[,] OnsetRoll,
     float[,] OffsetRoll,
     float[,] VelocityRoll,
-    int FrameRate,
+    double FrameRate,
     int SampleRate)
 {
     /// <summary>

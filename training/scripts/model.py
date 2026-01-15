@@ -30,6 +30,7 @@ class OnsetsAndFramesModel(nn.Module):
         model_complexity: int = 48, 
         lstm_hidden_size: int = 256,
         lstm_num_layers: int = 3, # Paper usually uses 3 layers
+        projection_size: int = 768,  # Hidden size after CNN projection
         dropout: float = 0.5
     ):
         super().__init__()
@@ -71,11 +72,11 @@ class OnsetsAndFramesModel(nn.Module):
         self.cnn_output_size = cnn_out_channels * cnn_out_freq
         
         # Projection
-        self.fc_projection = nn.Linear(self.cnn_output_size, 768)
+        self.fc_projection = nn.Linear(self.cnn_output_size, projection_size)
 
         # --- Recurrent Model ---
         self.lstm = nn.LSTM(
-            input_size=768,
+            input_size=projection_size,
             hidden_size=lstm_hidden_size,
             num_layers=lstm_num_layers,
             batch_first=True,
@@ -94,6 +95,32 @@ class OnsetsAndFramesModel(nn.Module):
         self.frame_head = nn.Linear(lstm_out + output_features * 2, output_features)
 
     def forward(self, mel_spec: torch.Tensor):
+        """Forward pass through the model.
+        
+        Args:
+            mel_spec: Mel spectrogram tensor of shape (batch, time, mel_bins) or (time, mel_bins)
+        
+        Returns:
+            Tuple of (onsets, offsets, frames, velocities), each with shape (batch, time, 88) or (time, 88)
+        
+        Raises:
+            ValueError: If input tensor has wrong number of dimensions or mel bins
+        """
+        # Validate input
+        if mel_spec.dim() not in [2, 3]:
+            raise ValueError(
+                f"Expected 2D or 3D input tensor, got {mel_spec.dim()}D tensor. "
+                f"Expected shape (time, mel_bins) or (batch, time, mel_bins), "
+                f"got shape {mel_spec.shape}"
+            )
+        
+        expected_features = 229
+        if mel_spec.shape[-1] != expected_features:
+            raise ValueError(
+                f"Expected {expected_features} mel bins as last dimension, "
+                f"got {mel_spec.shape[-1]}. Full shape: {mel_spec.shape}"
+            )
+        
         # mel_spec: (batch, time, mel_bins)
         
         # 1. CNN
@@ -162,9 +189,35 @@ class OnsetsAndFramesModel(nn.Module):
 class OnsetsAndFramesLoss(nn.Module):
     """
     Combined loss function for onset, offset, frame, and velocity prediction.
+    
+    This loss handles class imbalance by using pos_weight for onset/offset/frame detection,
+    and MSE for velocity prediction. All components can be weighted independently.
     """
 
-    def __init__(self, onset_weight=1.0, offset_weight=1.0, frame_weight=1.0, velocity_weight=1.0):
+    def __init__(
+        self,
+        onset_weight: float = 1.0,
+        offset_weight: float = 1.0,
+        frame_weight: float = 1.0,
+        velocity_weight: float = 1.0,
+        onset_pos_weight: float = 5.0,
+        offset_pos_weight: float = 5.0,
+        frame_pos_weight: float = 2.0
+    ):
+        """
+        Initialize loss function with configurable weights.
+        
+        Args:
+            onset_weight: Weight for onset loss in total loss computation
+            offset_weight: Weight for offset loss in total loss computation
+            frame_weight: Weight for frame loss in total loss computation
+            velocity_weight: Weight for velocity loss in total loss computation
+            onset_pos_weight: Positive class weight for onset detection (handles class imbalance).
+                Higher values (e.g., 5.0) compensate for rare onset events.
+            offset_pos_weight: Positive class weight for offset detection.
+            frame_pos_weight: Positive class weight for frame activation.
+                Lower than onset (e.g., 2.0) since frames are less sparse.
+        """
         super().__init__()
         self.onset_weight = onset_weight
         self.offset_weight = offset_weight
@@ -173,20 +226,21 @@ class OnsetsAndFramesLoss(nn.Module):
         
         # Standard BCE With Logits but with positive weights to handle class imbalance
         # Notes are rare events in the time-frequency space
-        self.onset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([5.0]))
-        self.offset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([5.0]))
-        self.frame_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([2.0]))
+        self.onset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(onset_pos_weight))
+        self.offset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(offset_pos_weight))
+        self.frame_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(frame_pos_weight))
         
         self.velocity_criterion = nn.MSELoss(reduction='none')
 
     def forward(self, onsets, offsets, frames, velocities, 
                 onset_label, offset_label, frame_label, velocity_label, mask=None):
         
-        # Ensure weights are on the correct device
-        if self.onset_bce.pos_weight.device != onsets.device:
-            self.onset_bce.pos_weight = self.onset_bce.pos_weight.to(onsets.device)
-            self.offset_bce.pos_weight = self.offset_bce.pos_weight.to(onsets.device)
-            self.frame_bce.pos_weight = self.frame_bce.pos_weight.to(onsets.device)
+        # Ensure weights are on the correct device (only once, typically first forward pass)
+        device = onsets.device
+        if self.onset_bce.pos_weight.device != device:
+            self.onset_bce.pos_weight = self.onset_bce.pos_weight.to(device)
+            self.offset_bce.pos_weight = self.offset_bce.pos_weight.to(device)
+            self.frame_bce.pos_weight = self.frame_bce.pos_weight.to(device)
 
         # Expand mask to (B, T, 88) if provided
         if mask is not None:
@@ -241,22 +295,41 @@ class OnsetsAndFramesLoss(nn.Module):
         return total_loss, loss_dict
 
 
-def create_model(device: str = 'cuda') -> OnsetsAndFramesModel:
+def create_model(
+    device: str = 'cuda',
+    num_mels: int = 229,
+    projection_size: int = 768,
+    num_layers: int = 3,
+    hidden_size: int = 256
+) -> OnsetsAndFramesModel:
     """
     Create a default Onsets and Frames model.
 
     Args:
         device: Device to place model on ('cuda' or 'cpu')
+        num_mels: Number of mel bins in spectrogram (default: 229)
+        projection_size: Size of projection layer (default: 768)
+        num_layers: Number of LSTM layers (default: 3)
+        hidden_size: Hidden size of LSTM (default: 256)
 
     Returns:
         model: Initialized model on specified device
+    
+    Model Architecture Details:
+        - Input: Mel spectrogram (mel_bins)
+        - CNN: 3 blocks of convolution with max pooling on frequency axis
+        - Projection: projection_size-dim hidden layer after CNN
+        - LSTM: num_layers-layer bidirectional LSTM (hidden_size each direction)
+        - Heads: 4 prediction heads for onset, offset, frame, and velocity
+        - Total params: ~2.1M (varies with projection_size and hidden_size)
     """
     model = OnsetsAndFramesModel(
-        input_features=229,
+        input_features=num_mels,
         output_features=88,
         model_complexity=48,
-        lstm_hidden_size=256,
-        lstm_num_layers=3,
+        lstm_hidden_size=hidden_size,
+        lstm_num_layers=num_layers,
+        projection_size=projection_size,
         dropout=0.5
     )
 

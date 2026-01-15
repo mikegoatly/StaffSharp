@@ -15,6 +15,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from onnx_utils import export_to_onnx_format, verify_onnx_model
+
 
 class DummyOnsetsFramesModel(nn.Module):
     """
@@ -109,73 +111,21 @@ def create_test_model(output_path: str, mel_bins: int = 229, piano_keys: int = 8
     for name in output_names:
         print(f"    - {name} with shape (batch, time, {piano_keys})")
 
-    # Export to ONNX
-    import os
-    # Suppress verbose output to avoid Unicode issues on Windows
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_path,
+    # Export to ONNX using shared utility
+    export_to_onnx_format(
+        model=model,
+        dummy_input=dummy_input,
+        output_path=output_path,
         input_names=input_names,
         output_names=output_names,
-        dynamic_axes=dynamic_axes,
-        opset_version=18,  # Use opset 18 to avoid conversion warnings
-        do_constant_folding=True,
-        export_params=True,
-        verbose=False  # Suppress verbose output
+        opset_version=18,
+        verbose=False
     )
 
     print(f"\nModel saved to: {output_path}")
 
-    # Verify the exported model
-    verify_model(output_path)
-
-
-def verify_model(model_path: str):
-    """Verify the exported ONNX model can be loaded and run."""
-    try:
-        import onnx
-        import onnxruntime as ort
-
-        print(f"\nVerifying ONNX model...")
-
-        # Load and check the model
-        model = onnx.load(model_path)
-        onnx.checker.check_model(model)
-        print("  Model structure is valid")
-
-        # Test inference with ONNX Runtime
-        session = ort.InferenceSession(model_path)
-
-        # Check inputs
-        print(f"\n  Inputs:")
-        for input_meta in session.get_inputs():
-            print(f"    - {input_meta.name}: {input_meta.shape} ({input_meta.type})")
-
-        # Check outputs
-        print(f"  Outputs:")
-        for output_meta in session.get_outputs():
-            print(f"    - {output_meta.name}: {output_meta.shape} ({output_meta.type})")
-
-        # Run a test inference
-        dummy_input = np.random.randn(1, 50, 229).astype(np.float32)
-        input_name = session.get_inputs()[0].name
-        outputs = session.run(None, {input_name: dummy_input})
-
-        print(f"\n  Test inference with input shape {dummy_input.shape}:")
-        for i, (output_meta, output_data) in enumerate(zip(session.get_outputs(), outputs)):
-            print(f"    - {output_meta.name}: shape={output_data.shape}, " +
-                  f"range=[{output_data.min():.3f}, {output_data.max():.3f}]")
-
-        print("\nModel verification successful!")
-
-    except ImportError as e:
-        print(f"\nVerification skipped: {e}")
-        print("  Install onnx and onnxruntime to verify: pip install onnx onnxruntime")
-    except Exception as e:
-        print(f"\nVerification failed: {e}")
-        raise
+    # Verify the exported model using shared utility
+    verify_onnx_model(output_path, mel_bins=mel_bins, piano_keys=piano_keys)
 
 
 def main():

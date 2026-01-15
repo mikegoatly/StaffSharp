@@ -14,6 +14,7 @@ Usage:
 
 import argparse
 import os
+import random
 import time
 from pathlib import Path
 from typing import Dict, Optional
@@ -26,6 +27,25 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from model import OnsetsAndFramesModel, OnsetsAndFramesLoss, create_model
+from early_stopping import EarlyStopping
+from metrics import compute_all_metrics, print_metrics
+
+
+def set_seed(seed: int = 42):
+    """Set random seeds for reproducibility across all libraries.
+    
+    Args:
+        seed: Random seed value (default: 42)
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        # For full determinism (may reduce performance slightly)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 class MaestroDataset(Dataset):
@@ -54,14 +74,29 @@ class MaestroDataset(Dataset):
         return len(self.files)
 
     def __getitem__(self, idx):
-        # Load preprocessed data
-        data = np.load(self.files[idx])
+        # Load preprocessed data with error handling
+        try:
+            data = np.load(self.files[idx])
+        except Exception as e:
+            print(f"Error loading {self.files[idx]}: {e}")
+            # Skip to next file instead of crashing
+            next_idx = (idx + 1) % len(self.files)
+            if next_idx == idx:  # Prevent infinite loop if only one file
+                raise RuntimeError(f"Failed to load file and no other files available: {self.files[idx]}")
+            return self.__getitem__(next_idx)
 
         # Get raw arrays first
-        m_spec = data['mel_spec']
-        o_roll = data['onset_roll']
-        p_roll = data['piano_roll']
-        v_roll = data['velocity_roll']
+        try:
+            m_spec = data['mel_spec']
+            o_roll = data['onset_roll']
+            p_roll = data['piano_roll']
+            v_roll = data['velocity_roll']
+        except KeyError as e:
+            print(f"Missing key {e} in {self.files[idx]}")
+            next_idx = (idx + 1) % len(self.files)
+            if next_idx == idx:
+                raise RuntimeError(f"Missing required keys in file and no other files available: {self.files[idx]}")
+            return self.__getitem__(next_idx)
 
         # Crop if necessary
         if self.sequence_length and m_spec.shape[0] > self.sequence_length:
@@ -99,10 +134,147 @@ class MaestroDataset(Dataset):
         return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
 
 
+class SlidingWindowDataset(Dataset):
+    """
+    Wraps MaestroDataset to yield multiple sliding window crops per file.
+    
+    This increases effective dataset size and training efficiency by using
+    overlapping windows from each file instead of random single crops per epoch.
+    
+    Example:
+        For a 30-second file (18,000 frames) with 2000-frame crops and 500-frame stride:
+        - Single crop: 1 sample per epoch
+        - Sliding window: 36 samples per epoch (18000 - 2000) / 500 + 1
+        - Data utilization: 89% -> ~99%
+    """
+    
+    def __init__(
+        self,
+        base_dataset: MaestroDataset,
+        stride: int = 500,
+        use_all_windows: bool = True
+    ):
+        """
+        Initialize sliding window wrapper.
+        
+        Args:
+            base_dataset: MaestroDataset instance
+            stride: Number of frames to slide between windows (default: 500)
+            use_all_windows: If True, use all possible windows. If False, use single random crop per file
+                            (for memory efficiency on large datasets)
+        """
+        self.base_dataset = base_dataset
+        self.stride = stride
+        self.use_all_windows = use_all_windows
+        self.sequence_length = base_dataset.sequence_length
+        
+        # Build index mapping file indices to window indices
+        self.windows = []  # List of (file_idx, window_start_frame)
+        
+        if self.use_all_windows and self.sequence_length:
+            # Pre-compute all windows
+            for file_idx in range(len(base_dataset)):
+                try:
+                    data = np.load(base_dataset.files[file_idx])
+                    num_frames = data['mel_spec'].shape[0]
+                    
+                    if num_frames >= self.sequence_length:
+                        # Generate all windows with stride
+                        for start in range(0, num_frames - self.sequence_length + 1, self.stride):
+                            self.windows.append((file_idx, start))
+                    else:
+                        # File too short, use as-is
+                        self.windows.append((file_idx, 0))
+                except Exception as e:
+                    print(f"Warning: could not load {base_dataset.files[file_idx]}: {e}")
+                    continue
+            
+            print(f"Created {len(self.windows)} sliding window samples from {len(base_dataset)} files")
+            if len(self.windows) == 0:
+                raise ValueError("No valid windows could be created from dataset")
+        else:
+            # Fall back to single sample per file
+            self.windows = [(i, 0) for i in range(len(base_dataset))]
+    
+    def __len__(self):
+        return len(self.windows)
+    
+    def __getitem__(self, idx):
+        file_idx, start_frame = self.windows[idx]
+        
+        # Load the file directly
+        try:
+            data = np.load(self.base_dataset.files[file_idx])
+        except Exception as e:
+            print(f"Error loading {self.base_dataset.files[file_idx]}: {e}")
+            # Skip to next window
+            next_idx = (idx + 1) % len(self.windows)
+            if next_idx == idx:
+                raise RuntimeError("Cannot load any files in dataset")
+            return self.__getitem__(next_idx)
+        
+        try:
+            m_spec = data['mel_spec']
+            o_roll = data['onset_roll']
+            p_roll = data['piano_roll']
+            v_roll = data['velocity_roll']
+        except KeyError as e:
+            print(f"Missing key {e} in {self.base_dataset.files[file_idx]}")
+            next_idx = (idx + 1) % len(self.windows)
+            if next_idx == idx:
+                raise RuntimeError("Cannot load data from any files in dataset")
+            return self.__getitem__(next_idx)
+        
+        # Extract window
+        if self.sequence_length:
+            end_frame = start_frame + self.sequence_length
+            m_spec = m_spec[start_frame:end_frame]
+            o_roll = o_roll[start_frame:end_frame]
+            p_roll = p_roll[start_frame:end_frame]
+            v_roll = v_roll[start_frame:end_frame]
+        
+        mel_spec = torch.from_numpy(m_spec)
+        onset_roll = torch.from_numpy(o_roll)
+        piano_roll = torch.from_numpy(p_roll)
+        velocity_roll = torch.from_numpy(v_roll)
+        
+        # Compute offset roll from piano roll
+        offset_roll = torch.zeros_like(piano_roll)
+        p_shifted = torch.roll(piano_roll, 1, 0)
+        p_shifted[0, :] = 0
+        offset_mask = (p_shifted == 1) & (piano_roll == 0)
+        offset_roll[offset_mask] = 1.0
+        
+        return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
+
+
 def collate_fn(batch):
     """
-    Collate function to handle variable-length sequences.
-    Pads sequences to the longest in the batch and returns a mask.
+    Collate function to handle variable-length sequences in batches.
+    
+    Pads all sequences to the longest in the batch and creates a binary mask
+    to indicate real data vs padding. This is essential for correctly computing
+    loss on variable-length sequences without penalizing padding frames.
+    
+    Args:
+        batch: List of tuples from MaestroDataset:
+            (mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll)
+            Each with shape (T_i, feature_dim) where T_i can vary per sample
+    
+    Returns:
+        Tuple of:
+            - mel_specs: (B, max_T, 229) - Padded mel spectrograms
+            - onset_rolls: (B, max_T, 88) - Padded onset labels
+            - offset_rolls: (B, max_T, 88) - Padded offset labels
+            - piano_rolls: (B, max_T, 88) - Padded frame labels
+            - velocity_rolls: (B, max_T, 88) - Padded velocity labels
+            - mask: (B, max_T) - Binary mask (1.0=real data, 0.0=padding)
+    
+    Note:
+        The mask is used in the loss function to ignore padded frames:
+        - Loss is computed element-wise, then masked and averaged
+        - This prevents the model from learning to predict zeros for padding
+        - Ensures fair comparison between sequences of different lengths
     """
     mel_specs, onset_rolls, offset_rolls, piano_rolls, velocity_rolls = zip(*batch)
 
@@ -146,6 +318,7 @@ def train_epoch(
 
     total_loss = 0
     total_onset_loss = 0
+    total_offset_loss = 0
     total_frame_loss = 0
     total_velocity_loss = 0
     num_batches = 0
@@ -189,6 +362,7 @@ def train_epoch(
         # Accumulate losses
         total_loss += loss_dict['total']
         total_onset_loss += loss_dict['onset']
+        total_offset_loss += loss_dict['offset']
         total_frame_loss += loss_dict['frame']
         total_velocity_loss += loss_dict['velocity']
         num_batches += 1
@@ -215,6 +389,7 @@ def train_epoch(
     metrics = {
         'loss': total_loss / num_batches,
         'onset_loss': total_onset_loss / num_batches,
+        'offset_loss': total_offset_loss / num_batches,
         'frame_loss': total_frame_loss / num_batches,
         'velocity_loss': total_velocity_loss / num_batches
     }
@@ -228,14 +403,26 @@ def validate(
     criterion: nn.Module,
     device: str
 ) -> Dict[str, float]:
-    """Validate the model."""
+    """Validate the model and compute metrics."""
     model.eval()
 
     total_loss = 0
     total_onset_loss = 0
+    total_offset_loss = 0
     total_frame_loss = 0
     total_velocity_loss = 0
     num_batches = 0
+    
+    # For computing metrics
+    all_onset_probs = []
+    all_offset_probs = []
+    all_frame_probs = []
+    all_velocity_preds = []
+    all_onset_labels = []
+    all_offset_labels = []
+    all_frame_labels = []
+    all_velocity_labels = []
+    all_masks = []
 
     with torch.no_grad():
         for mel_specs, onset_targets, offset_targets, frame_targets, velocity_targets, mask in tqdm(dataloader, desc="Validation"):
@@ -260,18 +447,53 @@ def validate(
             # Accumulate losses
             total_loss += loss_dict['total']
             total_onset_loss += loss_dict['onset']
+            total_offset_loss += loss_dict['offset']
             total_frame_loss += loss_dict['frame']
             total_velocity_loss += loss_dict['velocity']
             num_batches += 1
+            
+            # Collect predictions and labels for metrics
+            all_onset_probs.append(torch.sigmoid(onset_pred).cpu())
+            all_offset_probs.append(torch.sigmoid(offset_pred).cpu())
+            all_frame_probs.append(torch.sigmoid(frame_pred).cpu())
+            all_velocity_preds.append(torch.sigmoid(velocity_pred).cpu())
+            all_onset_labels.append(onset_targets.cpu())
+            all_offset_labels.append(offset_targets.cpu())
+            all_frame_labels.append(frame_targets.cpu())
+            all_velocity_labels.append(velocity_targets.cpu())
+            all_masks.append(mask.cpu())
 
     # Compute averages
     metrics = {
         'loss': total_loss / num_batches,
         'onset_loss': total_onset_loss / num_batches,
+        'offset_loss': total_offset_loss / num_batches,
         'frame_loss': total_frame_loss / num_batches,
         'velocity_loss': total_velocity_loss / num_batches
     }
-
+    
+    # Compute evaluation metrics
+    try:
+        onset_probs = torch.cat(all_onset_probs, dim=0)
+        offset_probs = torch.cat(all_offset_probs, dim=0)
+        frame_probs = torch.cat(all_frame_probs, dim=0)
+        velocity_preds = torch.cat(all_velocity_preds, dim=0)
+        onset_labels = torch.cat(all_onset_labels, dim=0)
+        offset_labels = torch.cat(all_offset_labels, dim=0)
+        frame_labels = torch.cat(all_frame_labels, dim=0)
+        velocity_labels = torch.cat(all_velocity_labels, dim=0)
+        mask_combined = torch.cat(all_masks, dim=0)
+        
+        eval_metrics = compute_all_metrics(
+            onset_probs, offset_probs, frame_probs, velocity_preds,
+            onset_labels, offset_labels, frame_labels, velocity_labels,
+            mask=mask_combined
+        )
+        
+        metrics['eval_metrics'] = eval_metrics
+    except Exception as e:
+        print(f"Warning: Could not compute evaluation metrics: {e}")
+    
     return metrics
 
 
@@ -317,6 +539,8 @@ def main():
                         help='Directory containing processed data')
     parser.add_argument('--output-dir', type=str, default='models',
                         help='Output directory for checkpoints')
+    parser.add_argument('--num-workers', type=int, default=None,
+                        help='Number of data loading workers (default: auto-detect, max 8)')
 
     # Training
     parser.add_argument('--epochs', type=int, default=100,
@@ -325,6 +549,10 @@ def main():
                         help='Batch size')
     parser.add_argument('--sequence-length', type=int, default=2000,
                         help='Sequence length in frames (default: 2000, approx 20s)')
+    parser.add_argument('--sliding-window', action='store_true', default=False,
+                        help='Enable sliding window sampling for better data utilization (default: disabled)')
+    parser.add_argument('--window-stride', type=int, default=500,
+                        help='Stride for sliding window in frames (default: 500). Only used with --sliding-window')
     parser.add_argument('--learning-rate', type=float, default=0.0006,
                         help='Learning rate')
     parser.add_argument('--device', type=str, default='cuda',
@@ -334,12 +562,38 @@ def main():
     # Model
     parser.add_argument('--resume', type=str, default=None,
                         help='Path to checkpoint to resume from')
+    
+    # Loss weights
+    parser.add_argument('--onset-weight', type=float, default=1.0,
+                        help='Weight for onset loss (default: 1.0)')
+    parser.add_argument('--offset-weight', type=float, default=1.0,
+                        help='Weight for offset loss (default: 1.0)')
+    parser.add_argument('--frame-weight', type=float, default=1.0,
+                        help='Weight for frame loss (default: 1.0)')
+    parser.add_argument('--velocity-weight', type=float, default=1.0,
+                        help='Weight for velocity loss (default: 1.0)')
+    parser.add_argument('--onset-pos-weight', type=float, default=5.0,
+                        help='Positive class weight for onset detection, compensates for rare events (default: 5.0)')
+    parser.add_argument('--offset-pos-weight', type=float, default=5.0,
+                        help='Positive class weight for offset detection (default: 5.0)')
+    parser.add_argument('--frame-pos-weight', type=float, default=2.0,
+                        help='Positive class weight for frame activation, lower than onset since frames less sparse (default: 2.0)')
+    
+    # Reproducibility
+    parser.add_argument('--seed', type=int, default=42,
+                        help='Random seed for reproducibility (default: 42)')
 
     # Logging
     parser.add_argument('--log-dir', type=str, default='runs',
                         help='TensorBoard log directory')
     parser.add_argument('--save-interval', type=int, default=10,
                         help='Save checkpoint every N epochs')
+    
+    # Early stopping
+    parser.add_argument('--early-stopping-patience', type=int, default=15,
+                        help='Patience for early stopping (stop if no improvement for N epochs). Set to 0 to disable. (default: 15)')
+    parser.add_argument('--early-stopping-min-delta', type=float, default=0.001,
+                        help='Minimum loss improvement to reset early stopping counter (default: 0.001)')
 
     args = parser.parse_args()
 
@@ -353,17 +607,33 @@ def main():
         args.device = 'cpu'
 
     print(f"Using device: {args.device}")
+    
+    # Set random seeds for reproducibility
+    set_seed(args.seed)
+    print(f"Random seed set to: {args.seed}")
+    
+    # Auto-detect num_workers if not specified
+    if args.num_workers is None:
+        args.num_workers = min(8, os.cpu_count() or 1)
+    print(f"Using {args.num_workers} data loading workers")
 
     # Create datasets
     print("\nLoading datasets...")
     train_dataset = MaestroDataset(args.data_dir, split='train', sequence_length=args.sequence_length)
     val_dataset = MaestroDataset(args.data_dir, split='validation', sequence_length=args.sequence_length)
+    
+    # Optionally wrap with sliding window for better data utilization
+    if args.sliding_window:
+        print(f"\nEnabling sliding window sampling with stride={args.window_stride}")
+        train_dataset = SlidingWindowDataset(train_dataset, stride=args.window_stride, use_all_windows=True)
+        # Note: validation dataset typically uses single crops for consistency
+        val_dataset = SlidingWindowDataset(val_dataset, stride=args.window_stride, use_all_windows=False)
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=2,
+        num_workers=args.num_workers,
         collate_fn=collate_fn,
         pin_memory=(args.device == 'cuda')
     )
@@ -372,7 +642,7 @@ def main():
         val_dataset,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=2,
+        num_workers=args.num_workers,
         collate_fn=collate_fn,
         pin_memory=(args.device == 'cuda')
     )
@@ -384,10 +654,13 @@ def main():
 
     # Loss and optimizer
     criterion = OnsetsAndFramesLoss(
-        onset_weight=1.0,
-        offset_weight=1.0,
-        frame_weight=1.0,
-        velocity_weight=1.0
+        onset_weight=args.onset_weight,
+        offset_weight=args.offset_weight,
+        frame_weight=args.frame_weight,
+        velocity_weight=args.velocity_weight,
+        onset_pos_weight=args.onset_pos_weight,
+        offset_pos_weight=args.offset_pos_weight,
+        frame_pos_weight=args.frame_pos_weight
     )
 
     optimizer = torch.optim.Adam(
@@ -419,6 +692,17 @@ def main():
     # TensorBoard writer
     writer = SummaryWriter(args.log_dir)
 
+    # Initialize early stopping if enabled
+    early_stopping = None
+    if args.early_stopping_patience > 0:
+        early_stopping = EarlyStopping(
+            patience=args.early_stopping_patience,
+            min_delta=args.early_stopping_min_delta
+        )
+        print(f"\nEarly stopping enabled (patience={args.early_stopping_patience}, min_delta={args.early_stopping_min_delta})")
+    else:
+        print("\nEarly stopping disabled")
+
     # Training loop
     print("\nStarting training...")
     best_val_loss = float('inf')
@@ -436,6 +720,7 @@ def main():
         print(f"\nTrain metrics:")
         print(f"  Loss: {train_metrics['loss']:.4f}")
         print(f"  Onset: {train_metrics['onset_loss']:.4f}")
+        print(f"  Offset: {train_metrics['offset_loss']:.4f}")
         print(f"  Frame: {train_metrics['frame_loss']:.4f}")
         print(f"  Velocity: {train_metrics['velocity_loss']:.4f}")
 
@@ -445,15 +730,28 @@ def main():
         print(f"\nValidation metrics:")
         print(f"  Loss: {val_metrics['loss']:.4f}")
         print(f"  Onset: {val_metrics['onset_loss']:.4f}")
+        print(f"  Offset: {val_metrics['offset_loss']:.4f}")
         print(f"  Frame: {val_metrics['frame_loss']:.4f}")
         print(f"  Velocity: {val_metrics['velocity_loss']:.4f}")
+        
+        # Print evaluation metrics if available
+        if 'eval_metrics' in val_metrics:
+            print("\n  Evaluation Metrics:")
+            print_metrics(val_metrics['eval_metrics'])
 
         # TensorBoard logging
         writer.add_scalar('train/epoch_loss', train_metrics['loss'], epoch)
         writer.add_scalar('val/epoch_loss', val_metrics['loss'], epoch)
         writer.add_scalar('val/onset_loss', val_metrics['onset_loss'], epoch)
+        writer.add_scalar('val/offset_loss', val_metrics['offset_loss'], epoch)
         writer.add_scalar('val/frame_loss', val_metrics['frame_loss'], epoch)
         writer.add_scalar('val/velocity_loss', val_metrics['velocity_loss'], epoch)
+        
+        # Log evaluation metrics if available
+        if 'eval_metrics' in val_metrics:
+            for metric_name, metric_value in val_metrics['eval_metrics'].items():
+                if isinstance(metric_value, (int, float)):
+                    writer.add_scalar(f'val/{metric_name}', metric_value, epoch)
 
         # Learning rate scheduling
         scheduler.step(val_metrics['loss'])
@@ -467,6 +765,18 @@ def main():
             best_val_loss = val_metrics['loss']
             save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir, 'best_model.pt')
             print(f"  ✓ New best model saved! (loss: {best_val_loss:.4f})")
+        
+        # Check early stopping
+        if early_stopping:
+            early_stopping_status = early_stopping(val_metrics['loss'], epoch)
+            print(f"  Early stopping: {early_stopping.counter}/{early_stopping.patience} epochs without improvement")
+            
+            if early_stopping_status:
+                print(f"\n{'='*60}")
+                print(f"Early stopping triggered!")
+                print(f"Best validation loss: {early_stopping.best_loss:.4f} (epoch {early_stopping.best_epoch})")
+                print(f"{'='*60}\n")
+                break
 
     print("\nTraining complete!")
     writer.close()

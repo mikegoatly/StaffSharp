@@ -101,6 +101,68 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         return stft;
     }
 
+    /* TODO - investigate whether this helps accuracy:
+
+    private Complex[,] ComputeStft(AudioBuffer audio)
+{
+    var originalSamples = audio.Samples.Span;
+    
+    // --- CHANGE 1: Center Padding (Time Alignment) ---
+    // We pad with zeros (or reflection) so that Frame 0 is centered at Time 0.
+    // Without this, features are shifted by (FrameSize/2) / SampleRate seconds (approx 64ms).
+    int padLength = _options.FrameSize / 2;
+    var paddedLength = originalSamples.Length + (padLength * 2);
+    
+    // Create padded buffer
+    // Note: ArrayPool<float> might be better here for performance if this is hot code
+    var paddedSamples = new float[paddedLength];
+    
+    // Copy original audio into the middle
+    originalSamples.CopyTo(paddedSamples.AsSpan().Slice(padLength, originalSamples.Length));
+    // (Optional: Implement reflection padding at edges for higher quality, 
+    // but zero-padding is standard for onset detection tasks)
+
+    // Recalculate numFrames based on PADDED length
+    // This formula ensures numFrames * hopSize is roughly equal to originalSamples.Length
+    var numFrames = ((paddedLength - _options.FrameSize) / _options.HopSize) + 1;
+    // -------------------------------------------------
+
+    if (numFrames <= 0)
+        throw new ArgumentException("Audio is too short", nameof(audio));
+
+    var stft = new Complex[numFrames, _fftBins];
+    var complexBuffer = new Complex[_options.FrameSize];
+    var windowedFrame = new float[_options.FrameSize];
+
+    for (int frameIdx = 0; frameIdx < numFrames; frameIdx++)
+    {
+        var frameStart = frameIdx * _options.HopSize;
+
+        // Extract and window from PADDED samples
+        for (int i = 0; i < _options.FrameSize; i++)
+        {
+            windowedFrame[i] = paddedSamples[frameStart + i] * _window[i];
+        }
+
+        // Convert to complex for FFT
+        for (int i = 0; i < _options.FrameSize; i++)
+        {
+            complexBuffer[i] = new Complex(windowedFrame[i], 0);
+        }
+
+        Fourier.Forward(complexBuffer, FourierOptions.Default);
+
+        var scale = MathF.Sqrt(_options.FrameSize);
+        for (int i = 0; i < _fftBins; i++)
+        {
+            stft[frameIdx, i] = complexBuffer[i] * scale;
+        }
+    }
+
+    return stft;
+}
+    */
+
     private float[,] ComputePowerSpectrogram(Complex[,] stft)
     {
         var numFrames = stft.GetLength(0);
