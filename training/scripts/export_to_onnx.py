@@ -9,9 +9,9 @@ import argparse
 from pathlib import Path
 
 import torch
-import torch.onnx
 
 from model import create_model
+from onnx_utils import export_to_onnx_format, verify_onnx_model
 
 
 def export_to_onnx(checkpoint_path: str, output_path: str, opset_version: int = 17):
@@ -46,40 +46,27 @@ def export_to_onnx(checkpoint_path: str, output_path: str, opset_version: int = 
 
     print(f"\nExporting model to ONNX...")
     print(f"  Input shape: (batch={batch_size}, time=dynamic, mel_bins={mel_bins})")
-    print(f"  Output shapes: (batch={batch_size}, time=dynamic, keys=88) x3")
+    print(f"  Output shapes: (batch={batch_size}, time=dynamic, keys=88) x4")
 
-    # Export to ONNX
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_path,
-        export_params=True,
-        opset_version=opset_version,
-        do_constant_folding=True,
+    # Export to ONNX using shared utility
+    export_to_onnx_format(
+        model=model,
+        dummy_input=dummy_input,
+        output_path=output_path,
         input_names=['input'],
-        output_names=['onset_probs', 'frame_probs', 'velocities'],
-        dynamic_axes={
-            'input': {0: 'batch_size', 1: 'time'},
-            'onset_probs': {0: 'batch_size', 1: 'time'},
-            'frame_probs': {0: 'batch_size', 1: 'time'},
-            'velocities': {0: 'batch_size', 1: 'time'}
-        },
+        output_names=['onset_probs', 'offset_probs', 'frame_probs', 'velocities'],
+        opset_version=opset_version,
         verbose=False
     )
 
     print(f"\n✓ Model exported successfully to: {output_path}")
 
-    # Verify exported model
-    print("\nVerifying exported model...")
-    import onnx
-    import onnxruntime as ort
-
-    # Load and check ONNX model
-    onnx_model = onnx.load(output_path)
-    onnx.checker.check_model(onnx_model)
-    print("  ✓ ONNX model is valid")
+    # Verify exported model using shared utility
+    verify_onnx_model(output_path)
 
     # Test inference with ONNX Runtime
+    import onnx
+    import onnxruntime as ort
     session = ort.InferenceSession(output_path)
 
     # Test with different sequence lengths
