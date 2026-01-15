@@ -8,6 +8,7 @@ using StaffSharp.MachineLearning.Options;
 
 /// <summary>
 /// Decodes piano roll predictions into discrete note events.
+/// IMPORTANT: This implementation MUST be kept consistent with the Python equivalent in training/scripts/decode_notes.py
 /// </summary>
 /// <remarks>
 /// Converts continuous frame-level predictions (onset probabilities, frame activations, velocities)
@@ -120,6 +121,12 @@ public sealed class NoteEventDecoder
 
                 activeNoteStartFrame = null;
                 activeNoteVelocity = 0f;
+            }
+            // Case 3: Note is just sustaining (Holding)
+            else if (activeNoteStartFrame.HasValue)
+            {
+                // TODO if needed we can check if the current velocity is higher than the active note velocity
+                // and use that instead
             }
         }
 
