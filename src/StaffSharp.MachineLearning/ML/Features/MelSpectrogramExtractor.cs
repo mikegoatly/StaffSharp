@@ -1,6 +1,7 @@
 namespace StaffSharp.MachineLearning.ML.Features;
 
 using System.Numerics;
+using System.Numerics.Tensors;
 
 using MathNet.Numerics.IntegralTransforms;
 
@@ -118,18 +119,34 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         var numFrames = stft.GetLength(0);
         var powerSpec = new float[numFrames, _fftBins];
 
-        // Process row by row for better cache locality
+        // Use vectorized operations for better performance
+        Span<float> realParts = stackalloc float[_fftBins];
+        Span<float> imagParts = stackalloc float[_fftBins];
+
         for (int t = 0; t < numFrames; t++)
         {
+            // Extract real and imaginary parts
             for (int f = 0; f < _fftBins; f++)
             {
-                // Use Real^2 + Imaginary^2 directly (faster than Magnitude property)
                 var c = stft[t, f];
-                powerSpec[t, f] = (float)((c.Real * c.Real) + (c.Imaginary * c.Imaginary));
+                realParts[f] = (float)c.Real;
+                imagParts[f] = (float)c.Imaginary;
             }
+
+            // Compute power = real^2 + imag^2 using SIMD
+            var rowSpan = GetRowSpan(powerSpec, t);
+            TensorPrimitives.Multiply(realParts, realParts, rowSpan);
+            TensorPrimitives.MultiplyAdd(imagParts, imagParts, rowSpan, rowSpan);
         }
 
         return powerSpec;
+    }
+
+    private static Span<float> GetRowSpan(float[,] array, int row)
+    {
+        return System.Runtime.InteropServices.MemoryMarshal.CreateSpan(
+            ref array[row, 0],
+            array.GetLength(1));
     }
 
     private float[,] ApplyMelFilterbank(float[,] powerSpec)
@@ -139,15 +156,14 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
 
         for (int t = 0; t < numFrames; t++)
         {
+            var powerFrame = GetRowSpan(powerSpec, t);
+            var melFrame = GetRowSpan(melSpec, t);
+
             for (int m = 0; m < _options.MelBins; m++)
             {
-                float sum = 0;
-                for (int f = 0; f < _fftBins; f++)
-                {
-                    sum += powerSpec[t, f] * _melFilterbank[m, f];
-                }
-                
-                melSpec[t, m] = sum;
+                var filterRow = GetRowSpan(_melFilterbank, m);
+                // Use SIMD dot product for matrix multiplication
+                melFrame[m] = TensorPrimitives.Dot(powerFrame, filterRow);
             }
         }
 
@@ -159,12 +175,16 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         var numFrames = melSpec.GetLength(0);
         var constant = _options.LogCompressionConstant;
 
+        Span<float> temp = stackalloc float[_options.MelBins];
+
         for (int t = 0; t < numFrames; t++)
         {
-            for (int m = 0; m < _options.MelBins; m++)
-            {
-                melSpec[t, m] = MathF.Log(1 + (constant * melSpec[t, m]));
-            }
+            var row = GetRowSpan(melSpec, t);
+            
+            // Use SIMD operations: log(1 + constant * x)
+            TensorPrimitives.Multiply(row, constant, temp);
+            TensorPrimitives.Add(temp, 1.0f, temp);
+            TensorPrimitives.Log(temp, row);
         }
     }
 
@@ -218,24 +238,28 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         }
 
         // Build triangular filters
-        for (int i = 0; i < _options.MelBins; i++)
-        {
-            for (int j = 0; j < _fftBins; j++)
-            {
-                float lower = -ramps[i, j] / fdiff[i];
-                float upper = ramps[i + 2, j] / fdiff[i + 1];
-                filterbank[i, j] = MathF.Max(0, MathF.Min(lower, upper));
-            }
-        }
+        Span<float> lower = stackalloc float[_fftBins];
+        Span<float> upper = stackalloc float[_fftBins];
 
-        // Apply Slaney normalization
         for (int i = 0; i < _options.MelBins; i++)
         {
+            var rampLower = GetRowSpan(ramps, i);
+            var rampUpper = GetRowSpan(ramps, i + 2);
+            var filterRow = GetRowSpan(filterbank, i);
+
+            // Compute lower = -ramps[i] / fdiff[i]
+            TensorPrimitives.Multiply(rampLower, -1.0f / fdiff[i], lower);
+            
+            // Compute upper = ramps[i+2] / fdiff[i+1]
+            TensorPrimitives.Multiply(rampUpper, 1.0f / fdiff[i + 1], upper);
+
+            // filterbank[i] = max(0, min(lower, upper))
+            TensorPrimitives.Min(lower, upper, filterRow);
+            TensorPrimitives.Max(filterRow, 0.0f, filterRow);
+
+            // Apply Slaney normalization
             float enorm = 2.0f / (melFreqs[i + 2] - melFreqs[i]);
-            for (int j = 0; j < _fftBins; j++)
-            {
-                filterbank[i, j] *= enorm;
-            }
+            TensorPrimitives.Multiply(filterRow, enorm, filterRow);
         }
 
         return filterbank;
