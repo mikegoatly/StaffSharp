@@ -4,5 +4,10 @@
         "microtones",
         "notehead",
         "Tuplet"
-    ]
+    ],
+    "python.testing.pytestArgs": [
+        "training"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }
