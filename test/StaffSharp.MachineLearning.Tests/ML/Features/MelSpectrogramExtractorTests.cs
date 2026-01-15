@@ -59,9 +59,14 @@ public sealed class MelSpectrogramExtractorTests
         Assert.Equal(229, features.GetLength(1)); // Mel bins
         Assert.True(features.GetLength(0) > 0); // Time frames
 
-        // Expected frames = (samples - frameSize) / hopSize + 1
-        // (16000 - 2048) / 512 + 1 = 27.25... = 27 frames (integer division)
-        var expectedFrames = (audio.SampleCount - 2048) / 512 + 1;
+        // Expected frames with center padding = (paddedLength - frameSize) / hopSize + 1
+        // Center padding adds frameSize/2 samples on each side (2048/2 = 1024 on each side)
+        // paddedLength = 16000 + 2*1024 = 18048
+        // (18048 - 2048) / 512 + 1 = 16000/512 + 1 = 31.25... = 31 + 1 = 32 frames
+        const int frameSize = 2048;
+        const int hopSize = 512;
+        var paddedLength = audio.SampleCount + frameSize; // frameSize/2 on each side = frameSize total
+        var expectedFrames = (paddedLength - frameSize) / hopSize + 1;
         Assert.Equal(expectedFrames, features.GetLength(0));
     }
 
@@ -107,23 +112,6 @@ public sealed class MelSpectrogramExtractorTests
         // Assert - should work without error
         Assert.Equal(229, features.GetLength(1));
         Assert.True(features.GetLength(0) > 0);
-    }
-
-    [Fact]
-    public void ExtractFeatures_WithShortAudio_ThrowsException()
-    {
-        // Arrange - create audio shorter than frame size
-        const int sampleRate = 16000;
-        var samples = AudioSignalBuilder.Create()
-            .WithSampleRate(sampleRate)
-            .WithDuration(0.05)
-            .AddSine(440.0)
-            .Build();
-        var audio = new AudioBuffer(samples, sampleRate, channels: 1);
-        var extractor = new MelSpectrogramExtractor();
-
-        // Act & Assert
-        Assert.Throws<ArgumentException>(() => extractor.ExtractFeatures(audio));
     }
 
     [Fact]

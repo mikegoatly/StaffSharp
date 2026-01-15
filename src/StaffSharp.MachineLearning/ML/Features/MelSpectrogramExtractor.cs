@@ -59,11 +59,27 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
 
     private Complex[,] ComputeStft(AudioBuffer audio)
     {
-        var samples = audio.Samples.Span;
-        var numFrames = ((samples.Length - _options.FrameSize) / _options.HopSize) + 1;
+        var originalSamples = audio.Samples.Span;
+
+        // We pad with zeros so that Frame 0 is centered at Time 0.
+        // Without this, features are shifted by (FrameSize/2) / SampleRate seconds (approx 64ms).
+        int padLength = _options.FrameSize / 2;
+        var paddedLength = originalSamples.Length + (padLength * 2);
+        var paddedSamples = new float[paddedLength];
+
+        // Copy original audio into the middle
+        originalSamples.CopyTo(paddedSamples.AsSpan().Slice(padLength, originalSamples.Length));
+        
+        // TODO Consider implementing reflection padding at edges
+
+        // Recalculate numFrames based on PADDED length
+        // This formula ensures numFrames * hopSize is roughly equal to originalSamples.Length
+        var numFrames = ((paddedLength - _options.FrameSize) / _options.HopSize) + 1;
 
         if (numFrames <= 0)
-            throw new ArgumentException("Audio is too short for the specified frame and hop size", nameof(audio));
+        {
+            throw new ArgumentException("Audio is too short", nameof(audio));
+        }
 
         var stft = new Complex[numFrames, _fftBins];
         var complexBuffer = new Complex[_options.FrameSize];
@@ -73,10 +89,10 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         {
             var frameStart = frameIdx * _options.HopSize;
 
-            // Extract and window the frame
+            // Extract and window from PADDED samples
             for (int i = 0; i < _options.FrameSize; i++)
             {
-                windowedFrame[i] = samples[frameStart + i] * _window[i];
+                windowedFrame[i] = paddedSamples[frameStart + i] * _window[i];
             }
 
             // Convert to complex for FFT
@@ -85,12 +101,8 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
                 complexBuffer[i] = new Complex(windowedFrame[i], 0);
             }
 
-            // Compute FFT
             Fourier.Forward(complexBuffer, FourierOptions.Default);
 
-            // Store only positive frequencies (first half + Nyquist)
-            // Note: MathNet.Numerics uses sqrt(N) normalization (unitary), but librosa uses no normalization.
-            // We multiply by sqrt(frame size) to match librosa's normalization.
             var scale = MathF.Sqrt(_options.FrameSize);
             for (int i = 0; i < _fftBins; i++)
             {
@@ -100,68 +112,6 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
 
         return stft;
     }
-
-    /* TODO - investigate whether this helps accuracy:
-
-    private Complex[,] ComputeStft(AudioBuffer audio)
-{
-    var originalSamples = audio.Samples.Span;
-    
-    // --- CHANGE 1: Center Padding (Time Alignment) ---
-    // We pad with zeros (or reflection) so that Frame 0 is centered at Time 0.
-    // Without this, features are shifted by (FrameSize/2) / SampleRate seconds (approx 64ms).
-    int padLength = _options.FrameSize / 2;
-    var paddedLength = originalSamples.Length + (padLength * 2);
-    
-    // Create padded buffer
-    // Note: ArrayPool<float> might be better here for performance if this is hot code
-    var paddedSamples = new float[paddedLength];
-    
-    // Copy original audio into the middle
-    originalSamples.CopyTo(paddedSamples.AsSpan().Slice(padLength, originalSamples.Length));
-    // (Optional: Implement reflection padding at edges for higher quality, 
-    // but zero-padding is standard for onset detection tasks)
-
-    // Recalculate numFrames based on PADDED length
-    // This formula ensures numFrames * hopSize is roughly equal to originalSamples.Length
-    var numFrames = ((paddedLength - _options.FrameSize) / _options.HopSize) + 1;
-    // -------------------------------------------------
-
-    if (numFrames <= 0)
-        throw new ArgumentException("Audio is too short", nameof(audio));
-
-    var stft = new Complex[numFrames, _fftBins];
-    var complexBuffer = new Complex[_options.FrameSize];
-    var windowedFrame = new float[_options.FrameSize];
-
-    for (int frameIdx = 0; frameIdx < numFrames; frameIdx++)
-    {
-        var frameStart = frameIdx * _options.HopSize;
-
-        // Extract and window from PADDED samples
-        for (int i = 0; i < _options.FrameSize; i++)
-        {
-            windowedFrame[i] = paddedSamples[frameStart + i] * _window[i];
-        }
-
-        // Convert to complex for FFT
-        for (int i = 0; i < _options.FrameSize; i++)
-        {
-            complexBuffer[i] = new Complex(windowedFrame[i], 0);
-        }
-
-        Fourier.Forward(complexBuffer, FourierOptions.Default);
-
-        var scale = MathF.Sqrt(_options.FrameSize);
-        for (int i = 0; i < _fftBins; i++)
-        {
-            stft[frameIdx, i] = complexBuffer[i] * scale;
-        }
-    }
-
-    return stft;
-}
-    */
 
     private float[,] ComputePowerSpectrogram(Complex[,] stft)
     {
@@ -196,6 +146,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
                 {
                     sum += powerSpec[t, f] * _melFilterbank[m, f];
                 }
+                
                 melSpec[t, m] = sum;
             }
         }
@@ -230,7 +181,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
                 $"for sample rate {_options.SampleRate} Hz");
         }
 
-        // Create FFT bin frequencies (matches librosa.fft_frequencies)
+        // Create FFT bin frequencies
         var fftFreqs = new float[_fftBins];
         for (int i = 0; i < _fftBins; i++)
         {
@@ -241,7 +192,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         var minMel = HzToMel(_options.MinFrequency);
         var maxMel = HzToMel(_options.MaxFrequency);
 
-        // Create mel bin edges (linearly spaced in mel scale) - matches librosa.mel_frequencies
+        // Create mel bin edges (linearly spaced in mel scale)
         var melFreqs = new float[_options.MelBins + 2];
         var melStep = (maxMel - minMel) / (_options.MelBins + 1);
         for (int i = 0; i < melFreqs.Length; i++)
@@ -249,7 +200,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             melFreqs[i] = MelToHz(minMel + (i * melStep));
         }
 
-        // Compute differences between adjacent mel frequencies (fdiff in librosa)
+        // Compute differences between adjacent mel frequencies
         var fdiff = new float[melFreqs.Length - 1];
         for (int i = 0; i < fdiff.Length; i++)
         {
@@ -257,7 +208,6 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         }
 
         // Create ramps array: outer subtraction of melFreqs and fftFreqs
-        // ramps[i, j] = melFreqs[i] - fftFreqs[j]
         var ramps = new float[melFreqs.Length, _fftBins];
         for (int i = 0; i < melFreqs.Length; i++)
         {
@@ -267,12 +217,9 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             }
         }
 
-        // Build triangular filters (matches librosa exactly)
+        // Build triangular filters
         for (int i = 0; i < _options.MelBins; i++)
         {
-            // lower = -ramps[i] / fdiff[i]
-            // upper = ramps[i + 2] / fdiff[i + 1]
-            // weights[i] = max(0, min(lower, upper))
             for (int j = 0; j < _fftBins; j++)
             {
                 float lower = -ramps[i, j] / fdiff[i];
@@ -281,8 +228,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             }
         }
 
-        // Apply Slaney normalization (matches librosa's norm='slaney')
-        // enorm = 2.0 / (mel_f[2:n_mels+2] - mel_f[:n_mels])
+        // Apply Slaney normalization
         for (int i = 0; i < _options.MelBins; i++)
         {
             float enorm = 2.0f / (melFreqs[i + 2] - melFreqs[i]);
