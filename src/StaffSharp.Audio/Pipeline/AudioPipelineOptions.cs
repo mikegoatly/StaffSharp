@@ -1,10 +1,11 @@
+using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Analysis.Boundaries;
 using StaffSharp.Audio.Analysis.Meter;
 using StaffSharp.Audio.Analysis.Onset;
 using StaffSharp.Audio.Analysis.Pitch;
-using StaffSharp.Audio.Analysis.Quantization;
 using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Audio.Diagnostics;
+using StaffSharp.Quantization;
 
 namespace StaffSharp.Audio.Pipeline;
 
@@ -13,105 +14,20 @@ namespace StaffSharp.Audio.Pipeline;
 /// </summary>
 public sealed record AudioPipelineOptions
 {
-    private IAudioBoundaryDetector? _boundaryDetector;
-    private IOnsetDetector? _onsetDetector;
-    private IPitchDetector? _pitchDetector;
-    private ITempoDetector? _tempoDetector;
-    private IQuantizer? _quantizer;
-    private ITimeSignatureDetector? _timeSignatureDetector;
-
-    public BoundaryDetectionOptions BoundaryDetectionOptions { get; } = new();
-    public OnsetDetectionOptions OnsetDetectionOptions { get; } = new();
-    public PitchDetectionOptions PitchDetectionOptions { get; } = new();
-    public TempoDetectionOptions TempoDetectionOptions { get; } = new();
-    public QuantizationOptions QuantizationOptions { get; } = new();
-    public TimeSignatureDetectionOptions TimeSignatureDetectionOptions { get; } = new();
+    private INoteDetector? _noteDetector;
 
     /// <summary>
-    /// Gets or sets the boundary detector for identifying leading/trailing silence.
+    /// Gets or sets the note detector for transcribing audio to note events.
+    /// Defaults to AlgorithmicNoteDetector with standard settings.
     /// </summary>
-    public IAudioBoundaryDetector BoundaryDetector
+    public INoteDetector NoteDetector
     {
         get
         {
-            // Lazy initialization to inject diagnostics collector
-            _boundaryDetector ??= new EnergyBasedBoundaryDetector(BoundaryDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _boundaryDetector;
+            _noteDetector ??= CreateDefaultNoteDetector();
+            return _noteDetector;
         }
-
-        set => _boundaryDetector = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the onset detector for identifying note attacks.
-    /// </summary>
-    public IOnsetDetector OnsetDetector
-    {
-        get
-        {
-            // Lazy initialization to inject diagnostics collector
-            _onsetDetector ??= new SpectralFluxOnsetDetector(OnsetDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _onsetDetector;
-        }
-
-        set => _onsetDetector = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the pitch detector for analyzing fundamental frequency.
-    /// </summary>
-    public IPitchDetector PitchDetector
-    {
-        get
-        {
-            // Lazy initialization to inject diagnostics collector - defaults to pYIN
-            _pitchDetector ??= new PyinPitchDetector(PitchDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _pitchDetector;
-        }
-
-        set => _pitchDetector = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the time signature detector. If null, defaults to 4/4 time.
-    /// </summary>
-    public ITimeSignatureDetector? TimeSignatureDetector
-    {
-        get
-        {
-            _timeSignatureDetector ??= new SimpleTimeSignatureDetector(TimeSignatureDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _timeSignatureDetector;
-        }
-
-        set => _timeSignatureDetector = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the tempo detector for analyzing beat timing.
-    /// </summary>
-    public ITempoDetector TempoDetector
-    {
-        get
-        {
-            _tempoDetector ??= new InterOnsetIntervalTempoDetector(TempoDetectionOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _tempoDetector;
-        }
-
-        set => _tempoDetector = value;
-    }
-
-    /// <summary>
-    /// Gets or sets the quantizer for aligning detected notes to rhythmic grid.
-    /// </summary>
-    public IQuantizer Quantizer
-    {
-        get
-        {
-            _quantizer ??= new SimpleQuantizer(QuantizationOptions with { DiagnosticsCollector = DiagnosticsCollector });
-            return _quantizer;
-        }
-
-        set => _quantizer = value;
+        set => _noteDetector = value;
     }
 
     /// <summary>
@@ -125,7 +41,42 @@ public sealed record AudioPipelineOptions
     public IDiagnosticsCollector? DiagnosticsCollector { get; set; }
 
     /// <summary>
-    /// Gets the default pipeline options with standard detectors/analyzers.
+    /// Creates the default note detector with standard algorithmic components.
+    /// </summary>
+    private AlgorithmicNoteDetector CreateDefaultNoteDetector()
+    {
+        // Create default detector instances with diagnostics
+        var onsetDetector = new SpectralFluxOnsetDetector(
+            new OnsetDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+
+        var pitchDetector = new PyinPitchDetector(
+            new PitchDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+
+        var timeSignatureDetector = new SimpleTimeSignatureDetector(
+            new TimeSignatureDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+
+        var tempoDetector = new InterOnsetIntervalTempoDetector(
+            new TempoDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+
+        var quantizer = new SimpleMonophonicQuantizer(
+            new Quantization.QuantizationOptions());
+
+        var boundaryDetector = new EnergyBasedBoundaryDetector(
+            new BoundaryDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+
+        // Create algorithmic detector with all components
+        return new AlgorithmicNoteDetector(
+            onsetDetector,
+            pitchDetector,
+            timeSignatureDetector,
+            tempoDetector,
+            quantizer,
+            boundaryDetector,
+            this);
+    }
+
+    /// <summary>
+    /// Gets the default pipeline options with algorithmic note detection.
     /// </summary>
     public static AudioPipelineOptions Default => new();
 }

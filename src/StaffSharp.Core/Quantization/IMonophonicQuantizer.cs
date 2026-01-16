@@ -1,6 +1,5 @@
 namespace StaffSharp.Quantization;
 
-using StaffSharp.Notation;
 using StaffSharp.Performance;
 
 /// <summary>
@@ -15,12 +14,12 @@ public interface IMonophonicQuantizer
     /// </summary>
     /// <param name="onsets">Onset times in seconds.</param>
     /// <param name="pitches">MIDI pitch numbers (one per onset).</param>
-    /// <param name="timeSignatures">Detected time signatures.</param>
+    /// <param name="timeSignatures">Detected time signature changes.</param>
     /// <param name="estimatedTempo">Estimated tempo from onset analysis.</param>
-    /// <returns">Quantized note events and refined tempo map.</returns>
+    /// <returns>Quantized note events and refined tempo map.</returns>
     (IReadOnlyList<QuantizedNoteEvent> Notes, TempoMap TempoMap) Quantize(
         ReadOnlySpan<double> onsets,
         ReadOnlySpan<int> pitches,
-        IReadOnlyList<TimeSignature> timeSignatures,
+        IReadOnlyList<TimeSignatureChange> timeSignatures,
         TempoMap estimatedTempo);
 }
