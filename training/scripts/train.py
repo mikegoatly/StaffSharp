@@ -77,25 +77,32 @@ class MaestroDataset(Dataset):
         # Load preprocessed data with error handling
         try:
             data = np.load(self.files[idx])
+            
+            # Get raw arrays - this is where corruption errors often occur
+            m_spec = data['mel_spec']
+            o_roll = data['onset_roll']
+            off_roll = data['offset_roll']
+            p_roll = data['piano_roll']
+            v_roll = data['velocity_roll']
+            
+        except KeyError as e:
+            print(f"\n⚠️  Missing key {e} in {self.files[idx]}")
+            print(f"    File may be corrupted or from an old preprocessing version. Skipping...")
+            next_idx = (idx + 1) % len(self.files)
+            if next_idx == idx:
+                raise RuntimeError(f"Missing required keys in file and no other files available: {self.files[idx]}")
+            return self.__getitem__(next_idx)
+            
         except Exception as e:
-            print(f"Error loading {self.files[idx]}: {e}")
+            # Catch all other errors: BadZipFile, corrupted files, read errors, etc.
+            print(f"\n⚠️  CORRUPTED FILE DETECTED: {self.files[idx].name}")
+            print(f"    Error: {type(e).__name__}: {e}")
+            print(f"    This file should be deleted and re-processed. Skipping for now...")
+            
             # Skip to next file instead of crashing
             next_idx = (idx + 1) % len(self.files)
             if next_idx == idx:  # Prevent infinite loop if only one file
                 raise RuntimeError(f"Failed to load file and no other files available: {self.files[idx]}")
-            return self.__getitem__(next_idx)
-
-        # Get raw arrays first
-        try:
-            m_spec = data['mel_spec']
-            o_roll = data['onset_roll']
-            p_roll = data['piano_roll']
-            v_roll = data['velocity_roll']
-        except KeyError as e:
-            print(f"Missing key {e} in {self.files[idx]}")
-            next_idx = (idx + 1) % len(self.files)
-            if next_idx == idx:
-                raise RuntimeError(f"Missing required keys in file and no other files available: {self.files[idx]}")
             return self.__getitem__(next_idx)
 
         # Crop if necessary
@@ -105,31 +112,19 @@ class MaestroDataset(Dataset):
             else:
                 # Deterministic crop (middle) for validation/test to ensure consistency
                 start = (m_spec.shape[0] - self.sequence_length) // 2
-            
+
             end = start + self.sequence_length
             m_spec = m_spec[start:end]
             o_roll = o_roll[start:end]
+            off_roll = off_roll[start:end]
             p_roll = p_roll[start:end]
             v_roll = v_roll[start:end]
 
         mel_spec = torch.from_numpy(m_spec)
         onset_roll = torch.from_numpy(o_roll)
+        offset_roll = torch.from_numpy(off_roll)  # Use pre-computed offset_roll from C#
         piano_roll = torch.from_numpy(p_roll)
         velocity_roll = torch.from_numpy(v_roll)
-
-        # Derive offset roll from piano roll
-        # Offset is 1 at frame t if piano_roll[t-1] == 1 and piano_roll[t] == 0
-        # We can implement this simply by checking transitions
-        offset_roll = torch.zeros_like(piano_roll)
-        
-        # Shift piano roll right by 1 to compare t and t-1
-        # Pad with 0 at the beginning
-        p_shifted = torch.roll(piano_roll, 1, 0)
-        p_shifted[0, :] = 0
-        
-        # Check where note ends: active at t-1 and inactive at t
-        offset_mask = (p_shifted == 1) & (piano_roll == 0)
-        offset_roll[offset_mask] = 1.0
 
         return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
 
@@ -216,6 +211,7 @@ class SlidingWindowDataset(Dataset):
         try:
             m_spec = data['mel_spec']
             o_roll = data['onset_roll']
+            off_roll = data['offset_roll']
             p_roll = data['piano_roll']
             v_roll = data['velocity_roll']
         except KeyError as e:
@@ -224,27 +220,22 @@ class SlidingWindowDataset(Dataset):
             if next_idx == idx:
                 raise RuntimeError("Cannot load data from any files in dataset")
             return self.__getitem__(next_idx)
-        
+
         # Extract window
         if self.sequence_length:
             end_frame = start_frame + self.sequence_length
             m_spec = m_spec[start_frame:end_frame]
             o_roll = o_roll[start_frame:end_frame]
+            off_roll = off_roll[start_frame:end_frame]
             p_roll = p_roll[start_frame:end_frame]
             v_roll = v_roll[start_frame:end_frame]
-        
+
         mel_spec = torch.from_numpy(m_spec)
         onset_roll = torch.from_numpy(o_roll)
+        offset_roll = torch.from_numpy(off_roll)  # Use pre-computed offset_roll from C#
         piano_roll = torch.from_numpy(p_roll)
         velocity_roll = torch.from_numpy(v_roll)
-        
-        # Compute offset roll from piano roll
-        offset_roll = torch.zeros_like(piano_roll)
-        p_shifted = torch.roll(piano_roll, 1, 0)
-        p_shifted[0, :] = 0
-        offset_mask = (p_shifted == 1) & (piano_roll == 0)
-        offset_roll[offset_mask] = 1.0
-        
+
         return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
 
 
@@ -549,10 +540,10 @@ def main():
                         help='Batch size')
     parser.add_argument('--sequence-length', type=int, default=2000,
                         help='Sequence length in frames (default: 2000, approx 20s)')
-    parser.add_argument('--sliding-window', action='store_true', default=False,
-                        help='Enable sliding window sampling for better data utilization (default: disabled)')
+    parser.add_argument('--no-sliding-window', dest='sliding_window', action='store_false', default=True,
+                        help='Disable sliding window sampling (use single random crop per file). Default: sliding window ENABLED for 9x more samples per epoch.')
     parser.add_argument('--window-stride', type=int, default=500,
-                        help='Stride for sliding window in frames (default: 500). Only used with --sliding-window')
+                        help='Stride for sliding window in frames (default: 500). Only used when sliding window is enabled.')
     parser.add_argument('--learning-rate', type=float, default=0.0006,
                         help='Learning rate')
     parser.add_argument('--device', type=str, default='cuda',
@@ -572,12 +563,12 @@ def main():
                         help='Weight for frame loss (default: 1.0)')
     parser.add_argument('--velocity-weight', type=float, default=1.0,
                         help='Weight for velocity loss (default: 1.0)')
-    parser.add_argument('--onset-pos-weight', type=float, default=5.0,
-                        help='Positive class weight for onset detection, compensates for rare events (default: 5.0)')
-    parser.add_argument('--offset-pos-weight', type=float, default=5.0,
-                        help='Positive class weight for offset detection (default: 5.0)')
-    parser.add_argument('--frame-pos-weight', type=float, default=2.0,
-                        help='Positive class weight for frame activation, lower than onset since frames less sparse (default: 2.0)')
+    parser.add_argument('--onset-pos-weight', type=float, default=100.0,
+                        help='Positive class weight for onset detection, compensates for extreme class imbalance in MAESTRO (~410:1 ratio). (default: 100.0)')
+    parser.add_argument('--offset-pos-weight', type=float, default=100.0,
+                        help='Positive class weight for offset detection, compensates for extreme class imbalance in MAESTRO (~412:1 ratio). (default: 100.0)')
+    parser.add_argument('--frame-pos-weight', type=float, default=40.0,
+                        help='Positive class weight for frame activation, compensates for class imbalance in MAESTRO (~33:1 ratio). (default: 40.0)')
     
     # Reproducibility
     parser.add_argument('--seed', type=int, default=42,
@@ -707,79 +698,101 @@ def main():
     print("\nStarting training...")
     best_val_loss = float('inf')
 
-    for epoch in range(start_epoch, args.epochs + 1):
-        print(f"\n{'='*60}")
-        print(f"Epoch {epoch}/{args.epochs}")
-        print(f"{'='*60}")
+    try:
+        for epoch in range(start_epoch, args.epochs + 1):
+            print(f"\n{'='*60}")
+            print(f"Epoch {epoch}/{args.epochs}")
+            print(f"{'='*60}")
 
-        # Train
-        train_metrics = train_epoch(
-            model, train_loader, criterion, optimizer, args.device, epoch, writer, scaler
-        )
+            # Train
+            train_metrics = train_epoch(
+                model, train_loader, criterion, optimizer, args.device, epoch, writer, scaler
+            )
 
-        print(f"\nTrain metrics:")
-        print(f"  Loss: {train_metrics['loss']:.4f}")
-        print(f"  Onset: {train_metrics['onset_loss']:.4f}")
-        print(f"  Offset: {train_metrics['offset_loss']:.4f}")
-        print(f"  Frame: {train_metrics['frame_loss']:.4f}")
-        print(f"  Velocity: {train_metrics['velocity_loss']:.4f}")
+            print(f"\nTrain metrics:")
+            print(f"  Loss: {train_metrics['loss']:.4f}")
+            print(f"  Onset: {train_metrics['onset_loss']:.4f}")
+            print(f"  Offset: {train_metrics['offset_loss']:.4f}")
+            print(f"  Frame: {train_metrics['frame_loss']:.4f}")
+            print(f"  Velocity: {train_metrics['velocity_loss']:.4f}")
 
-        # Validate
-        val_metrics = validate(model, val_loader, criterion, args.device)
+            # Validate
+            val_metrics = validate(model, val_loader, criterion, args.device)
 
-        print(f"\nValidation metrics:")
-        print(f"  Loss: {val_metrics['loss']:.4f}")
-        print(f"  Onset: {val_metrics['onset_loss']:.4f}")
-        print(f"  Offset: {val_metrics['offset_loss']:.4f}")
-        print(f"  Frame: {val_metrics['frame_loss']:.4f}")
-        print(f"  Velocity: {val_metrics['velocity_loss']:.4f}")
-        
-        # Print evaluation metrics if available
-        if 'eval_metrics' in val_metrics:
-            print("\n  Evaluation Metrics:")
-            print_metrics(val_metrics['eval_metrics'])
-
-        # TensorBoard logging
-        writer.add_scalar('train/epoch_loss', train_metrics['loss'], epoch)
-        writer.add_scalar('val/epoch_loss', val_metrics['loss'], epoch)
-        writer.add_scalar('val/onset_loss', val_metrics['onset_loss'], epoch)
-        writer.add_scalar('val/offset_loss', val_metrics['offset_loss'], epoch)
-        writer.add_scalar('val/frame_loss', val_metrics['frame_loss'], epoch)
-        writer.add_scalar('val/velocity_loss', val_metrics['velocity_loss'], epoch)
-        
-        # Log evaluation metrics if available
-        if 'eval_metrics' in val_metrics:
-            for metric_name, metric_value in val_metrics['eval_metrics'].items():
-                if isinstance(metric_value, (int, float)):
-                    writer.add_scalar(f'val/{metric_name}', metric_value, epoch)
-
-        # Learning rate scheduling
-        scheduler.step(val_metrics['loss'])
-
-        # Save checkpoint
-        if epoch % args.save_interval == 0:
-            save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir)
-
-        # Save best model
-        if val_metrics['loss'] < best_val_loss:
-            best_val_loss = val_metrics['loss']
-            save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir, 'best_model.pt')
-            print(f"  ✓ New best model saved! (loss: {best_val_loss:.4f})")
-        
-        # Check early stopping
-        if early_stopping:
-            early_stopping_status = early_stopping(val_metrics['loss'], epoch)
-            print(f"  Early stopping: {early_stopping.counter}/{early_stopping.patience} epochs without improvement")
+            print(f"\nValidation metrics:")
+            print(f"  Loss: {val_metrics['loss']:.4f}")
+            print(f"  Onset: {val_metrics['onset_loss']:.4f}")
+            print(f"  Offset: {val_metrics['offset_loss']:.4f}")
+            print(f"  Frame: {val_metrics['frame_loss']:.4f}")
+            print(f"  Velocity: {val_metrics['velocity_loss']:.4f}")
             
-            if early_stopping_status:
-                print(f"\n{'='*60}")
-                print(f"Early stopping triggered!")
-                print(f"Best validation loss: {early_stopping.best_loss:.4f} (epoch {early_stopping.best_epoch})")
-                print(f"{'='*60}\n")
-                break
+            # Print evaluation metrics if available
+            if 'eval_metrics' in val_metrics:
+                print("\n  Evaluation Metrics:")
+                print_metrics(val_metrics['eval_metrics'])
 
-    print("\nTraining complete!")
-    writer.close()
+            # TensorBoard logging
+            writer.add_scalar('train/epoch_loss', train_metrics['loss'], epoch)
+            writer.add_scalar('val/epoch_loss', val_metrics['loss'], epoch)
+            writer.add_scalar('val/onset_loss', val_metrics['onset_loss'], epoch)
+            writer.add_scalar('val/offset_loss', val_metrics['offset_loss'], epoch)
+            writer.add_scalar('val/frame_loss', val_metrics['frame_loss'], epoch)
+            writer.add_scalar('val/velocity_loss', val_metrics['velocity_loss'], epoch)
+            
+            # Log evaluation metrics if available
+            if 'eval_metrics' in val_metrics:
+                for metric_name, metric_value in val_metrics['eval_metrics'].items():
+                    if isinstance(metric_value, (int, float)):
+                        writer.add_scalar(f'val/{metric_name}', metric_value, epoch)
+
+            # Learning rate scheduling
+            scheduler.step(val_metrics['loss'])
+
+            # Save checkpoint
+            if epoch % args.save_interval == 0:
+                save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir)
+
+            # Save best model
+            if val_metrics['loss'] < best_val_loss:
+                best_val_loss = val_metrics['loss']
+                save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir, 'best_model.pt')
+                print(f"  ✓ New best model saved! (loss: {best_val_loss:.4f})")
+            
+            # Check early stopping
+            if early_stopping:
+                early_stopping_status = early_stopping(val_metrics['loss'], epoch)
+                print(f"  Early stopping: {early_stopping.counter}/{early_stopping.patience} epochs without improvement")
+                
+                if early_stopping_status:
+                    print(f"\n{'='*60}")
+                    print(f"Early stopping triggered!")
+                    print(f"Best validation loss: {early_stopping.best_loss:.4f} (epoch {early_stopping.best_epoch})")
+                    print(f"{'='*60}\n")
+                    break
+
+        print("\nTraining complete!")
+    
+    except KeyboardInterrupt:
+        print("\n\n" + "="*60)
+        print("Training interrupted by user (CTRL-C)")
+        print("="*60)
+        print("\nCleaning up resources...")
+        
+        # Save checkpoint before exiting
+        save_checkpoint(model, optimizer, epoch, val_metrics if 'val_metrics' in locals() else {}, 
+                       args.output_dir, f'interrupted_epoch_{epoch}.pt')
+        print(f"✓ Saved checkpoint: interrupted_epoch_{epoch}.pt")
+    
+    finally:
+        # Always clean up resources
+        print("Closing TensorBoard writer...")
+        writer.close()
+        
+        # Clear CUDA cache if using GPU
+        if args.device == 'cuda':
+            torch.cuda.empty_cache()
+        
+        print("✓ Cleanup complete\n")
 
 
 if __name__ == '__main__':
