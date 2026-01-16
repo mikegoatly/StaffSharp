@@ -1,5 +1,4 @@
-﻿using StaffSharp.Audio;
-using StaffSharp.Demo.ViewModels;
+﻿using StaffSharp.Demo.ViewModels;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Demo.Services

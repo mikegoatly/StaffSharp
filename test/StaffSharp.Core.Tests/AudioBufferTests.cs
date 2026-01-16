@@ -1,7 +1,3 @@
-using System;
-using Xunit;
-using StaffSharp.Audio;
-
 namespace StaffSharp.Audio.Tests;
 
 public class AudioBufferTests
@@ -30,7 +26,7 @@ public class AudioBufferTests
     {
         // Arrange
         // Negative peak has larger magnitude than positive values
-        var samples = new float[] { 0.1f, -0.5f, 0.2f }; 
+        var samples = new float[] { 0.1f, -0.5f, 0.2f };
         var buffer = new AudioBuffer(samples, 44100, 1);
 
         // Act
@@ -45,7 +41,7 @@ public class AudioBufferTests
         Assert.Equal(0.2f, span[0], 4);
         Assert.Equal(-1.0f, span[1], 4);
         Assert.Equal(0.4f, span[2], 4);
-        
+
         // Stats
         Assert.Equal(0.5f, Math.Abs(stats.OriginalPeakAmplitude), 4);
         Assert.Equal(2.0f, stats.GainApplied, 4);

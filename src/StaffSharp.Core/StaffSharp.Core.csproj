@@ -4,4 +4,8 @@
 		<RootNamespace>StaffSharp</RootNamespace>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="System.Numerics.Tensors" />
+	</ItemGroup>
+
 </Project>

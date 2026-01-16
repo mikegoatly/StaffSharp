@@ -1,6 +1,6 @@
 using System.Numerics.Tensors;
 
-namespace StaffSharp.Audio;
+namespace StaffSharp;
 
 /// <summary>
 /// Represents an in-memory audio buffer with normalized float samples.
