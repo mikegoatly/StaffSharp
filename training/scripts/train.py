@@ -31,6 +31,45 @@ from early_stopping import EarlyStopping
 from metrics import compute_all_metrics, print_metrics
 
 
+def load_npz_with_retry(file_path: Path, file_name: str) -> tuple:
+    """
+    Load NPZ file arrays with robust error handling.
+    
+    Args:
+        file_path: Path to the NPZ file
+        file_name: Display name for error messages
+    
+    Returns:
+        Tuple of (mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll) as numpy arrays
+    
+    Raises:
+        Exception: Re-raises the original exception if loading fails
+    """
+    try:
+        data = np.load(file_path)
+        
+        # Extract required arrays - this is where corruption errors often occur
+        mel_spec = data['mel_spec']
+        on_roll = data['onset_roll']
+        off_roll = data['offset_roll']
+        p_roll = data['piano_roll']
+        v_roll = data['velocity_roll']
+        
+        return mel_spec, on_roll, off_roll, p_roll, v_roll
+        
+    except KeyError as e:
+        print(f"\n⚠️  Missing key {e} in {file_name}")
+        print(f"    File may be corrupted or from an old preprocessing version. Skipping...")
+        raise
+        
+    except Exception as e:
+        # Catch all other errors: BadZipFile, corrupted files, read errors, etc.
+        print(f"\n⚠️  CORRUPTED FILE DETECTED: {file_name}")
+        print(f"    Error: {type(e).__name__}: {e}")
+        print(f"    This file should be deleted and re-processed. Skipping for now...")
+        raise
+
+
 def set_seed(seed: int = 42):
     """Set random seeds for reproducibility across all libraries.
     
@@ -75,53 +114,47 @@ class MaestroDataset(Dataset):
 
     def __getitem__(self, idx):
         # Load preprocessed data with error handling
-        try:
-            data = np.load(self.files[idx])
-            
-            # Get raw arrays - this is where corruption errors often occur
-            m_spec = data['mel_spec']
-            o_roll = data['onset_roll']
-            off_roll = data['offset_roll']
-            p_roll = data['piano_roll']
-            v_roll = data['velocity_roll']
-            
-        except KeyError as e:
-            print(f"\n⚠️  Missing key {e} in {self.files[idx]}")
-            print(f"    File may be corrupted or from an old preprocessing version. Skipping...")
-            next_idx = (idx + 1) % len(self.files)
-            if next_idx == idx:
-                raise RuntimeError(f"Missing required keys in file and no other files available: {self.files[idx]}")
-            return self.__getitem__(next_idx)
-            
-        except Exception as e:
-            # Catch all other errors: BadZipFile, corrupted files, read errors, etc.
-            print(f"\n⚠️  CORRUPTED FILE DETECTED: {self.files[idx].name}")
-            print(f"    Error: {type(e).__name__}: {e}")
-            print(f"    This file should be deleted and re-processed. Skipping for now...")
-            
-            # Skip to next file instead of crashing
-            next_idx = (idx + 1) % len(self.files)
-            if next_idx == idx:  # Prevent infinite loop if only one file
-                raise RuntimeError(f"Failed to load file and no other files available: {self.files[idx]}")
-            return self.__getitem__(next_idx)
+        # Use retry loop instead of recursion to work properly with multi-worker DataLoader
+        max_retries = len(self.files)
+        attempts = 0
+        current_idx = idx
+        
+        while attempts < max_retries:
+            try:
+                mel_spec, on_roll, off_roll, p_roll, v_roll = load_npz_with_retry(
+                    self.files[current_idx], 
+                    self.files[current_idx].name
+                )
+                # Successfully loaded, break out of retry loop
+                break
+                
+            except Exception:
+                # Try next file
+                attempts += 1
+                current_idx = (current_idx + 1) % len(self.files)
+                continue
+        
+        # If we exhausted all retries, raise an error
+        if attempts >= max_retries:
+            raise RuntimeError(f"Failed to load any valid files after {max_retries} attempts. Check your dataset for corruption.")
 
         # Crop if necessary
-        if self.sequence_length and m_spec.shape[0] > self.sequence_length:
+        if self.sequence_length and mel_spec.shape[0] > self.sequence_length:
             if self.split == 'train':
-                start = np.random.randint(0, m_spec.shape[0] - self.sequence_length)
+                start = np.random.randint(0, mel_spec.shape[0] - self.sequence_length)
             else:
                 # Deterministic crop (middle) for validation/test to ensure consistency
-                start = (m_spec.shape[0] - self.sequence_length) // 2
+                start = (mel_spec.shape[0] - self.sequence_length) // 2
 
             end = start + self.sequence_length
-            m_spec = m_spec[start:end]
-            o_roll = o_roll[start:end]
+            mel_spec = mel_spec[start:end]
+            on_roll = on_roll[start:end]
             off_roll = off_roll[start:end]
             p_roll = p_roll[start:end]
             v_roll = v_roll[start:end]
 
-        mel_spec = torch.from_numpy(m_spec)
-        onset_roll = torch.from_numpy(o_roll)
+        mel_spec = torch.from_numpy(mel_spec)
+        onset_roll = torch.from_numpy(on_roll)
         offset_roll = torch.from_numpy(off_roll)  # Use pre-computed offset_roll from C#
         piano_roll = torch.from_numpy(p_roll)
         velocity_roll = torch.from_numpy(v_roll)
@@ -195,43 +228,43 @@ class SlidingWindowDataset(Dataset):
         return len(self.windows)
     
     def __getitem__(self, idx):
-        file_idx, start_frame = self.windows[idx]
+        # Use retry loop instead of recursion to work properly with multi-worker DataLoader
+        max_retries = len(self.windows)
+        attempts = 0
+        current_idx = idx
         
-        # Load the file directly
-        try:
-            data = np.load(self.base_dataset.files[file_idx])
-        except Exception as e:
-            print(f"Error loading {self.base_dataset.files[file_idx]}: {e}")
-            # Skip to next window
-            next_idx = (idx + 1) % len(self.windows)
-            if next_idx == idx:
-                raise RuntimeError("Cannot load any files in dataset")
-            return self.__getitem__(next_idx)
+        while attempts < max_retries:
+            file_idx, start_frame = self.windows[current_idx]
+            
+            try:
+                mel_spec, on_roll, off_roll, p_roll, v_roll = load_npz_with_retry(
+                    self.base_dataset.files[file_idx],
+                    self.base_dataset.files[file_idx].name
+                )
+                # Successfully loaded, break out of retry loop
+                break
+                
+            except Exception:
+                # Try next window
+                attempts += 1
+                current_idx = (current_idx + 1) % len(self.windows)
+                continue
         
-        try:
-            m_spec = data['mel_spec']
-            o_roll = data['onset_roll']
-            off_roll = data['offset_roll']
-            p_roll = data['piano_roll']
-            v_roll = data['velocity_roll']
-        except KeyError as e:
-            print(f"Missing key {e} in {self.base_dataset.files[file_idx]}")
-            next_idx = (idx + 1) % len(self.windows)
-            if next_idx == idx:
-                raise RuntimeError("Cannot load data from any files in dataset")
-            return self.__getitem__(next_idx)
+        # If we exhausted all retries, raise an error
+        if attempts >= max_retries:
+            raise RuntimeError(f"Failed to load any valid windows after {max_retries} attempts. Check your dataset for corruption.")
 
         # Extract window
         if self.sequence_length:
             end_frame = start_frame + self.sequence_length
-            m_spec = m_spec[start_frame:end_frame]
-            o_roll = o_roll[start_frame:end_frame]
+            mel_spec = mel_spec[start_frame:end_frame]
+            on_roll = on_roll[start_frame:end_frame]
             off_roll = off_roll[start_frame:end_frame]
             p_roll = p_roll[start_frame:end_frame]
             v_roll = v_roll[start_frame:end_frame]
 
-        mel_spec = torch.from_numpy(m_spec)
-        onset_roll = torch.from_numpy(o_roll)
+        mel_spec = torch.from_numpy(mel_spec)
+        onset_roll = torch.from_numpy(on_roll)
         offset_roll = torch.from_numpy(off_roll)  # Use pre-computed offset_roll from C#
         piano_roll = torch.from_numpy(p_roll)
         velocity_roll = torch.from_numpy(v_roll)
