@@ -2,8 +2,6 @@ using System.Runtime.InteropServices;
 
 using PortAudioSharp;
 
-using StaffSharp.Audio;
-
 namespace StaffSharp.Demo.Services.Audio;
 
 /// <summary>

@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using StaffSharp.Abc.Exporting;
-using StaffSharp.Audio;
 using StaffSharp.Demo.Services;
 using StaffSharp.Demo.Services.Audio;
 using StaffSharp.Notation;
