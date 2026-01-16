@@ -3,7 +3,7 @@ Training script for Onsets and Frames polyphonic piano transcription model.
 
 Usage:
     # Train on prepared MAESTRO dataset
-    python train.py --data-dir //studyfiles/home/maestro-v3.0.0-processed --epochs 100
+    python train.py --data-dir tmp/maestro-v3.0.0-processed --epochs 100
 
     # Resume from checkpoint
     python train.py --data-dir data/processed --resume models/checkpoint_epoch_50.pt
