@@ -491,6 +491,7 @@ def validate(
 def save_checkpoint(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau,
     epoch: int,
     metrics: Dict[str, float],
     output_dir: str,
@@ -504,6 +505,7 @@ def save_checkpoint(
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict(),
         'metrics': metrics
     }
 
@@ -512,12 +514,28 @@ def save_checkpoint(
     print(f"Saved checkpoint: {output_path}")
 
 
-def load_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, checkpoint_path: str):
+def load_checkpoint(
+    model: nn.Module, 
+    optimizer: torch.optim.Optimizer, 
+    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau,
+    checkpoint_path: str,
+    resume_scheduler: bool = True
+):
     """Load model checkpoint."""
     checkpoint = torch.load(checkpoint_path)
 
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    
+    # Check if scheduler state exists (for backward compatibility with old checkpoints)
+    if 'scheduler_state_dict' in checkpoint:
+        if resume_scheduler:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            print("  ✓ Scheduler state loaded")
+        else:
+            print("  ! Scheduler state not resumed (starting fresh)")
+    else:
+        print("  ! No scheduler state found in checkpoint (starting fresh)")
 
     return checkpoint['epoch'], checkpoint['metrics']
 
@@ -553,6 +571,8 @@ def main():
     # Model
     parser.add_argument('--resume', type=str, default=None,
                         help='Path to checkpoint to resume from')
+    parser.add_argument('--resume-scheduler', default=True, action=argparse.BooleanOptionalAction,
+                        help='Whether to resume the scheduler state from checkpoint. Only effective if --resume is set. (default: True)')
     
     # Loss weights
     parser.add_argument('--onset-weight', type=float, default=1.0,
@@ -675,7 +695,7 @@ def main():
     start_epoch = 1
     if args.resume:
         print(f"\nResuming from checkpoint: {args.resume}")
-        start_epoch, metrics = load_checkpoint(model, optimizer, args.resume)
+        start_epoch, metrics = load_checkpoint(model, optimizer, scheduler, args.resume, args.resume_scheduler)
         start_epoch += 1
         print(f"Resuming from epoch {start_epoch}")
         print(f"Previous metrics: {metrics}")
@@ -750,12 +770,12 @@ def main():
 
             # Save checkpoint
             if epoch % args.save_interval == 0:
-                save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir)
+                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir)
 
             # Save best model
             if val_metrics['loss'] < best_val_loss:
                 best_val_loss = val_metrics['loss']
-                save_checkpoint(model, optimizer, epoch, val_metrics, args.output_dir, 'best_model.pt')
+                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_model.pt')
                 print(f"  ✓ New best model saved! (loss: {best_val_loss:.4f})")
             
             # Check early stopping
@@ -779,7 +799,7 @@ def main():
         print("\nCleaning up resources...")
         
         # Save checkpoint before exiting
-        save_checkpoint(model, optimizer, epoch, val_metrics if 'val_metrics' in locals() else {}, 
+        save_checkpoint(model, optimizer, scheduler, epoch, val_metrics if 'val_metrics' in locals() else {}, 
                        args.output_dir, f'interrupted_epoch_{epoch}.pt')
         print(f"✓ Saved checkpoint: interrupted_epoch_{epoch}.pt")
     
