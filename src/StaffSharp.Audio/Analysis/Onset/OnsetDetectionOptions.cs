@@ -1,11 +1,9 @@
-using StaffSharp.Audio.Diagnostics;
-
 namespace StaffSharp.Audio.Analysis.Onset;
 
 /// <summary>
 /// Options for onset detection algorithms implementing <see cref="IOnsetDetector"/>.
 /// </summary>
-public record OnsetDetectionOptions : DiagnosticsOptions
+public record OnsetDetectionOptions
 {
     /// <summary>
     /// Gets or initializes the FFT frame size in samples.

@@ -43,26 +43,16 @@ public sealed record AudioPipelineOptions
     /// <summary>
     /// Creates the default note detector with standard algorithmic components.
     /// </summary>
-    private AlgorithmicNoteDetector CreateDefaultNoteDetector()
+    private static AlgorithmicNoteDetector CreateDefaultNoteDetector()
     {
         // Create default detector instances with diagnostics
-        var onsetDetector = new SpectralFluxOnsetDetector(
-            new OnsetDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+        var onsetDetector = new SpectralFluxOnsetDetector();
+        var pitchDetector = new PyinPitchDetector();
+        var timeSignatureDetector = new SimpleTimeSignatureDetector();
+        var tempoDetector = new InterOnsetIntervalTempoDetector();
+        var quantizer = new SimpleMonophonicQuantizer();
 
-        var pitchDetector = new PyinPitchDetector(
-            new PitchDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
-
-        var timeSignatureDetector = new SimpleTimeSignatureDetector(
-            new TimeSignatureDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
-
-        var tempoDetector = new InterOnsetIntervalTempoDetector(
-            new TempoDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
-
-        var quantizer = new SimpleMonophonicQuantizer(
-            new Quantization.QuantizationOptions());
-
-        var boundaryDetector = new EnergyBasedBoundaryDetector(
-            new BoundaryDetectionOptions { DiagnosticsCollector = DiagnosticsCollector });
+        var boundaryDetector = new EnergyBasedBoundaryDetector();
 
         // Create algorithmic detector with all components
         return new AlgorithmicNoteDetector(
@@ -71,8 +61,7 @@ public sealed record AudioPipelineOptions
             timeSignatureDetector,
             tempoDetector,
             quantizer,
-            boundaryDetector,
-            this);
+            boundaryDetector);
     }
 
     /// <summary>

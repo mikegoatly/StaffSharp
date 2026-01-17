@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Pitch;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Audio.Tests.Analysis.Pitch;
@@ -27,7 +28,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_EmptyBuffer_ReturnsDefault()
     {
         var detector = new YinPitchDetector();
-        var result = detector.DetectPitch(ReadOnlySpan<float>.Empty, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, ReadOnlySpan<float>.Empty, SampleRate);
 
         Assert.False(result.IsPitched);
         Assert.Equal(0, result.FrequencyHz);
@@ -38,7 +39,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
     {
         var detector = new YinPitchDetector();
         var buffer = new float[1];
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         Assert.False(result.IsPitched);
     }
@@ -49,7 +50,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector();
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequency(result, 440.0);
         AssertConfidence(result, 0.7f);
@@ -67,7 +68,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector();
         var buffer = AudioSignalBuilder.Sine(frequency, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequencyPercent(result, frequency, tolerancePercent: 2.0);
     }
@@ -80,7 +81,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var buffer = AudioSignalBuilder.Harmonics(fundamental, harmonicCount: 5, duration: 0.1, sampleRate: SampleRate);
 
         var detector = new YinPitchDetector();
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // YIN should detect fundamental, not harmonics
         AssertPitchFrequencyPercent(result, fundamental, tolerancePercent: 5.0);
@@ -92,7 +93,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector();
         var buffer = AudioSignalBuilder.Noise(0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertNoPitchOrLowConfidence(result, maxConfidence: 0.3f);
     }
@@ -105,14 +106,14 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
 
         // In-range frequency should have high confidence
         var bufferInRange = AudioSignalBuilder.Sine(350.0, 0.1, SampleRate);
-        var resultInRange = detector.DetectPitch(bufferInRange, SampleRate);
+        var resultInRange = detector.DetectPitch(PipelineProgress.Null, bufferInRange, SampleRate);
         AssertPitchFrequency(resultInRange, 350.0);
         AssertConfidence(resultInRange, 0.7f);
 
         // Out-of-range frequencies may not be detected or have lower confidence
         // (YIN's frequency range is a search optimization, not a hard filter)
         var bufferLow = AudioSignalBuilder.Sine(100.0, 0.1, SampleRate);
-        var resultLow = detector.DetectPitch(bufferLow, SampleRate);
+        var resultLow = detector.DetectPitch(PipelineProgress.Null, bufferLow, SampleRate);
         if (resultLow.IsPitched)
         {
             Assert.True(resultLow.Confidence < resultInRange.Confidence);
@@ -126,11 +127,11 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
 
         // Lower threshold = more sensitive
         var detectorSensitive = new YinPitchDetector(new PitchDetectionOptions { Threshold = 0.1f });
-        var resultSensitive = detectorSensitive.DetectPitch(buffer, SampleRate);
+        var resultSensitive = detectorSensitive.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Higher threshold = less sensitive
         var detectorStrict = new YinPitchDetector(new PitchDetectionOptions { Threshold = 0.3f });
-        var resultStrict = detectorStrict.DetectPitch(buffer, SampleRate);
+        var resultStrict = detectorStrict.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Both should detect pure sine, but sensitive might have lower confidence requirement
         Assert.True(resultSensitive.IsPitched);
@@ -146,7 +147,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 10000, MaxFrequency = 20000 });
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should return default result (no pitch)
         AssertNoPitch(result);
@@ -164,7 +165,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
             .AddNoise(amplitude: 0.7, seed: 42)
             .Build();
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should either detect no pitch or have very low confidence
         AssertNoPitchOrLowConfidence(result, maxConfidence: 0.3f);
@@ -179,7 +180,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector();
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, sampleRate);
 
-        var result = detector.DetectPitch(buffer, sampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, sampleRate);
 
         AssertPitchFrequencyPercent(result, 440.0, tolerancePercent: 2.0);
     }
@@ -192,7 +193,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = minFreq, MaxFrequency = 1000 });
         var buffer = AudioSignalBuilder.Sine(testFreq, 0.3, SampleRate); // Longer buffer for low frequency
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequencyPercent(result, testFreq, tolerancePercent: 5.0);
     }
@@ -204,7 +205,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector(new PitchDetectionOptions { MinFrequency = 80, MaxFrequency = maxFreq });
         var buffer = AudioSignalBuilder.Sine(maxFreq, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequencyPercent(result, maxFreq, tolerancePercent: 5.0);
     }
@@ -215,7 +216,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var detector = new YinPitchDetector();
         var buffer = AudioSignalBuilder.Silence(0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertNoPitch(result);
     }
@@ -227,7 +228,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         // Buffer too short to detect even high frequencies
         var buffer = new float[10];
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertNoPitch(result);
     }
@@ -248,7 +249,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
             .AddNoise(amplitude: noiseAmplitude, seed: 42)
             .Build();
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should still detect the pitch, tolerance increases with noise
         var tolerancePercent = noiseAmplitude < 0.3 ? 3.0 : 8.0;
@@ -270,7 +271,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
             .AddNoise(amplitude: noiseAmplitude, seed: 42)
             .Build();
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // YIN should still detect fundamental even with noise and harmonics
         var tolerancePercent = noiseAmplitude < 0.2 ? 5.0 : 10.0;
@@ -285,7 +286,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
         var exactFreq = 437.5;
         var buffer = AudioSignalBuilder.Sine(exactFreq, 0.2, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should get sub-sample accuracy from parabolic interpolation
         AssertPitchFrequency(result, exactFreq, toleranceHz: 2.0);
@@ -304,7 +305,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
             .AddHarmonics(220.0, harmonicCount: 5)
             .Build();
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should still detect fundamental even with attack and harmonics
         AssertPitchFrequencyPercent(result, 220.0, tolerancePercent: 5.0);
@@ -323,7 +324,7 @@ public class YinPitchDetectorTests : PitchDetectorTestBase
             .AddSine(440.0)
             .Build();
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should detect pitch regardless of envelope shape
         AssertPitchFrequencyPercent(result, 440.0, tolerancePercent: 3.0);

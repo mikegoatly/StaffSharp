@@ -1,17 +1,10 @@
-using StaffSharp.Audio;
-
 namespace StaffSharp.Audio.Pipeline.Stages;
 
 /// <summary>
 /// Pipeline stage that normalizes audio (mixes to mono and normalizes volume).
 /// </summary>
-internal sealed class NormalizeAudioStage : PipelineStageBase
+internal sealed class NormalizeAudioStage(PipelineProgress progress)
 {
-    protected override string StageName => "NormalizeAudio";
-
-    public NormalizeAudioStage(AudioPipelineOptions options) : base(options)
-    {
-    }
 
     /// <summary>
     /// Normalizes the audio buffer.
@@ -23,7 +16,7 @@ internal sealed class NormalizeAudioStage : PipelineStageBase
     {
         ct.ThrowIfCancellationRequested();
 
-        ReportProgress("Normalizing audio");
+        progress.ReportProgress("Normalizing audio");
 
         // Convert to mono first
         var monoAudio = audio.ToMono();
@@ -31,9 +24,9 @@ internal sealed class NormalizeAudioStage : PipelineStageBase
         // Then normalize volume
         var (normalized, normalizationStats) = monoAudio.Normalize();
 
-        EmitDiagnostics("Channels", normalized.Channels);
-        EmitDiagnostics("SampleCount", normalized.SampleCount);
-        EmitDiagnostics("NormalizationStats", normalizationStats);
+        progress.EmitDiagnostics("Channels", normalized.Channels);
+        progress.EmitDiagnostics("SampleCount", normalized.SampleCount);
+        progress.EmitDiagnostics("NormalizationStats", normalizationStats);
 
         return Task.FromResult(normalized);
     }

@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Tempo;
+using StaffSharp.Audio.Pipeline;
 
 namespace StaffSharp.Audio.Tests.Analysis.Tempo;
 
@@ -16,7 +17,7 @@ public class InterOnsetIntervalTempoDetectorTests
     public void EstimateTempo_EmptyOnsets_ReturnsNull()
     {
         var detector = new InterOnsetIntervalTempoDetector();
-        var tempoMap = detector.DetectTempo(ReadOnlySpan<double>.Empty);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, ReadOnlySpan<double>.Empty);
 
         Assert.Null(tempoMap);
     }
@@ -26,7 +27,7 @@ public class InterOnsetIntervalTempoDetectorTests
     {
         var detector = new InterOnsetIntervalTempoDetector();
         var onsets = new[] { 0.5 };
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.Null(tempoMap);
     }
@@ -39,7 +40,7 @@ public class InterOnsetIntervalTempoDetectorTests
         // 120 BPM = 0.5 seconds per beat
         var onsets = new[] { 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 };
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         var tempo = tempoMap!.TempoChanges[0].BeatsPerMinute;
@@ -56,7 +57,7 @@ public class InterOnsetIntervalTempoDetectorTests
         // 60 BPM = 1.0 second per beat
         var onsets = new[] { 0.0, 1.0, 2.0, 3.0, 4.0, 5.0 };
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         Assert.InRange(tempoMap!.TempoChanges[0].BeatsPerMinute, 55, 65);
@@ -73,7 +74,7 @@ public class InterOnsetIntervalTempoDetectorTests
             .Select(i => i * beatInterval)
             .ToArray();
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         Assert.InRange(tempoMap!.TempoChanges[0].BeatsPerMinute, 175, 185);
@@ -94,7 +95,7 @@ public class InterOnsetIntervalTempoDetectorTests
             .Select(i => i * beatInterval)
             .ToArray();
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         var tempo = tempoMap!.TempoChanges[0].BeatsPerMinute;
@@ -120,7 +121,7 @@ public class InterOnsetIntervalTempoDetectorTests
             onsets.Add(onsets[^1] + interval);
         }
 
-        var tempoMap = detector.DetectTempo(onsets.ToArray());
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets.ToArray());
 
         Assert.NotNull(tempoMap);
         Assert.InRange(tempoMap!.TempoChanges[0].BeatsPerMinute, 110, 130); // Should still detect around 120 BPM
@@ -143,7 +144,7 @@ public class InterOnsetIntervalTempoDetectorTests
             2.0    // Beat
         };
 
-        var tempoMap = detector.DetectTempo(onsets.ToArray());
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets.ToArray());
 
         // Should detect main beat (~120 BPM), not grace notes
         Assert.NotNull(tempoMap);
@@ -157,7 +158,7 @@ public class InterOnsetIntervalTempoDetectorTests
 
         // 60 BPM - below minimum
         var slowOnsets = new[] { 0.0, 1.0, 2.0, 3.0, 4.0 };
-        var slowTempo = detector.DetectTempo(slowOnsets);
+        var slowTempo = detector.DetectTempo(PipelineProgress.Null, slowOnsets);
 
         Assert.Null(slowTempo);
     }
@@ -183,7 +184,7 @@ public class InterOnsetIntervalTempoDetectorTests
             4.0    // Quarter
         };
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         var tempo = tempoMap!.TempoChanges[0].BeatsPerMinute;
@@ -213,7 +214,7 @@ public class InterOnsetIntervalTempoDetectorTests
             }
         }
 
-        var tempoMap = detector.DetectTempo(onsets.ToArray());
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets.ToArray());
 
         Assert.NotNull(tempoMap);
         var tempo = tempoMap!.TempoChanges[0].BeatsPerMinute;
@@ -240,7 +241,7 @@ public class InterOnsetIntervalTempoDetectorTests
             3.6    // Beat 6
         };
 
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         Assert.NotNull(tempoMap);
         // Should find predominant interval around 0.6s (100 BPM)
@@ -254,7 +255,7 @@ public class InterOnsetIntervalTempoDetectorTests
 
         // Just 2 onsets
         var onsets = new[] { 0.0, 0.5 };
-        var tempoMap = detector.DetectTempo(onsets);
+        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
 
         // Should still work with minimal data
         Assert.NotNull(tempoMap);
@@ -272,7 +273,7 @@ public class InterOnsetIntervalTempoDetectorTests
             .Select(i => i * (60.0 / 125.0))
             .ToArray();
 
-        var validTempo = detector.DetectTempo(validOnsets);
+        var validTempo = detector.DetectTempo(PipelineProgress.Null, validOnsets);
         Assert.NotNull(validTempo);
         Assert.InRange(validTempo!.TempoChanges[0].BeatsPerMinute, 120, 130);
 
@@ -281,7 +282,7 @@ public class InterOnsetIntervalTempoDetectorTests
             .Select(i => i * (60.0 / 100.0))
             .ToArray();
 
-        var invalidTempo = detector.DetectTempo(invalidOnsets);
+        var invalidTempo = detector.DetectTempo(PipelineProgress.Null, invalidOnsets);
         Assert.Null(invalidTempo);
     }
 }

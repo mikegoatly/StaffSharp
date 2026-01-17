@@ -7,23 +7,17 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// Pipeline stage that detects MIDI pitch for each onset.
 /// Returns -1 for unpitched/percussive onsets.
 /// </summary>
-internal sealed class DetectPitchesStage : PipelineStageBase
+internal sealed class DetectPitchesStage(
+    PipelineProgress progress, 
+    IPitchDetector detector, 
+    int maxDegreeOfParallelism = 0)
 {
-    private readonly IPitchDetector _detector;
-    private readonly int _maxDegreeOfParallelism;
     private const int PitchWindowSamples = 2048;
-    protected override string StageName => "DetectPitches";
 
     /// <summary>
     /// Sentinel value indicating no pitch detected (unpitched/percussive onset).
     /// </summary>
     public const int UnpitchedSentinel = -1;
-
-    public DetectPitchesStage(AudioPipelineOptions options, IPitchDetector detector, int maxDegreeOfParallelism = 0) : base(options)
-    {
-        _detector = detector ?? throw new ArgumentNullException(nameof(detector));
-        _maxDegreeOfParallelism = maxDegreeOfParallelism;
-    }
 
     /// <summary>
     /// Detects MIDI pitch for each onset time.
@@ -41,7 +35,7 @@ internal sealed class DetectPitchesStage : PipelineStageBase
     {
         ct.ThrowIfCancellationRequested();
 
-        ReportProgress("Starting pitch detection...");
+        progress.ReportProgress("Starting pitch detection...");
 
         var results = new PitchDetectionResult[onsets.Length];
 
@@ -49,9 +43,9 @@ internal sealed class DetectPitchesStage : PipelineStageBase
         var parallelOptions = new ParallelOptions
         {
             CancellationToken = ct,
-            MaxDegreeOfParallelism = _maxDegreeOfParallelism == 0
+            MaxDegreeOfParallelism = maxDegreeOfParallelism == 0
                 ? Environment.ProcessorCount
-                : _maxDegreeOfParallelism
+                : maxDegreeOfParallelism
         };
 
         await Parallel.ForEachAsync(
@@ -109,7 +103,7 @@ internal sealed class DetectPitchesStage : PipelineStageBase
                     window = audio.Samples.Span.Slice(actualStart, PitchWindowSamples);
                 }
 
-                results[i] = _detector.DetectPitch(window, audio.SampleRate);
+                results[i] = detector.DetectPitch(progress, window, audio.SampleRate);
             }).ConfigureAwait(false);
 
         // Extract pitches from results
@@ -121,36 +115,33 @@ internal sealed class DetectPitchesStage : PipelineStageBase
                 : UnpitchedSentinel;
         }
 
-        EmitDiagnostics("Pitch count", pitches.Length);
-        EmitDiagnostics("Pitches (MIDI)", pitches);
+        progress.EmitDiagnostics("Pitch count", pitches.Length);
+        progress.EmitDiagnostics("Pitches (MIDI)", pitches);
         
         // Count pitched vs unpitched
         var pitchedCount = pitches.Count(p => p != UnpitchedSentinel);
         var unpitchedCount = pitches.Length - pitchedCount;
-        EmitDiagnostics("Pitched notes", pitchedCount);
-        EmitDiagnostics("Unpitched/silent", unpitchedCount);
+        progress.EmitDiagnostics("Pitched notes", pitchedCount);
+        progress.EmitDiagnostics("Unpitched/silent", unpitchedCount);
         
         // Additional diagnostics from the same detection results
-        if (Options.DiagnosticsCollector != null)
+        var voicingProbs = new float[onsets.Length];
+        var candidateCounts = new int[onsets.Length];
+
+        for (int i = 0; i < onsets.Length; i++)
         {
-            var voicingProbs = new float[onsets.Length];
-            var candidateCounts = new int[onsets.Length];
-            
-            for (int i = 0; i < onsets.Length; i++)
-            {
-                voicingProbs[i] = results[i].VoicingProbability;
-                candidateCounts[i] = results[i].Candidates?.Count ?? 0;
-            }
-            
-            EmitDiagnostics("Voicing probabilities", voicingProbs);
-            EmitDiagnostics("Candidate counts", candidateCounts);
-            
-            // Report average values
-            var avgVoicing = voicingProbs.Average();
-            var avgCandidates = candidateCounts.Average();
-            EmitDiagnostics("Avg voicing probability", avgVoicing);
-            EmitDiagnostics("Avg candidates per onset", avgCandidates);
+            voicingProbs[i] = results[i].VoicingProbability;
+            candidateCounts[i] = results[i].Candidates?.Count ?? 0;
         }
+
+        progress.EmitDiagnostics("Voicing probabilities", voicingProbs);
+        progress.EmitDiagnostics("Candidate counts", candidateCounts);
+
+        // Report average values
+        var avgVoicing = voicingProbs.Average();
+        var avgCandidates = candidateCounts.Average();
+        progress.EmitDiagnostics("Avg voicing probability", avgVoicing);
+        progress.EmitDiagnostics("Avg candidates per onset", avgCandidates);
 
         return pitches;
     }

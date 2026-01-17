@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Boundaries;
+using StaffSharp.Audio.Pipeline;
 
 namespace StaffSharp.Audio.Tests.Analysis.Boundaries;
 
@@ -37,7 +38,7 @@ public class EnergyBasedBoundaryDetectorTests
     public void DetectBoundaries_NullAudio_ThrowsException()
     {
         var detector = new EnergyBasedBoundaryDetector();
-        Assert.Throws<ArgumentNullException>(() => detector.DetectBoundaries(null!));
+        Assert.Throws<ArgumentNullException>(() => detector.DetectBoundaries(PipelineProgress.Null, null!));
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public class EnergyBasedBoundaryDetectorTests
         var detector = new EnergyBasedBoundaryDetector();
         var audio = CreateSilence(SampleRate * 2); // 2 seconds of silence
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.Null(result);
     }
@@ -61,7 +62,7 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: 5000, // Less than minContentSamples
             trailingSilenceSamples: 1000);
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.Null(result); // Content too short
     }
@@ -72,7 +73,7 @@ public class EnergyBasedBoundaryDetectorTests
         var detector = new EnergyBasedBoundaryDetector();
         var audio = CreateTone(SampleRate, 440.0f); // 1 second of 440Hz tone
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(result);
         Assert.Equal(0, result!.StartSample);
@@ -93,7 +94,7 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: contentSamples,
             trailingSilenceSamples: 0);
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(result);
         // Should detect start near the actual content start (within window tolerance)
@@ -113,7 +114,7 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: contentSamples,
             trailingSilenceSamples: trailingSamples);
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(result);
         // Should detect end near the actual content end (within window tolerance)
@@ -134,7 +135,7 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: contentSamples,
             trailingSilenceSamples: trailingSamples);
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(result);
 
@@ -170,7 +171,7 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: contentSamples,
             trailingSilenceSamples: 0);
 
-        var result = detector.DetectBoundaries(audio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(result);
 
@@ -199,8 +200,8 @@ public class EnergyBasedBoundaryDetectorTests
         // For sine wave, RMS = amplitude / sqrt(2), so we need amplitude = 0.001 * sqrt(2) ≈ 0.00141
         var audio = CreateTone(SampleRate, 440.0f, amplitude: 0.002f); // Very quiet but above -60dB
 
-        var sensitiveResult = sensitiveDetector.DetectBoundaries(audio);
-        var normalResult = normalDetector.DetectBoundaries(audio);
+        var sensitiveResult = sensitiveDetector.DetectBoundaries(PipelineProgress.Null, audio);
+        var normalResult = normalDetector.DetectBoundaries(PipelineProgress.Null, audio);
 
         // Sensitive detector should find content
         Assert.NotNull(sensitiveResult);
@@ -227,7 +228,7 @@ public class EnergyBasedBoundaryDetectorTests
 
         var stereoAudio = new AudioBuffer(stereoSamples, SampleRate, 2);
 
-        var result = detector.DetectBoundaries(stereoAudio);
+        var result = detector.DetectBoundaries(PipelineProgress.Null, stereoAudio);
 
         Assert.NotNull(result);
         // Should detect content (converted to mono internally)
@@ -246,8 +247,8 @@ public class EnergyBasedBoundaryDetectorTests
             contentSamples: SampleRate,
             trailingSilenceSamples: 0);
 
-        var smallResult = smallWindow.DetectBoundaries(audio);
-        var largeResult = largeWindow.DetectBoundaries(audio);
+        var smallResult = smallWindow.DetectBoundaries(PipelineProgress.Null, audio);
+        var largeResult = largeWindow.DetectBoundaries(PipelineProgress.Null, audio);
 
         Assert.NotNull(smallResult);
         Assert.NotNull(largeResult);

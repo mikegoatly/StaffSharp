@@ -1,18 +1,15 @@
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Audio.Pipeline.Stages;
-using Xunit;
 
 namespace StaffSharp.Audio.Tests.Pipeline;
 
 public class FilterUnpitchedOnsetsStageTests
 {
-    private readonly AudioPipelineOptions _options = AudioPipelineOptions.Default;
-
     [Fact]
     public async Task ExecuteAsync_WithNoUnpitchedOnsets_ReturnsAllOnsets()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
         var pitches = new int[] { 60, 62, 64, 65 };
 
@@ -34,7 +31,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithUnpitchedFirstOnset_FiltersAndShifts()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5 };
         var pitches = new int[] { -1, 60, 62, 64 }; // First is unpitched
 
@@ -55,7 +52,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithMultipleUnpitchedOnsets_FiltersAll()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0, 1.5, 2.0 };
         var pitches = new int[] { -1, 60, -1, 62, 64 };
 
@@ -76,7 +73,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithAllUnpitchedOnsets_ReturnsEmpty()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0 };
         var pitches = new int[] { -1, -1, -1 };
 
@@ -92,7 +89,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithEmptyInput_ReturnsEmpty()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = Array.Empty<double>();
         var pitches = Array.Empty<int>();
 
@@ -108,7 +105,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithMismatchedLengths_ThrowsArgumentException()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0 };
         var pitches = new int[] { 60, 62 }; // Different length
 
@@ -121,7 +118,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithSinglePitchedOnset_ShiftsToZero()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 2.5 };
         var pitches = new int[] { 60 };
 
@@ -139,7 +136,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_WithUnpitchedAtEnd_DoesNotAffectShift()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.5, 1.0, 1.5, 2.0 };
         var pitches = new int[] { 60, 62, 64, -1 }; // Last is unpitched
 
@@ -159,7 +156,7 @@ public class FilterUnpitchedOnsetsStageTests
     public async Task ExecuteAsync_PreservesPitchValues()
     {
         // Arrange
-        var stage = new FilterUnpitchedOnsetsStage(_options);
+        var stage = new FilterUnpitchedOnsetsStage(PipelineProgress.Null);
         var onsets = new double[] { 0.0, 0.5, 1.0 };
         var pitches = new int[] { -1, 127, 0 }; // Boundary values
 

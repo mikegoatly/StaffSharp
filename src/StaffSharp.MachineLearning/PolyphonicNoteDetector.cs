@@ -1,3 +1,4 @@
+using StaffSharp.Audio;
 using StaffSharp.Audio.Analysis.Meter;
 using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Audio.Pipeline;
@@ -84,7 +85,7 @@ public sealed class PolyphonicNoteDetector : INoteDetector, IDisposable
     /// <param name="audio">Normalized audio buffer to transcribe.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Quantization result containing quantized notes and tempo map.</returns>
-    public async Task<QuantizationResult> DetectAsync(AudioBuffer audio, CancellationToken ct = default)
+    public async Task<PerformanceTimeline> DetectAsync(AudioBuffer audio, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(audio);
         ct.ThrowIfCancellationRequested();
@@ -113,7 +114,7 @@ public sealed class PolyphonicNoteDetector : INoteDetector, IDisposable
                 new[] { new Performance.TimeSignatureChange(Rational.Zero, Notation.TimeSignature.CommonTime) }
             );
 
-            return new QuantizationResult(Array.Empty<Performance.QuantizedNoteEvent>(), defaultTempoMap);
+            return new PerformanceTimeline(Array.Empty<Performance.QuantizedNoteEvent>(), defaultTempoMap);
         }
 
         _options?.Progress?.Report(new("PolyphonicDetection", "Analyzing tempo and time signature"));
@@ -150,7 +151,7 @@ public sealed class PolyphonicNoteDetector : INoteDetector, IDisposable
 
         _options?.DiagnosticsCollector?.Collect("PolyphonicDetection", "Quantized note count", quantizedNotes.Count);
 
-        return new QuantizationResult(quantizedNotes, refinedTempoMap);
+        return new PerformanceTimeline(quantizedNotes, refinedTempoMap);
     }
 
     /// <summary>

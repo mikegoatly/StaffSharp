@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Pitch;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Audio.Tests.Analysis.Pitch;
@@ -27,7 +28,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
     public void DetectPitch_EmptyBuffer_ReturnsDefault()
     {
         var detector = new PyinPitchDetector();
-        var result = detector.DetectPitch(ReadOnlySpan<float>.Empty, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, ReadOnlySpan<float>.Empty, SampleRate);
 
         Assert.False(result.IsPitched);
         Assert.Equal(0, result.FrequencyHz);
@@ -39,7 +40,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
         var detector = new PyinPitchDetector();
         var buffer = AudioSignalBuilder.Sine(440.0, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequency(result, 440.0, toleranceHz: 10.0);
         AssertConfidence(result, 0.5f);
@@ -60,7 +61,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
         var detector = new PyinPitchDetector();
         var buffer = AudioSignalBuilder.Sine(frequency, 0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         AssertPitchFrequencyPercent(result, frequency, tolerancePercent: 3.0);
     }
@@ -73,7 +74,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
         var buffer = AudioSignalBuilder.Harmonics(fundamental, harmonicCount: 5, duration: 0.1, sampleRate: SampleRate);
 
         var detector = new PyinPitchDetector();
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // pYIN should detect fundamental, not harmonics - this is the key test for octave error correction
         AssertPitchFrequencyPercent(result, fundamental, tolerancePercent: 5.0);
@@ -89,7 +90,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
         var buffer = AudioSignalBuilder.Harmonics(fundamental, harmonicCount: 3, duration: 0.1, sampleRate: SampleRate);
 
         var detector = new PyinPitchDetector();
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should have multiple candidates
         Assert.True(result.Candidates?.Count > 1, "Expected multiple pitch candidates");
@@ -114,7 +115,7 @@ public class PyinPitchDetectorTests : PitchDetectorTestBase
         var detector = new PyinPitchDetector();
         var buffer = AudioSignalBuilder.Noise(0.1, SampleRate);
 
-        var result = detector.DetectPitch(buffer, SampleRate);
+        var result = detector.DetectPitch(PipelineProgress.Null, buffer, SampleRate);
 
         // Should have low voicing probability for noise
         Assert.True(result.VoicingProbability < 0.5f, $"Expected low voicing probability for noise, got {result.VoicingProbability}");

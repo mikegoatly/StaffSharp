@@ -1,3 +1,4 @@
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 
@@ -17,12 +18,19 @@ public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
         options.Validate();
     }
 
-    public IReadOnlyList<TimeSignatureChange>? DetectTimeSignatures(
+    public IReadOnlyList<TimeSignatureChange> DetectTimeSignatures(
+        PipelineProgress progress,
         ReadOnlySpan<double> onsetTimes,
         double? estimatedTempo = null)
     {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        progress.ReportProgress("Detecting time signatures...");
+
         if (onsetTimes.Length == 0)
         {
+            progress.EmitDiagnostics("TimeSignature", "No onsets detected; defaulting to 4/4 time.");
+
             return
             [
                 new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime)
@@ -34,6 +42,8 @@ public sealed class SimpleTimeSignatureDetector : ITimeSignatureDetector
 
         // Detect time signature using beat count division
         var detectedMeter = DetectFromBeatCount(beatCount);
+
+        progress.EmitDiagnostics("TimeSignature", $"Detected time signature: {detectedMeter.Numerator}/{detectedMeter.Denominator} based on {beatCount} beats.");
 
         return
         [

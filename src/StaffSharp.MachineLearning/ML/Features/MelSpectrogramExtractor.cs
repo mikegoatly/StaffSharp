@@ -5,7 +5,6 @@ using System.Numerics.Tensors;
 
 using MathNet.Numerics.IntegralTransforms;
 
-using StaffSharp;
 using StaffSharp.Audio;
 using StaffSharp.Audio.Numerics;
 using StaffSharp.MachineLearning.Options;

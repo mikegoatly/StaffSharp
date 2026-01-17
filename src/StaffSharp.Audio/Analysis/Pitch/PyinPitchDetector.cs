@@ -1,3 +1,5 @@
+using StaffSharp.Audio.Pipeline;
+
 namespace StaffSharp.Audio.Analysis.Pitch;
 
 /// <summary>
@@ -30,8 +32,10 @@ public sealed class PyinPitchDetector : IPitchDetector
         _candidateThreshold = options.CandidateThreshold;
     }
 
-    public PitchDetectionResult DetectPitch(ReadOnlySpan<float> buffer, int sampleRate)
+    public PitchDetectionResult DetectPitch(PipelineProgress progress, ReadOnlySpan<float> buffer, int sampleRate)
     {
+        ArgumentNullException.ThrowIfNull(progress);
+
         if (buffer.Length < 2)
         {
             return default;

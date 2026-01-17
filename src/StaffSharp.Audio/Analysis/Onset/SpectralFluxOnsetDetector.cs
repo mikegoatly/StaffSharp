@@ -1,8 +1,10 @@
-using MathNet.Numerics;
-using MathNet.Numerics.IntegralTransforms;
-using StaffSharp.Audio.Numerics;
 using System.Numerics;
 using System.Numerics.Tensors;
+
+using MathNet.Numerics.IntegralTransforms;
+
+using StaffSharp.Audio.Numerics;
+using StaffSharp.Audio.Pipeline;
 
 namespace StaffSharp.Audio.Analysis.Onset;
 
@@ -19,7 +21,6 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
     private readonly float _threshold;
     private readonly float _minOnsetIntervalSeconds;
     private readonly bool _applyLogarithmicCompression;
-    private readonly OnsetDetectionOptions? _options;
 
     public SpectralFluxOnsetDetector(OnsetDetectionOptions? options = null)
     {
@@ -31,37 +32,43 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         _threshold = options.Threshold;
         _minOnsetIntervalSeconds = options.MinOnsetIntervalSeconds;
         _applyLogarithmicCompression = options.ApplyLogarithmicCompression;
-        _options = options;
     }
 
-    public double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default)
+    public double[] DetectOnsets(PipelineProgress progress, ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default)
     {
+        ArgumentNullException.ThrowIfNull(progress);
+
+        progress.ReportProgress("Detecting onsets");
+
         if (buffer.Length < _frameSize)
         {
+            progress.EmitDiagnostics("Buffer too short for onset detection", buffer.Length);
             return [];
         }
 
         // Step 1: Compute spectral flux for each frame
         var fluxValues = ComputeSpectralFlux(buffer);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Flux frames computed", fluxValues.Length);
+        progress.EmitDiagnostics("Flux frames computed", fluxValues.Length);
 
         // Step 2: Peak picking with threshold
         var onsetFrames = PickPeaks(fluxValues, _threshold);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Peaks before filtering", onsetFrames.Count);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Threshold", _threshold);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Min onset interval (seconds)", _minOnsetIntervalSeconds);
+        progress.EmitDiagnostics("Peaks before filtering", onsetFrames.Count);
+        progress.EmitDiagnostics("Threshold", _threshold);
+        progress.EmitDiagnostics("Min onset interval (seconds)", _minOnsetIntervalSeconds);
 
         // Step 3: Convert frame indices to time (seconds)
         var minOnsetIntervalFrames = (int)(_minOnsetIntervalSeconds * sampleRate / _hopSize);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Min onset interval (frames)", minOnsetIntervalFrames);
+        progress.EmitDiagnostics("Min onset interval (frames)", minOnsetIntervalFrames);
         var onsets = ConvertFramesToTime(onsetFrames, _hopSize, sampleRate, minOnsetIntervalFrames);
-        _options?.DiagnosticsCollector?.Collect("SpectralFluxOnsetDetector", "Onsets after time filtering", onsets.Length);
+        progress.EmitDiagnostics("Onsets after time filtering", onsets.Length);
 
         // Step 4: Apply start time offset to preserve absolute timing
         if (startTimeOffset != default)
         {
             TensorPrimitives.Add(onsets, startTimeOffset.TotalSeconds, onsets);
         }
+
+        progress.EmitDiagnostics("Onsets", onsets);
 
         return onsets;
     }
@@ -71,14 +78,14 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
     /// </summary>
     private float[] ComputeSpectralFlux(ReadOnlySpan<float> buffer)
     {
-        var frameCount = (buffer.Length - _frameSize) / _hopSize + 1;
+        var frameCount = ((buffer.Length - _frameSize) / _hopSize) + 1;
         var fluxValues = new float[frameCount];
         var window = WindowFunctions.CreateHannWindow(_frameSize);
-        
+
         // Pre-allocate buffers for the loop
         var windowedFrame = new float[_frameSize];
         var complexBuffer = new Complex[_frameSize];
-        var magnitudeSize = _frameSize / 2 + 1; // Include DC and Nyquist
+        var magnitudeSize = (_frameSize / 2) + 1; // Include DC and Nyquist
         var currentMagnitudes = new float[magnitudeSize];
         var prevMagnitudes = new float[magnitudeSize];
         var differences = new float[magnitudeSize];
@@ -86,7 +93,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
         {
             var frameStart = frameIndex * _hopSize;
-            
+
             // 1. Copy samples and apply window
             buffer.Slice(frameStart, _frameSize).CopyTo(windowedFrame);
             SimdOps.ApplyWindow(windowedFrame, window);
@@ -113,7 +120,7 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
                 {
                     mag = MathF.Log(1 + mag);
                 }
-                
+
                 currentMagnitudes[i] = mag;
             }
 
@@ -129,11 +136,9 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
 
                 fluxValues[frameIndex] = TensorPrimitives.Sum(differences);
             }
-            
+
             // Swap buffers for next iteration (avoid copy)
-            var temp = prevMagnitudes;
-            prevMagnitudes = currentMagnitudes;
-            currentMagnitudes = temp; 
+            (currentMagnitudes, prevMagnitudes) = (prevMagnitudes, currentMagnitudes);
         }
 
         return fluxValues;
@@ -149,11 +154,11 @@ public sealed class SpectralFluxOnsetDetector : IOnsetDetector
         // Adaptive threshold using median
         var sortedValues = values.Where(v => v > 0).OrderBy(v => v).ToArray();
         var medianValue = sortedValues.Length > 0 ? sortedValues[sortedValues.Length / 2] : 0;
-        
+
         // Prevent threshold from becoming too sensitive in very quiet passages.
         // This avoids noise triggering in silence but may miss legitimate quiet onsets.
-        medianValue = Math.Max(medianValue, MinThresholdFloor); 
-        
+        medianValue = Math.Max(medianValue, MinThresholdFloor);
+
         var adaptiveThreshold = medianValue * threshold;
 
         for (int i = 1; i < values.Length - 1; i++)

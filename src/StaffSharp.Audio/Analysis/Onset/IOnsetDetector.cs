@@ -1,3 +1,5 @@
+using StaffSharp.Audio.Pipeline;
+
 namespace StaffSharp.Audio.Analysis.Onset;
 
 /// <summary>
@@ -9,10 +11,11 @@ public interface IOnsetDetector
     /// <summary>
     /// Detects onset times in an audio buffer.
     /// </summary>
+    /// <param name="progress">Pipeline progress and diagnostics collector.</param>
     /// <param name="buffer">Audio buffer (mono, normalized).</param>
     /// <param name="sampleRate">Sample rate in Hz.</param>
     /// <param name="startTimeOffset">Optional time offset in seconds to add to all detected onset times.
     /// Used when processing a slice of audio to preserve absolute timing relative to the original recording.</param>
     /// <returns>Array of onset times in seconds (with offset applied if provided).</returns>
-    double[] DetectOnsets(ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default);
+    double[] DetectOnsets(PipelineProgress progress, ReadOnlySpan<float> buffer, int sampleRate, TimeSpan startTimeOffset = default);
 }

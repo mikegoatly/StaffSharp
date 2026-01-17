@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Meter;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Audio.Tests.Analysis.Meter;
@@ -9,7 +10,7 @@ public class SimpleTimeSignatureDetectorTests
     public void DetectTimeSignatures_EmptyOnsets_ReturnsCommonTime()
     {
         var detector = new SimpleTimeSignatureDetector();
-        var result = detector.DetectTimeSignatures(ReadOnlySpan<double>.Empty);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, ReadOnlySpan<double>.Empty);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -27,7 +28,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, beatCount).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -45,7 +46,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, beatCount).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -62,7 +63,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, beatCount).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -80,7 +81,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, beatCount).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -97,7 +98,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, beatCount).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -111,7 +112,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = new[] { 0.0 };
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -124,7 +125,7 @@ public class SimpleTimeSignatureDetectorTests
         var detector = new SimpleTimeSignatureDetector();
         var onsets = Enumerable.Range(0, 8).Select(i => i * 0.5).ToArray();
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -138,7 +139,7 @@ public class SimpleTimeSignatureDetectorTests
         var onsets = Enumerable.Range(0, 8).Select(i => i * 0.5).ToArray();
 
         // Simple detector doesn't use tempo hint, but should not error
-        var result = detector.DetectTimeSignatures(onsets, estimatedTempo: 120.0);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets, estimatedTempo: 120.0);
 
         Assert.NotNull(result);
         Assert.Single(result!);
@@ -153,7 +154,7 @@ public class SimpleTimeSignatureDetectorTests
         // Irregular spacing but 12 onsets total (should detect 6/8 or 3/4 or 4/4)
         var onsets = new[] { 0.0, 0.3, 0.7, 1.0, 1.4, 1.9, 2.2, 2.6, 3.1, 3.4, 3.8, 4.2 };
 
-        var result = detector.DetectTimeSignatures(onsets);
+        var result = detector.DetectTimeSignatures(PipelineProgress.Null, onsets);
 
         Assert.NotNull(result);
         Assert.Single(result!);

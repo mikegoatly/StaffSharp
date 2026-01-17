@@ -1,3 +1,4 @@
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
 
@@ -13,7 +14,6 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
     private readonly double _minBpm;
     private readonly double _maxBpm;
     private readonly TimeSignature _defaultTimeSignature;
-    private readonly TempoDetectionOptions _options;
 
     public InterOnsetIntervalTempoDetector(TempoDetectionOptions? options = null)
     {
@@ -23,40 +23,39 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
         _minBpm = options.MinBpm;
         _maxBpm = options.MaxBpm;
         _defaultTimeSignature = options.DefaultTimeSignature ?? TimeSignature.CommonTime; // 4/4
-        _options = options;
     }
 
-    public TempoMap? DetectTempo(ReadOnlySpan<double> onsetTimes)
+    public TempoMap DetectTempo(PipelineProgress progress, ReadOnlySpan<double> onsetTimes)
     {
+        ArgumentNullException.ThrowIfNull(progress);
         if (onsetTimes.Length < 2)
         {
-            return null;
+            throw new ArgumentException("At least two onset times are required to detect tempo.", nameof(onsetTimes));
         }
 
         // Step 1: Compute inter-onset intervals
         var intervals = ComputeIntervals(onsetTimes);
-        _options.DiagnosticsCollector?.Collect("InterOnsetIntervalTempoDetector", "Total intervals", intervals.Count);
-        
+        progress.EmitDiagnostics("Total intervals", intervals.Count);
+
         // Log first few intervals and their BPM equivalents for debugging
-        if (_options.DiagnosticsCollector is not null && intervals.Count > 0)
+        if (intervals.Count > 0)
         {
             var sampleIntervals = intervals.Take(10).ToArray();
-            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "First intervals (seconds)", sampleIntervals);
+            progress.EmitDiagnostics("First intervals (seconds)", sampleIntervals);
             var sampleBpms = sampleIntervals.Select(i => 60.0 / i).ToArray();
-            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "First intervals (BPM)", sampleBpms);
+            progress.EmitDiagnostics("First intervals (BPM)", sampleBpms);
         }
 
         // Step 2: Filter intervals to valid tempo range
         var validIntervals = FilterByTempoRange(intervals, _minBpm, _maxBpm);
 
-        if (_options.DiagnosticsCollector is not null)
-        {
-            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "Valid intervals", validIntervals.Count);
-            _options.DiagnosticsCollector.Collect("InterOnsetIntervalTempoDetector", "BPM range", $"{_minBpm}-{_maxBpm}");
-        }
+        progress.EmitDiagnostics("Valid intervals", validIntervals.Count);
+        progress.EmitDiagnostics("BPM range", $"{_minBpm}-{_maxBpm}");
 
         if (validIntervals.Count == 0)
-            return null;
+        {
+                   throw new InvalidOperationException("No valid inter-onset intervals found within the specified tempo range.");
+        }
 
         // Step 3: Find predominant interval using histogram clustering
         var predominantInterval = FindPredominantInterval(validIntervals);
