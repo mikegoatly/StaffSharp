@@ -3,12 +3,12 @@ namespace StaffSharp.MachineLearning.Options;
 /// <summary>
 /// Configuration options for polyphonic transcription.
 /// </summary>
-public sealed record PolyphonicTranscriptionOptions
+public sealed record MLTranscriptionOptions
 {
     /// <summary>
     /// Path to the ONNX model file.
     /// </summary>
-    public string ModelPath { get; init; } = "models/onsets_frames.onnx";
+    public string? ModelPath { get; init; }
 
     /// <summary>
     /// Feature extraction options.

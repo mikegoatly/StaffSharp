@@ -1,4 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <None Remove="Models\model_dynamic.onnx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Models\model_dynamic.onnx" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />

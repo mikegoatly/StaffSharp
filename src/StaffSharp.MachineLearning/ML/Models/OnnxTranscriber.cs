@@ -23,34 +23,30 @@ using StaffSharp.MachineLearning.Options;
 ///
 /// The model expects input of shape (batch, time, mel_bins) where mel_bins is typically 229.
 /// </remarks>
-public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposable
+public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 {
     private const int PianoKeyCount = 88; // MIDI notes 21-108 (A0-C8)
 
+    private byte[]? embeddedModel;
     private readonly InferenceSession _session;
     private readonly MelSpectrogramExtractor _featureExtractor;
-    private readonly PolyphonicTranscriptionOptions _options;
+    private readonly MLTranscriptionOptions _options;
     private bool _disposed;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OnnxPolyphonicTranscriber"/> class.
+    /// Initializes a new instance of the <see cref="OnnxTranscriber"/> class
+    /// using the model path from options.
     /// </summary>
-    /// <param name="modelPath">Path to the ONNX model file.</param>
-    /// <param name="options">Transcription options.</param>
-    public OnnxPolyphonicTranscriber(string modelPath, PolyphonicTranscriptionOptions? options = null)
+    /// <param name="options">Transcription options including model path.</param>
+    public OnnxTranscriber(MLTranscriptionOptions? options = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(modelPath);
-
-        if (!File.Exists(modelPath))
-        {
-            throw new FileNotFoundException($"ONNX model not found at: {modelPath}", modelPath);
-        }
-
-        _options = options ?? new PolyphonicTranscriptionOptions();
+        _options = options ?? new MLTranscriptionOptions();
         _featureExtractor = new MelSpectrogramExtractor(_options.FeatureOptions);
 
         // Create and configure session options
+#pragma warning disable CA2000 // Dispose objects before losing scope - owned by _session
         var sessionOptions = new SessionOptions();
+#pragma warning restore CA2000 // Dispose objects before losing scope
         try
         {
             // Configure execution providers (GPU or CPU)
@@ -61,7 +57,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
             }
 
             // Load the model
-            _session = new InferenceSession(modelPath, sessionOptions);
+            _session = new InferenceSession(LoadModel(), sessionOptions);
         }
         catch
         {
@@ -72,16 +68,6 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
 
         // Validate model inputs/outputs
         ValidateModelSignature();
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="OnnxPolyphonicTranscriber"/> class
-    /// using the model path from options.
-    /// </summary>
-    /// <param name="options">Transcription options including model path.</param>
-    public OnnxPolyphonicTranscriber(PolyphonicTranscriptionOptions options)
-        : this(options?.ModelPath ?? throw new ArgumentNullException(nameof(options)), options)
-    {
     }
 
     /// <inheritdoc/>
@@ -150,25 +136,49 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
             inputTensor.Buffer.ToArray(),
             [.. inputTensor.Dimensions.ToArray().Select(d => (long)d)]);
 
-        // Define output names
+        // Pre-allocate output OrtValues with expected shapes
+        // Shape: (batch=1, time, keys=88)
+        var batch = inputTensor.Dimensions[0]; // Should be 1
+        var timeFrames = inputTensor.Dimensions[1];
+        var outputShape = new long[] { batch, timeFrames, PianoKeyCount };
+
+        using var onsetOutput = OrtValue.CreateAllocatedTensorValue(OrtAllocator.DefaultInstance, TensorElementType.Float, outputShape);
+        using var offsetOutput = OrtValue.CreateAllocatedTensorValue(OrtAllocator.DefaultInstance, TensorElementType.Float, outputShape);
+        using var frameOutput = OrtValue.CreateAllocatedTensorValue(OrtAllocator.DefaultInstance, TensorElementType.Float, outputShape);
+        using var velocityOutput = OrtValue.CreateAllocatedTensorValue(OrtAllocator.DefaultInstance, TensorElementType.Float, outputShape);
+
+        // Define output names and pre-allocated values
         var outputNames = new[] { "onset_probs", "offset_probs", "frame_probs", "velocities" };
+        var outputValues = new[] { onsetOutput, offsetOutput, frameOutput, velocityOutput };
 
         // Run inference with RunAsync
         using var runOptions = new RunOptions();
-        var results = await _session.RunAsync(
+        await _session.RunAsync(
             runOptions,
             [inputName],
             [inputOrtValue],
             outputNames,
-            []).ConfigureAwait(false);
+            outputValues).ConfigureAwait(false);
 
-        // Extract outputs - results is IReadOnlyCollection<OrtValue>
-        var resultList = results.ToList();
+        // Extract outputs from the pre-allocated OrtValues
+        var onsets = ExtractOrtValueOutput(onsetOutput, "onset_probs");
+        var offsets = ExtractOrtValueOutput(offsetOutput, "offset_probs");
+        var frames = ExtractOrtValueOutput(frameOutput, "frame_probs");
+        var velocities = ExtractOrtValueOutput(velocityOutput, "velocities");
 
-        var onsets = ExtractOrtValueOutput(resultList[0], "onset_probs");
-        var offsets = ExtractOrtValueOutput(resultList[1], "offset_probs");
-        var frames = ExtractOrtValueOutput(resultList[2], "frame_probs");
-        var velocities = ExtractOrtValueOutput(resultList[3], "velocities");
+        // Auto-detect if outputs are logits (need sigmoid) or probabilities
+        // Check if values are outside [0,1] range, indicating logits
+        if (RequiresSigmoid(onsets))
+        {
+            onsets = ApplySigmoid3D(onsets);
+            offsets = ApplySigmoid3D(offsets);
+            frames = ApplySigmoid3D(frames);
+            // Note: velocities might already be in [0,1] range even if others are logits
+            if (RequiresSigmoid(velocities))
+            {
+                velocities = ApplySigmoid3D(velocities);
+            }
+        }
 
         return (onsets, offsets, frames, velocities);
     }
@@ -212,6 +222,66 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         var sourceSpan = MemoryMarshal.CreateReadOnlySpan(ref tensor[0, 0, 0], totalElements);
         var destSpan = MemoryMarshal.CreateSpan(ref result[0, 0], totalElements);
         sourceSpan.CopyTo(destSpan);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Detects if the tensor contains logits (values outside [0,1]) that require sigmoid activation.
+    /// Samples a subset of values for efficiency.
+    /// </summary>
+    private static bool RequiresSigmoid(float[,,] tensor)
+    {
+        var batch = tensor.GetLength(0);
+        var time = tensor.GetLength(1);
+        var keys = tensor.GetLength(2);
+
+        // Sample up to 100 values across the tensor
+        var sampleSize = Math.Min(100, batch * time * keys);
+        var step = Math.Max(1, (batch * time * keys) / sampleSize);
+
+        var count = 0;
+        for (int i = 0; i < batch && count < sampleSize; i++)
+        {
+            for (int j = 0; j < time && count < sampleSize; j += step)
+            {
+                for (int k = 0; k < keys && count < sampleSize; k++)
+                {
+                    var value = tensor[i, j, k];
+                    // If we find any value outside [0,1] range, it's likely logits
+                    if (value < 0.0f || value > 1.0f)
+                    {
+                        return true;
+                    }
+                    count++;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Applies sigmoid activation to convert logits to probabilities.
+    /// </summary>
+    private static float[,,] ApplySigmoid3D(float[,,] tensor)
+    {
+        var batch = tensor.GetLength(0);
+        var time = tensor.GetLength(1);
+        var keys = tensor.GetLength(2);
+
+        var result = new float[batch, time, keys];
+
+        for (int i = 0; i < batch; i++)
+        {
+            for (int j = 0; j < time; j++)
+            {
+                for (int k = 0; k < keys; k++)
+                {
+                    result[i, j, k] = 1.0f / (1.0f + MathF.Exp(-tensor[i, j, k]));
+                }
+            }
+        }
 
         return result;
     }
@@ -274,6 +344,56 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         {
             throw new InvalidOperationException(
                 $"Expected {PianoKeyCount} piano keys, got onsets={onsetKeys}, offsets={offsetKeys}, frames={frameKeys}, velocities={velocityKeys}");
+        }
+    }
+
+    private byte[] LoadModel()
+    {
+        Stream modelStream;
+        if (_options.ModelPath is null)
+        {
+            if (embeddedModel is not null)
+            {
+                return embeddedModel;
+            }
+
+            // Use the embedded default model from Models/model_dynamic.onnx
+            modelStream = this.GetType().Assembly.GetManifestResourceStream("StaffSharp.MachineLearning.Models.model_dynamic.onnx")
+                ?? throw new InvalidOperationException("Embedded model resource not found.");
+        }
+        else
+        {
+            // Load model from specified file path
+            if (!File.Exists(_options.ModelPath))
+            {
+                throw new FileNotFoundException($"ONNX model not found at: {_options.ModelPath}", _options.ModelPath);
+            }
+
+            modelStream = File.OpenRead(_options.ModelPath);
+        }
+
+        try
+        {
+            var length = (int)modelStream.Length;
+            var modelData = new byte[length];
+            var bytesRead = modelStream.Read(modelData, 0, length);
+
+            if (bytesRead != length)
+            {
+                throw new InvalidOperationException("Failed to read the complete ONNX model file.");
+            }
+
+            if (_options.ModelPath is null)
+            {
+                // Cache the embedded model for future use
+                embeddedModel = modelData;
+            }
+
+            return modelData;
+        }
+        finally
+        {
+            modelStream.Dispose();
         }
     }
 

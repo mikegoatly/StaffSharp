@@ -23,14 +23,28 @@ namespace StaffSharp.MachineLearning;
 /// <param name="quantizer">Quantizer for snapping notes to rhythmic grid.</param>
 /// <param name="transcriptionOptions">Optional transcription settings (thresholds, etc.).</param>
 /// <param name="options">Optional pipeline options for progress/diagnostics.</param>
-public sealed class PolyphonicNoteDetector(
-    IPolyphonicTranscriber transcriber,
+public sealed class MLNoteDetector(
+    IMLTranscriber transcriber,
     ITimeSignatureDetector timeSignatureDetector,
     ITempoDetector tempoDetector,
     IPolyphonicQuantizer quantizer,
-    PolyphonicTranscriptionOptions? transcriptionOptions = null) : INoteDetector
+    MLTranscriptionOptions? transcriptionOptions = null) : INoteDetector
 {
-    private readonly NoteEventDecoder _decoder = new NoteEventDecoder(transcriptionOptions ?? new PolyphonicTranscriptionOptions());
+    private readonly NoteEventDecoder _decoder = new(transcriptionOptions ?? new MLTranscriptionOptions());
+
+    public static MLNoteDetector Create(MLTranscriptionOptions? options = null)
+    {
+        options ??= new MLTranscriptionOptions();
+
+#pragma warning disable CA2000 // Dispose objects before losing scope - Disposed by MLNoteDetector
+        return new MLNoteDetector(
+            new OnnxTranscriber(options),
+            new SimpleTimeSignatureDetector(),
+            new InterOnsetIntervalTempoDetector(),
+            new SimplePolyphonicQuantizer(),
+            options);
+#pragma warning restore CA2000 // Dispose objects before losing scope
+    }
 
     /// <summary>
     /// Detects and quantizes notes from audio using ML-based polyphonic transcription.
