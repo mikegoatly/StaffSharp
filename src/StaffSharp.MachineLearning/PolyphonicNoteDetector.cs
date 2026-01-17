@@ -28,7 +28,7 @@ public sealed class PolyphonicNoteDetector(
     ITimeSignatureDetector timeSignatureDetector,
     ITempoDetector tempoDetector,
     IPolyphonicQuantizer quantizer,
-    PolyphonicTranscriptionOptions? transcriptionOptions = null) : INoteDetector, IDisposable
+    PolyphonicTranscriptionOptions? transcriptionOptions = null) : INoteDetector
 {
     private readonly NoteEventDecoder _decoder = new NoteEventDecoder(transcriptionOptions ?? new PolyphonicTranscriptionOptions());
 

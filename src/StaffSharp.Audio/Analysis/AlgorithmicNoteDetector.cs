@@ -87,4 +87,8 @@ public sealed class AlgorithmicNoteDetector(
 
         return new PerformanceTimeline(refinedTempoMap, quantizedNotes);
     }
+
+    public void Dispose()
+    {
+    }
 }

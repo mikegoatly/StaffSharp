@@ -6,7 +6,7 @@ namespace StaffSharp.Audio.Pipeline;
 /// Interface for note detection algorithms that transcribe audio to musical notation.
 /// Implementations own the full transcription pipeline: detection → tempo analysis → quantization.
 /// </summary>
-public interface INoteDetector
+public interface INoteDetector : IDisposable
 {
     /// <summary>
     /// Detects and quantizes notes from audio.
