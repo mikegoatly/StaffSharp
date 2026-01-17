@@ -1,6 +1,4 @@
-using StaffSharp.Audio;
 using StaffSharp.Performance;
-using StaffSharp.Quantization;
 
 namespace StaffSharp.Audio.Pipeline;
 
@@ -13,12 +11,12 @@ public interface INoteDetector
     /// <summary>
     /// Detects and quantizes notes from audio.
     /// </summary>
-    /// <param name="options">Audio pipeline options.</param>
+    /// <param name="progress">Pipeline progress and diagnostics collector.</param>
     /// <param name="audio">Normalized audio buffer to transcribe.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Transcription result containing quantized notes and tempo map.</returns>
     Task<PerformanceTimeline> DetectAsync(
-        AudioPipelineOptions options,
-        AudioBuffer audio, 
+        PipelineProgress progress,
+        AudioBuffer audio,
         CancellationToken ct = default);
 }

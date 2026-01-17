@@ -41,17 +41,15 @@ public sealed class AlgorithmicNoteDetector(
     /// <param name="audio">Normalized audio buffer to transcribe.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Quantization result containing quantized notes and tempo map.</returns>
-    public async Task<PerformanceTimeline> DetectAsync(AudioPipelineOptions options, AudioBuffer audio, CancellationToken ct = default)
+    public async Task<PerformanceTimeline> DetectAsync(PipelineProgress progress, AudioBuffer audio, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(audio);
         ct.ThrowIfCancellationRequested();
-
-        var progress = PipelineProgress.ForPipeline(options);
 
         // Step 1: Detect boundaries (trim silence)
         var boundaries = _boundaryDetector.DetectBoundaries(progress, audio)
             ?? throw new InvalidOperationException("Boundary detection failed: detector returned null. This can happen if the input audio is silent, extremely short, or incompatible with the configured boundary detector. Verify the audio buffer contains usable signal and that the boundary detector is correctly configured.");
-
 
         // Step 2: Detect onsets
         // Extract the content region (excluding leading/trailing silence)

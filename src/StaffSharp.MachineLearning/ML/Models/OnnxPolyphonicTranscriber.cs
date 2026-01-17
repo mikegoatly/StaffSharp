@@ -2,6 +2,7 @@ namespace StaffSharp.MachineLearning.ML.Models;
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -84,24 +85,22 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
     }
 
     /// <inheritdoc/>
-    public PolyphonicTranscriptionResult Transcribe(AudioBuffer audio)
+    public async Task<PolyphonicTranscriptionResult> TranscribeAsync(AudioBuffer audio)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(audio);
 
         // 1. Extract mel spectrogram features
         var features = _featureExtractor.ExtractFeatures(audio);
-        var numFrames = features.GetLength(0);
-        var numMelBins = features.GetLength(1);
 
         // 2. Convert features to ONNX tensor (batch_size=1, time, mel_bins)
         var inputTensor = ConvertToTensor(features);
 
         // 3. Run inference
-        var (onsetProbs, offsetProbs, frameProbs, velocities) = RunInference(inputTensor);
+        var (onsetProbs, offsetProbs, frameProbs, velocities) = await RunInferenceAsync(inputTensor).ConfigureAwait(false);
 
         // 4. Validate output shapes
-        ValidateOutputShapes(onsetProbs, offsetProbs, frameProbs, velocities, numFrames);
+        ValidateOutputShapes(onsetProbs, offsetProbs, frameProbs, velocities);
 
         // 5. Convert from (batch, time, keys) to (time, keys)
         var onsetRoll = ExtractBatch(onsetProbs);
@@ -127,55 +126,57 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         var numMelBins = features.GetLength(1);
 
         // Create tensor with shape (batch=1, time, mel_bins)
-        var tensor = new DenseTensor<float>(new[] { 1, numFrames, numMelBins });
-        
+        var tensor = new DenseTensor<float>([1, numFrames, numMelBins]);
+
         // Get the underlying buffer as a span
         var tensorSpan = tensor.Buffer.Span;
         var sourceSpan = MemoryMarshal.CreateReadOnlySpan(
-            ref features[0, 0], 
+            ref features[0, 0],
             numFrames * numMelBins);
-        
+
         // Single bulk copy operation
         sourceSpan.CopyTo(tensorSpan);
-        
+
         return tensor;
     }
 
-    private (float[,,] onsets, float[,,] offsets, float[,,] frames, float[,,] velocities) RunInference(DenseTensor<float> inputTensor)
+    private async Task<(float[,,] onsets, float[,,] offsets, float[,,] frames, float[,,] velocities)> RunInferenceAsync(DenseTensor<float> inputTensor)
     {
         // Get input name (typically "input" or "mel_spectrogram")
         var inputName = _session.InputNames[0];
 
-        // Create input container
-        var inputs = new List<NamedOnnxValue>
-        {
-            NamedOnnxValue.CreateFromTensor(inputName, inputTensor)
-        };
+        // Create OrtValue from tensor
+        using var inputOrtValue = OrtValue.CreateTensorValueFromMemory(
+            inputTensor.Buffer.ToArray(),
+            [.. inputTensor.Dimensions.ToArray().Select(d => (long)d)]);
 
-        // Run inference
-        using var results = _session.Run(inputs);
+        // Define output names
+        var outputNames = new[] { "onset_probs", "offset_probs", "frame_probs", "velocities" };
 
-        // Extract outputs (expected names: onset_probs, offset_probs, frame_probs, velocities)
-        var outputDict = results.ToDictionary(r => r.Name, r => (DisposableNamedOnnxValue)r);
+        // Run inference with RunAsync
+        using var runOptions = new RunOptions();
+        var results = await _session.RunAsync(
+            runOptions,
+            [inputName],
+            [inputOrtValue],
+            outputNames,
+            []).ConfigureAwait(false);
 
-        var onsets = ExtractOutput(outputDict, "onset_probs");
-        var offsets = ExtractOutput(outputDict, "offset_probs");
-        var frames = ExtractOutput(outputDict, "frame_probs");
-        var velocities = ExtractOutput(outputDict, "velocities");
+        // Extract outputs - results is IReadOnlyCollection<OrtValue>
+        var resultList = results.ToList();
+
+        var onsets = ExtractOrtValueOutput(resultList[0], "onset_probs");
+        var offsets = ExtractOrtValueOutput(resultList[1], "offset_probs");
+        var frames = ExtractOrtValueOutput(resultList[2], "frame_probs");
+        var velocities = ExtractOrtValueOutput(resultList[3], "velocities");
 
         return (onsets, offsets, frames, velocities);
     }
 
-    private static float[,,] ExtractOutput(Dictionary<string, DisposableNamedOnnxValue> outputs, string name)
+    private static float[,,] ExtractOrtValueOutput(OrtValue ortValue, string name)
     {
-        if (!outputs.TryGetValue(name, out var output))
-        {
-            throw new InvalidOperationException(
-                $"Model output '{name}' not found. Available outputs: {string.Join(", ", outputs.Keys)}");
-        }
-
-        var tensor = output.AsTensor<float>();
-        var dimensions = tensor.Dimensions.ToArray();
+        var tensor = ortValue.GetTensorDataAsSpan<float>();
+        var dimensions = ortValue.GetTensorTypeAndShape().Shape;
 
         if (dimensions.Length != 3)
         {
@@ -184,19 +185,16 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         }
 
         // Convert to 3D array (batch, time, keys)
-        var batch = dimensions[0];
-        var time = dimensions[1];
-        var keys = dimensions[2];
+        var batch = (int)dimensions[0];
+        var time = (int)dimensions[1];
+        var keys = (int)dimensions[2];
 
         var array = new float[batch, time, keys];
 
-        // ONNX Runtime always returns DenseTensor for standard neural network inference
         // Use span-based bulk copy for maximum performance
         var totalElements = batch * time * keys;
-        var denseTensor = (DenseTensor<float>)tensor;
-        var tensorSpan = denseTensor.Buffer.Span;
         var arraySpan = MemoryMarshal.CreateSpan(ref array[0, 0, 0], totalElements);
-        tensorSpan.CopyTo(arraySpan);
+        tensor.CopyTo(arraySpan);
 
         return array;
     }
@@ -208,7 +206,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         var keys = tensor.GetLength(2);
 
         var result = new float[time, keys];
-        
+
         // Use span-based bulk copy for better performance
         var totalElements = time * keys;
         var sourceSpan = MemoryMarshal.CreateReadOnlySpan(ref tensor[0, 0, 0], totalElements);
@@ -230,14 +228,12 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         var expectedOutputs = new[] { "onset_probs", "offset_probs", "frame_probs", "velocities" };
         var actualOutputs = _session.OutputNames.ToHashSet();
 
-        foreach (var expected in expectedOutputs)
+        if (expectedOutputs.Any(e => !actualOutputs.Contains(e)))
         {
-            if (!actualOutputs.Contains(expected))
-            {
-                throw new InvalidOperationException(
-                    $"Model missing expected output '{expected}'. " +
-                    $"Available outputs: {string.Join(", ", actualOutputs)}");
-            }
+            throw new InvalidOperationException(
+                $"Model outputs do not match expected outputs. " +
+                $"Expected: {string.Join(", ", expectedOutputs)}; " +
+                $"Actual: {string.Join(", ", actualOutputs)}");
         }
     }
 
@@ -245,8 +241,7 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
         float[,,] onsets,
         float[,,] offsets,
         float[,,] frames,
-        float[,,] velocities,
-        int expectedTimeFrames)
+        float[,,] velocities)
     {
         // Check batch size
         if (onsets.GetLength(0) != 1 || offsets.GetLength(0) != 1 || frames.GetLength(0) != 1 || velocities.GetLength(0) != 1)
@@ -288,7 +283,9 @@ public sealed class OnnxPolyphonicTranscriber : IPolyphonicTranscriber, IDisposa
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _session?.Dispose();
         _disposed = true;
