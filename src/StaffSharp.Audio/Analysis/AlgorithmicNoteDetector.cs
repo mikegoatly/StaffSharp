@@ -33,8 +33,6 @@ public sealed class AlgorithmicNoteDetector(
     IMonophonicQuantizer quantizer,
     IAudioBoundaryDetector boundaryDetector) : INoteDetector
 {
-    private readonly IAudioBoundaryDetector _boundaryDetector = boundaryDetector;
-
     /// <summary>
     /// Detects and quantizes notes from audio using algorithmic signal processing.
     /// </summary>
@@ -48,7 +46,7 @@ public sealed class AlgorithmicNoteDetector(
         ct.ThrowIfCancellationRequested();
 
         // Step 1: Detect boundaries (trim silence)
-        var boundaries = _boundaryDetector.DetectBoundaries(progress, audio)
+        var boundaries = boundaryDetector.DetectBoundaries(progress, audio)
             ?? throw new InvalidOperationException("Boundary detection failed: detector returned null. This can happen if the input audio is silent, extremely short, or incompatible with the configured boundary detector. Verify the audio buffer contains usable signal and that the boundary detector is correctly configured.");
 
         // Step 2: Detect onsets
