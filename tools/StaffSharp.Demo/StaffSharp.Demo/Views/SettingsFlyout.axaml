@@ -27,6 +27,17 @@
     <ScrollViewer>
         <StackPanel Margin="16" Spacing="16">
             <TextBlock Classes="heading" Text="Processing Settings" />
+
+            <StackPanel Spacing="8">
+                <TextBlock Classes="subheading" Text="Note Detection" />
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                    <TextBlock VerticalAlignment="Center" Text="Use Machine Learning" />
+                    <ToggleSwitch
+                        Grid.Column="1"
+                        IsChecked="{Binding Options.UseMachineLearning}" />
+                </Grid>
+            </StackPanel>
+
             <StackPanel Spacing="8">
                 <TextBlock Classes="subheading" Text="Rendering" />
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">

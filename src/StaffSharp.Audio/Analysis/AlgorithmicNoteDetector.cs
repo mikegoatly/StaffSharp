@@ -34,6 +34,21 @@ public sealed class AlgorithmicNoteDetector(
     IAudioBoundaryDetector boundaryDetector) : INoteDetector
 {
     /// <summary>
+    /// Creates a new algorithmic note detector with default components.
+    /// </summary>
+    /// <returns>A configured algorithmic note detector.</returns>
+    public static AlgorithmicNoteDetector Create()
+    {
+        return new AlgorithmicNoteDetector(
+            new SpectralFluxOnsetDetector(),
+            new PyinPitchDetector(),
+            new SimpleTimeSignatureDetector(),
+            new InterOnsetIntervalTempoDetector(),
+            new SimpleMonophonicQuantizer(),
+            new EnergyBasedBoundaryDetector());
+    }
+
+    /// <summary>
     /// Detects and quantizes notes from audio using algorithmic signal processing.
     /// </summary>
     /// <param name="audio">Normalized audio buffer to transcribe.</param>

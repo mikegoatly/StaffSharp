@@ -1,11 +1,5 @@
 using StaffSharp.Audio.Analysis;
-using StaffSharp.Audio.Analysis.Boundaries;
-using StaffSharp.Audio.Analysis.Meter;
-using StaffSharp.Audio.Analysis.Onset;
-using StaffSharp.Audio.Analysis.Pitch;
-using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Audio.Diagnostics;
-using StaffSharp.Quantization;
 
 namespace StaffSharp.Audio.Pipeline;
 
@@ -45,23 +39,7 @@ public sealed record AudioPipelineOptions
     /// </summary>
     private static AlgorithmicNoteDetector CreateDefaultNoteDetector()
     {
-        // Create default detector instances with diagnostics
-        var onsetDetector = new SpectralFluxOnsetDetector();
-        var pitchDetector = new PyinPitchDetector();
-        var timeSignatureDetector = new SimpleTimeSignatureDetector();
-        var tempoDetector = new InterOnsetIntervalTempoDetector();
-        var quantizer = new SimpleMonophonicQuantizer();
-
-        var boundaryDetector = new EnergyBasedBoundaryDetector();
-
-        // Create algorithmic detector with all components
-        return new AlgorithmicNoteDetector(
-            onsetDetector,
-            pitchDetector,
-            timeSignatureDetector,
-            tempoDetector,
-            quantizer,
-            boundaryDetector);
+        return AlgorithmicNoteDetector.Create();
     }
 
     /// <summary>
