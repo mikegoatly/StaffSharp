@@ -1,5 +1,6 @@
 using StaffSharp.Abc.Importing;
 using StaffSharp.Audio;
+using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Demo.ViewModels;
@@ -144,10 +145,13 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
 
     private static AudioPipelineOptions CreateAudioPipelineOptions(InMemoryDiagnosticsCollector diagnosticsCollector, ProcessingOptions options)
     {
+        INoteDetector noteDetector = options.UseMachineLearning
+            ? MLNoteDetector.Create()
+            : AlgorithmicNoteDetector.Create();
+
         return new AudioPipelineOptions
         {
-            // TODO : Map other options for each options in ProcessingOptions
-            NoteDetector = MLNoteDetector.Create(),
+            NoteDetector = noteDetector,
             DiagnosticsCollector = diagnosticsCollector
         };
     }
