@@ -821,6 +821,10 @@ def main():
                     print(f"Early stopping triggered!")
                     print(f"Best validation loss: {early_stopping.best_loss:.4f} (epoch {early_stopping.best_epoch})")
                     print(f"{'='*60}\n")
+                    
+                    # Save final checkpoint before stopping
+                    save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, f'early_stopped_epoch_{epoch}.pt')
+                    print(f"✓ Saved final checkpoint: early_stopped_epoch_{epoch}.pt\n")
                     break
 
         print("\nTraining complete!")
