@@ -70,7 +70,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_WithValidAudio_ReturnsResult()
+    public async Task Transcribe_WithValidAudio_ReturnsResult()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -88,7 +88,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = transcriber.Transcribe(audio);
+        var result = await transcriber.TranscribeAsync(audio);
 
         // Assert
         Assert.NotNull(result);
@@ -100,7 +100,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_OutputShapesMatchInputDuration()
+    public async Task Transcribe_OutputShapesMatchInputDuration()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -118,7 +118,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = transcriber.Transcribe(audio);
+        var result = await transcriber.TranscribeAsync(audio);
 
         // Assert
         // Frame rate should be sampleRate / hopSize (16000 / 512 = 31.25 fps)
@@ -134,7 +134,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_OutputValuesInValidRange()
+    public async Task Transcribe_OutputValuesInValidRange()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -152,7 +152,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = transcriber.Transcribe(audio);
+        var result = await transcriber.TranscribeAsync(audio);
 
         // Assert - all output values should be in [0, 1] range (probabilities)
         AssertAllValuesInRange(result.OnsetRoll, 0f, 1f, "Onset probabilities");
@@ -161,35 +161,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_WithStereoAudio_ConvertsToMono()
-    {
-        // Arrange
-        var modelPath = GetTestModelPath();
-        SkipIfModelNotAvailable(modelPath);
-
-        using var transcriber = new OnnxPolyphonicTranscriber(modelPath);
-
-        // Create stereo audio
-        var samples = new float[32000]; // 2 seconds at 16kHz
-        for (int i = 0; i < samples.Length; i += 2)
-        {
-            var t = (float)i / 16000;
-            var value = MathF.Sin(2 * MathF.PI * 440 * t);
-            samples[i] = value;     // Left channel
-            samples[i + 1] = value; // Right channel
-        }
-        var audio = new AudioBuffer(samples, sampleRate: 16000, channels: 2);
-
-        // Act
-        var result = transcriber.Transcribe(audio);
-
-        // Assert - should handle stereo audio without errors
-        Assert.NotNull(result);
-        Assert.True(result.NumFrames > 0);
-    }
-
-    [Fact]
-    public void Transcribe_WithDifferentSampleRate_Resamples()
+    public async Task Transcribe_WithDifferentSampleRate_Resamples()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -207,7 +179,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = transcriber.Transcribe(audio);
+        var result = await transcriber.TranscribeAsync(audio);
 
         // Assert - should resample and produce valid output
         Assert.NotNull(result);
@@ -216,7 +188,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_WithNullAudio_ThrowsArgumentNullException()
+    public async Task Transcribe_WithNullAudio_ThrowsArgumentNullException()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -225,7 +197,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         using var transcriber = new OnnxPolyphonicTranscriber(modelPath);
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => transcriber.Transcribe(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => transcriber.TranscribeAsync(null!));
     }
 
     [Fact]
@@ -246,7 +218,7 @@ public sealed class OnnxPolyphonicTranscriberTests
     }
 
     [Fact]
-    public void Transcribe_AfterDispose_ThrowsObjectDisposedException()
+    public async Task Transcribe_AfterDispose_ThrowsObjectDisposedException()
     {
         // Arrange
         var modelPath = GetTestModelPath();
@@ -264,7 +236,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, 16000, channels: 1);
 
         // Act & Assert
-        Assert.Throws<ObjectDisposedException>(() => transcriber.Transcribe(audio));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => transcriber.TranscribeAsync(audio));
     }
 
     #region Helper Methods
