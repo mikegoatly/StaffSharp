@@ -6,10 +6,8 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// that trigger onset detection but have no clear fundamental frequency.
 /// After filtering, shifts remaining onsets so the first one starts at time 0.
 /// </summary>
-internal sealed class FilterUnpitchedOnsetsStage(AudioPipelineOptions options) : PipelineStageBase(options)
+internal sealed class FilterUnpitchedOnsetsStage(PipelineProgress progress)
 {
-    protected override string StageName => "FilterUnpitchedOnsets";
-
     /// <summary>
     /// Filters out unpitched onsets and shifts remaining onsets to start at time 0.
     /// </summary>
@@ -22,6 +20,7 @@ internal sealed class FilterUnpitchedOnsetsStage(AudioPipelineOptions options) :
         int[] pitches,
         CancellationToken ct)
     {
+        // TODO strongly type (onsets,pitches) and expose filtering as an operation on that type
         ct.ThrowIfCancellationRequested();
 
         if (onsets.Length != pitches.Length)
@@ -29,7 +28,7 @@ internal sealed class FilterUnpitchedOnsetsStage(AudioPipelineOptions options) :
             throw new ArgumentException("Onsets and pitches arrays must have the same length.");
         }
 
-        ReportProgress("Filtering unpitched onsets");
+        progress.ReportProgress("Filtering unpitched onsets");
 
         var filtered = new List<(double onset, int pitch)>();
         int unpitchedCount = 0;
@@ -49,8 +48,8 @@ internal sealed class FilterUnpitchedOnsetsStage(AudioPipelineOptions options) :
 
         if (filtered.Count == 0)
         {
-            EmitDiagnostics("Filtered onset count", 0);
-            EmitDiagnostics("Unpitched onsets removed", unpitchedCount);
+            progress.EmitDiagnostics("Filtered onset count", 0);
+            progress.EmitDiagnostics("Unpitched onsets removed", unpitchedCount);
             return Task.FromResult((Array.Empty<double>(), Array.Empty<int>()));
         }
 
@@ -60,11 +59,11 @@ internal sealed class FilterUnpitchedOnsetsStage(AudioPipelineOptions options) :
         var shiftedOnsets = filtered.Select(x => x.onset - firstOnsetTime).ToArray();
         var filteredPitches = filtered.Select(x => x.pitch).ToArray();
 
-        EmitDiagnostics("Filtered onset count", shiftedOnsets.Length);
-        EmitDiagnostics("Unpitched onsets removed", unpitchedCount);
-        EmitDiagnostics("Time shift applied (seconds)", firstOnsetTime);
-        EmitDiagnostics("Filtered onsets", shiftedOnsets);
-        EmitDiagnostics("Filtered pitches (MIDI)", filteredPitches);
+        progress.EmitDiagnostics("Filtered onset count", shiftedOnsets.Length);
+        progress.EmitDiagnostics("Unpitched onsets removed", unpitchedCount);
+        progress.EmitDiagnostics("Time shift applied (seconds)", firstOnsetTime);
+        progress.EmitDiagnostics("Filtered onsets", shiftedOnsets);
+        progress.EmitDiagnostics("Filtered pitches (MIDI)", filteredPitches);
 
         return Task.FromResult((shiftedOnsets, filteredPitches));
     }

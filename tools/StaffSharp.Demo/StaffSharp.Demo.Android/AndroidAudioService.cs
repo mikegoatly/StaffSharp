@@ -2,6 +2,8 @@
 
 using Avalonia.Threading;
 
+using StaffSharp.Audio;
+
 using Encoding = Android.Media.Encoding;
 
 namespace StaffSharp.Demo.Services.Audio;

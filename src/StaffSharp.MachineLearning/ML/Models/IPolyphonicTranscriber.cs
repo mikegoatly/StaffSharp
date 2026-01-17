@@ -1,6 +1,5 @@
 namespace StaffSharp.MachineLearning.ML.Models;
 
-using StaffSharp;
 using StaffSharp.Audio;
 
 /// <summary>

@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Numerics;
+using StaffSharp.Audio.Pipeline;
 
 namespace StaffSharp.Audio.Analysis.Boundaries;
 
@@ -22,8 +23,9 @@ public sealed class EnergyBasedBoundaryDetector : IAudioBoundaryDetector
         _minContentSamples = options.MinContentSamples;
     }
 
-    public AudioBoundaries? DetectBoundaries(AudioBuffer audio)
+    public AudioBoundaries? DetectBoundaries(PipelineProgress progress, AudioBuffer audio)
     {
+        ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(audio);
 
         // Work with mono for simplicity
@@ -31,37 +33,40 @@ public sealed class EnergyBasedBoundaryDetector : IAudioBoundaryDetector
         var samples = mono.Samples.Span;
 
         if (samples.Length < _minContentSamples)
+        {
             return null; // Too short to contain valid content
+        }
 
         // Convert dB threshold to linear amplitude
         var thresholdLinear = DbToLinear(_thresholdDb);
 
         // Find start boundary (scan forward)
-        int? startSample = FindStartBoundary(samples, thresholdLinear);
-        if (!startSample.HasValue)
-            return null; // No content found
-
-        // Find end boundary (scan backward)
-        int? endSample = FindEndBoundary(samples, thresholdLinear);
-        if (!endSample.HasValue)
-            return null; // No content found
-
-        // Validate content length
-        var contentLength = endSample.Value - startSample.Value;
-        if (contentLength < _minContentSamples)
-            return null; // Content too short
+        if (FindStartBoundary(samples, thresholdLinear) is not { } startSample 
+            || FindEndBoundary(samples, thresholdLinear) is not { } endSample
+            || (endSample - startSample) < _minContentSamples)
+        {
+            return null;
+        }
 
         // Calculate silence durations
-        var leadingSilence = TimeSpan.FromSeconds(startSample.Value / (double)audio.SampleRate);
-        var trailingSilence = TimeSpan.FromSeconds((samples.Length - endSample.Value) / (double)audio.SampleRate);
+        var leadingSilence = TimeSpan.FromSeconds(startSample / (double)audio.SampleRate);
+        var trailingSilence = TimeSpan.FromSeconds((samples.Length - endSample) / (double)audio.SampleRate);
 
-        return new AudioBoundaries(
-            StartSample: startSample.Value,
-            EndSample: endSample.Value,
+        var boundaries = new AudioBoundaries(
+            StartSample: startSample,
+            EndSample: endSample,
             SampleRate: audio.SampleRate,
             LeadingSilence: leadingSilence,
             TrailingSilence: trailingSilence
         );
+
+        progress.EmitDiagnostics("Leading silence", boundaries.LeadingSilence);
+        progress.EmitDiagnostics("Trailing silence", boundaries.TrailingSilence);
+        progress.EmitDiagnostics("Start sample", boundaries.StartSample);
+        progress.EmitDiagnostics("End sample", boundaries.EndSample);
+        progress.EmitDiagnostics("Content duration", boundaries.ContentDuration);
+
+        return boundaries;
     }
 
     /// <summary>

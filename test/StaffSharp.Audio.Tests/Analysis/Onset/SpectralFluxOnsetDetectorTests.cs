@@ -1,4 +1,5 @@
 using StaffSharp.Audio.Analysis.Onset;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Audio.Tests.Analysis.Onset;
@@ -34,7 +35,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     public void DetectOnsets_EmptyBuffer_ReturnsEmpty()
     {
         var detector = new SpectralFluxOnsetDetector();
-        var onsets = detector.DetectOnsets(ReadOnlySpan<float>.Empty, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, ReadOnlySpan<float>.Empty, SampleRate);
 
         Assert.Empty(onsets);
     }
@@ -44,7 +45,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
     {
         var detector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { FrameSize = 2048 });
         var buffer = new float[1000]; // Smaller than frame size
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         Assert.Empty(onsets);
     }
@@ -61,7 +62,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .AtTime(0.2).WithAttack(0.01).AddSine(440.0, durationSeconds: 0.3)
             .Build();
 
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // Should detect the transition from silence to sound
         Assert.NotEmpty(onsets);
@@ -80,7 +81,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .AtTime(0.1).WithAttack(0.01).AddSine(440.0, durationSeconds: 0.5)
             .Build();
 
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         AssertMinimumOnsets(onsets, 1);
         AssertOnsetNear(onsets, 0.1);
@@ -105,7 +106,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         }
 
         var buffer = builder.Build();
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         AssertMinimumOnsets(onsets, 3);
         AssertAllOnsetsDetected(onsets, noteOnsetTimes);
@@ -133,7 +134,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         }
 
         var buffer = builder.Build();
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         AssertMinimumInterval(onsets, minInterval, tolerancePercent: 0.1);
     }
@@ -149,11 +150,11 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
 
         // Low threshold = more sensitive
         var sensitiveDetector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 0.1f });
-        var sensitiveOnsets = sensitiveDetector.DetectOnsets(buffer, SampleRate);
+        var sensitiveOnsets = sensitiveDetector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // High threshold = less sensitive
         var strictDetector = new SpectralFluxOnsetDetector(new OnsetDetectionOptions { Threshold = 1.0f });
-        var strictOnsets = strictDetector.DetectOnsets(buffer, SampleRate);
+        var strictOnsets = strictDetector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // Sensitive detector should find more or equal onsets
         Assert.True(sensitiveOnsets.Length >= strictOnsets.Length,
@@ -178,7 +179,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         }
 
         var buffer = builder.Build();
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         AssertMinimumOnsets(onsets, clickTimes.Length - 1);
     }
@@ -199,7 +200,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .AddNoise(amplitude: noiseAmplitude, seed: 42)
             .Build();
 
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // Should still detect onset even with noise
         AssertMinimumOnsets(onsets, 1);
@@ -226,7 +227,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         }
 
         var buffer = builder.Build();
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // With noise, we might not detect all onsets, but should get most
         var expectedMinimum = noiseAmplitude < 0.2 ? noteOnsetTimes.Length - 1 : noteOnsetTimes.Length - 2;
@@ -246,7 +247,7 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .AddNoise(amplitude: 0.5, seed: 42)
             .Build();
 
-        var onsets = detector.DetectOnsets(buffer, SampleRate);
+        var onsets = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         // With high noise, onset detection becomes unreliable
         // This test documents the limitation rather than requiring detection
@@ -277,8 +278,8 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
         // Simulate processing a slice that starts at 2.5 seconds into the original recording
         var startTimeOffset = TimeSpan.FromSeconds(2.5);
 
-        var onsetsWithOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset);
-        var onsetsWithoutOffset = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
+        var onsetsWithOffset = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate, startTimeOffset);
+        var onsetsWithoutOffset = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
 
         // Should detect same number of onsets
         Assert.Equal(onsetsWithoutOffset.Length, onsetsWithOffset.Length);
@@ -307,8 +308,8 @@ public class SpectralFluxOnsetDetectorTests : OnsetDetectorTestBase
             .Build();
 
         // Explicit zero offset should be identical to omitting the parameter
-        var onsetsExplicitZero = detector.DetectOnsets(buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
-        var onsetsDefault = detector.DetectOnsets(buffer, SampleRate);
+        var onsetsExplicitZero = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate, startTimeOffset: TimeSpan.Zero);
+        var onsetsDefault = detector.DetectOnsets(PipelineProgress.Null, buffer, SampleRate);
 
         Assert.Equal(onsetsDefault.Length, onsetsExplicitZero.Length);
         for (int i = 0; i < onsetsDefault.Length; i++)

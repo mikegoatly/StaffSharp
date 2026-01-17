@@ -7,13 +7,12 @@ namespace StaffSharp.Audio.Pipeline.Stages;
 /// <summary>
 /// Pipeline stage that converts a PerformanceTimeline (IR1) to a NotationScore (IR2).
 /// </summary>
-internal sealed class ConvertToScoreStage : PipelineStageBase
+internal sealed class ConvertToScoreStage
 {
     private readonly INotationEngine _engine;
     private readonly NotationOptions _notationOptions;
-    protected override string StageName => "ConvertToScore";
 
-    public ConvertToScoreStage(AudioPipelineOptions options, INotationEngine engine, NotationOptions notationOptions) : base(options)
+    public ConvertToScoreStage(INotationEngine engine, NotationOptions notationOptions)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _notationOptions = notationOptions ?? throw new ArgumentNullException(nameof(notationOptions));
@@ -25,41 +24,42 @@ internal sealed class ConvertToScoreStage : PipelineStageBase
     /// <param name="timeline">The performance timeline.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The notation score.</returns>
-    public Task<NotationScore> ExecuteAsync(PerformanceTimeline timeline, CancellationToken ct)
+    public Task<NotationScore> ExecuteAsync(PipelineProgress progress, PerformanceTimeline timeline, CancellationToken ct)
     {
-        ReportProgress("Converting to score");
+        progress.ReportProgress("Converting to score");
 
         ct.ThrowIfCancellationRequested();
 
         var score = _engine.Convert(timeline, _notationOptions);
 
-        EmitDiagnostics("PartCount", score.Parts.Count);
-        if (score.Parts.Count > 0)
+        // Detailed measure diagnostics
+        if (progress.DiagnosticsEnabled)
         {
-            var totalVoices = score.Parts.Sum(p => p.Voices.Count);
-            EmitDiagnostics("TotalVoices", totalVoices);
-            
-            // Detailed measure diagnostics
-            if (Options.DiagnosticsCollector != null)
+            progress.EmitDiagnostics("PartCount", score.Parts.Count);
+            if (score.Parts.Count > 0)
             {
+                var totalVoices = score.Parts.Sum(p => p.Voices.Count);
+                progress.EmitDiagnostics("TotalVoices", totalVoices);
+
+
                 foreach (var (part, partIndex) in score.Parts.Select((p, i) => (p, i)))
                 {
                     foreach (var (voice, voiceIndex) in part.Voices.Select((v, i) => (v, i)))
                     {
-                        EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1} - Measure count", voice.Measures.Count);
-                        
+                        progress.EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1} - Measure count", voice.Measures.Count);
+
                         foreach (var (measure, measureIndex) in voice.Measures.Select((m, i) => (m, i)))
                         {
                             var eventCount = measure.Events.Count;
                             var totalDuration = measure.Events.Sum(e => e.Duration.ToBeats().ToDouble());
-                            var eventTypes = string.Join(", ", measure.Events.Select(e => 
+                            var eventTypes = string.Join(", ", measure.Events.Select(e =>
                                 e is NotationNote ? "Note" : e is Rest ? "Rest" : e.GetType().Name));
                             var durations = string.Join(", ", measure.Events.Select(e => e.Duration.ToString()));
-                            
-                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Events", eventCount);
-                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Total duration", totalDuration);
-                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Event types", eventTypes);
-                            EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Durations", durations);
+
+                            progress.EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Events", eventCount);
+                            progress.EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Total duration", totalDuration);
+                            progress.EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Event types", eventTypes);
+                            progress.EmitDiagnostics($"Part {partIndex + 1}, Voice {voiceIndex + 1}, Measure {measureIndex + 1} - Durations", durations);
                         }
                     }
                 }

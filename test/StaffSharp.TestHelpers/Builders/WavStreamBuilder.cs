@@ -1,3 +1,5 @@
+using StaffSharp.Audio;
+
 namespace StaffSharp.TestHelpers.Builders;
 
 /// <summary>

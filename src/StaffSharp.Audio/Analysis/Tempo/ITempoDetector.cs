@@ -1,3 +1,4 @@
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.Performance;
 
 namespace StaffSharp.Audio.Analysis.Tempo;
@@ -12,7 +13,8 @@ public interface ITempoDetector
     /// Simple implementations return a single tempo at beat 0.
     /// Advanced implementations can detect tempo changes throughout the piece.
     /// </summary>
+    /// <param name="progress">Pipeline progress and diagnostics collector.</param>
     /// <param name="onsetTimes">Array of onset times in seconds.</param>
-    /// <returns>TempoMap with detected tempo(s), or null if tempo cannot be determined.</returns>
-    TempoMap? DetectTempo(ReadOnlySpan<double> onsetTimes);
+    /// <returns>TempoMap with detected tempo(s).</returns>
+    TempoMap DetectTempo(PipelineProgress progress, ReadOnlySpan<double> onsetTimes);
 }

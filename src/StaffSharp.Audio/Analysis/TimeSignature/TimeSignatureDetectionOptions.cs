@@ -1,5 +1,3 @@
-using StaffSharp.Audio.Diagnostics;
-
 namespace StaffSharp.Audio.Analysis.Meter;
 
 /// <summary>
@@ -7,7 +5,7 @@ namespace StaffSharp.Audio.Analysis.Meter;
 /// Currently a marker class for consistency with other analysis components.
 /// Future options may include meter preferences, beat subdivision hints, etc.
 /// </summary>
-public record TimeSignatureDetectionOptions : DiagnosticsOptions
+public record TimeSignatureDetectionOptions
 {
     /// <summary>
     /// Validates the options.

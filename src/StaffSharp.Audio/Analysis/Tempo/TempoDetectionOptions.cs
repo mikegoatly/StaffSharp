@@ -1,4 +1,3 @@
-using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Audio.Analysis.Tempo;
@@ -6,7 +5,7 @@ namespace StaffSharp.Audio.Analysis.Tempo;
 /// <summary>
 /// Options for tempo detection algorithms implementing <see cref="ITempoDetector"/>.
 /// </summary>
-public record TempoDetectionOptions : DiagnosticsOptions
+public record TempoDetectionOptions
 {
     /// <summary>
     /// Gets or initializes the minimum detectable tempo in BPM.

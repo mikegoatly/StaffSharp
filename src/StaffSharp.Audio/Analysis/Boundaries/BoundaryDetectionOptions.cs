@@ -1,11 +1,9 @@
-using StaffSharp.Audio.Diagnostics;
-
 namespace StaffSharp.Audio.Analysis.Boundaries;
 
 /// <summary>
 /// Options for audio boundary detection algorithms implementing <see cref="IAudioBoundaryDetector"/>.
 /// </summary>
-public record BoundaryDetectionOptions : DiagnosticsOptions
+public record BoundaryDetectionOptions
 {
     /// <summary>
     /// Gets or initializes the energy threshold in dB.

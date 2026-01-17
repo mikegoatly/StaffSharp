@@ -36,8 +36,9 @@ public static class AudioPipeline
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var rawAudio = await new LoadAudioStage(options).ExecuteAsync(wavStream, ct).ConfigureAwait(false);
-        
+        var progress = PipelineProgress.ForPipeline(options);
+        var rawAudio = await new LoadAudioStage(progress).ExecuteAsync(wavStream, ct).ConfigureAwait(false);
+
         return await FromAudioBufferAsync(rawAudio, options, ct).ConfigureAwait(false);
     }
 
@@ -49,19 +50,23 @@ public static class AudioPipeline
         ArgumentNullException.ThrowIfNull(audioBuffer);
         ArgumentNullException.ThrowIfNull(options);
 
+        var progress = PipelineProgress.ForPipeline(options);
+
         // Step 1: Normalize audio
-        var audio = await new NormalizeAudioStage(options).ExecuteAsync(audioBuffer, ct).ConfigureAwait(false);
+        progress = progress with { StageName = "Audio normalization" };
+        var audio = await new NormalizeAudioStage(progress).ExecuteAsync(audioBuffer, ct).ConfigureAwait(false);
 
         // Step 2: Note detection (sub-pipeline: detect → tempo → quantize)
-        var quantizationResult = await options.NoteDetector.DetectAsync(audio, ct).ConfigureAwait(false);
+        progress = progress with { StageName = "Note detection" };
+        var timeline = await options.NoteDetector.DetectAsync(options, audio, ct).ConfigureAwait(false);
 
-        // Step 3: Build timeline from quantized notes
-        var timeline = await new BuildTimelineStage(options)
-            .ExecuteAsync(quantizationResult.Notes, quantizationResult.TempoMap, ct).ConfigureAwait(false);
-
-        // Step 4: Convert to notation score
-        var score = await new ConvertToScoreStage(options, new NotationEngine(), new NotationOptions())
-            .ExecuteAsync(timeline, ct).ConfigureAwait(false);
+        // Step 3: Convert to notation score
+        progress = progress with { StageName = "Score conversion" };
+        var score = await new ConvertToScoreStage(
+            new NotationEngine(), // TODO allow voice assigner configuration
+            new NotationOptions())
+            .ExecuteAsync(progress, timeline, ct)
+            .ConfigureAwait(false);
 
         options.Progress?.Report(new("Import", "Complete"));
 

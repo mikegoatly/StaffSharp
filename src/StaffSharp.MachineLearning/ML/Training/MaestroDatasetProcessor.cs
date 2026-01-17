@@ -3,7 +3,6 @@ namespace StaffSharp.MachineLearning.ML.Training;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Interaction;
 
-using StaffSharp;
 using StaffSharp.Audio;
 using StaffSharp.Audio.IO;
 using StaffSharp.MachineLearning.ML.Features;
