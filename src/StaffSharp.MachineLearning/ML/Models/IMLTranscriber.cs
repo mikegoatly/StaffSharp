@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// Interface for polyphonic music transcription models.
 /// </summary>
-public interface IPolyphonicTranscriber : IDisposable
+public interface IMLTranscriber : IDisposable
 {
     /// <summary>
     /// Transcribes polyphonic audio to piano roll representation.

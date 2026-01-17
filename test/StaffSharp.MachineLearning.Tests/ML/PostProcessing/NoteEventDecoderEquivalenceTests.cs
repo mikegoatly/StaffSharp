@@ -224,7 +224,7 @@ public sealed class NoteEventDecoderEquivalenceTests
                     out var mds) ? (float)mds.GetDouble() : 0.05f;
                 
                 // Act - decode using C#
-                var options = new PolyphonicTranscriptionOptions
+                var options = new MLTranscriptionOptions
                 {
                     OnsetThreshold = onsetThresh,
                     FrameThreshold = frameThresh,
@@ -323,7 +323,7 @@ public sealed class NoteEventDecoderEquivalenceTests
         for (int i = 5; i < 15; i++)
             frameRoll[i, keyIndex] = 1.0f;
         
-        var options = new PolyphonicTranscriptionOptions();
+        var options = new MLTranscriptionOptions();
         var result = new PolyphonicTranscriptionResult(
             frameRoll, onsetRoll, offsetRoll, velocityRoll, frameRate, 16000);
         

@@ -22,20 +22,20 @@ using StaffSharp.MachineLearning.Options;
 /// 5. Filter notes shorter than minimum duration
 /// 6. Sort by onset time
 /// </remarks>
-public sealed class NoteEventDecoder
+internal sealed class NoteEventDecoder
 {
     private const int PianoKeyCount = 88;
     private const int LowestPianoKey = 21; // MIDI note A0
 
-    private readonly PolyphonicTranscriptionOptions _options;
+    private readonly MLTranscriptionOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NoteEventDecoder"/> class.
     /// </summary>
     /// <param name="options">Transcription options including thresholds.</param>
-    public NoteEventDecoder(PolyphonicTranscriptionOptions? options = null)
+    public NoteEventDecoder(MLTranscriptionOptions? options = null)
     {
-        _options = options ?? new PolyphonicTranscriptionOptions();
+        _options = options ?? new MLTranscriptionOptions();
     }
 
     /// <summary>

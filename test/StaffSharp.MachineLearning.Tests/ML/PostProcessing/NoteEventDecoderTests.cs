@@ -299,7 +299,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithThresholdOptions_RespectsOnsetThreshold()
     {
         // Arrange
-        var options = new PolyphonicTranscriptionOptions
+        var options = new MLTranscriptionOptions
         {
             OnsetThreshold = 0.7f, // High threshold
             FrameThreshold = 0.5f
@@ -334,7 +334,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithThresholdOptions_RespectsFrameThreshold()
     {
         // Arrange
-        var options = new PolyphonicTranscriptionOptions
+        var options = new MLTranscriptionOptions
         {
             OnsetThreshold = 0.5f,
             FrameThreshold = 0.8f // High threshold
@@ -376,7 +376,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithMinNoteLengthFilter_FiltersShortNotes()
     {
         // Arrange
-        var options = new PolyphonicTranscriptionOptions
+        var options = new MLTranscriptionOptions
         {
             MinNoteLengthSeconds = 0.1f // 100ms minimum
         };

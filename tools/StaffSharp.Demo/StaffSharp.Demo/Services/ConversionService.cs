@@ -3,6 +3,7 @@ using StaffSharp.Audio;
 using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Demo.ViewModels;
+using StaffSharp.MachineLearning;
 using StaffSharp.Midi;
 using StaffSharp.MusicXml;
 using StaffSharp.Notation;
@@ -146,6 +147,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
         return new AudioPipelineOptions
         {
             // TODO : Map other options for each options in ProcessingOptions
+            NoteDetector = MLNoteDetector.Create(),
             DiagnosticsCollector = diagnosticsCollector
         };
     }
