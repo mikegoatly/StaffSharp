@@ -34,13 +34,57 @@
                     <TextBlock VerticalAlignment="Center" Text="Use Machine Learning" />
                     <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.UseMachineLearning}" />
                 </Grid>
-                <StackPanel IsVisible="{Binding Options.UseMachineLearning}" Orientation="Vertical">
+                <StackPanel IsVisible="{Binding Options.UseMachineLearning}" Orientation="Vertical" Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
                         <TextBlock VerticalAlignment="Center" Text="Model path (Blank for default model)" />
                         <TextBox
                             Grid.Column="1"
                             Width="200"
                             Text="{Binding Options.ModelPath}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Onset Threshold" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.00"
+                            Increment="0.05"
+                            Maximum="1.0"
+                            Minimum="0.0"
+                            Value="{Binding Options.OnsetThreshold}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Frame Threshold" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.00"
+                            Increment="0.05"
+                            Maximum="1.0"
+                            Minimum="0.0"
+                            Value="{Binding Options.FrameThreshold}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Offset Threshold" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.00"
+                            Increment="0.05"
+                            Maximum="1.0"
+                            Minimum="0.0"
+                            Value="{Binding Options.OffsetThreshold}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Min Note Length (seconds)" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.000"
+                            Increment="0.01"
+                            Maximum="1.0"
+                            Minimum="0.001"
+                            Value="{Binding Options.MinNoteLengthSeconds}" />
                     </Grid>
                 </StackPanel>
 
