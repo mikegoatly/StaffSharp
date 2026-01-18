@@ -40,4 +40,17 @@ public sealed class InMemoryDiagnosticsCollector : IDiagnosticsCollector
     {
         _data.Clear();
     }
+
+    public T? GetDiagnostic<T>(string v)
+    {
+        foreach (var section in _data)
+        {
+            if (section.Value.TryGetValue(v, out var value) && value is T typedValue)
+            {
+                return typedValue;
+            }
+        }
+
+        return default;
+    }
 }

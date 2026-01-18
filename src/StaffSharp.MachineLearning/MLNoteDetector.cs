@@ -73,6 +73,7 @@ public sealed class MLNoteDetector(
         var noteEvents = _decoder.Decode(transcriptionResult);
 
         progress.EmitDiagnostics("Note count", noteEvents.Count);
+        progress.EmitDiagnostics("DecodedNoteEvents", noteEvents);
 
         if (noteEvents.Count == 0)
         {

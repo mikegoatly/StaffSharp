@@ -136,11 +136,11 @@
             </Border>
 
             <!--  Main Content  -->
-            <Grid Grid.Row="1" ColumnDefinitions="*,Auto,350">
-                <!--  Left: SVG Display  -->
+            <Grid Grid.Row="1" RowDefinitions="*,Auto,300">
+                <!--  Top: SVG Notation  -->
                 <Border
-                    Grid.Column="0"
-                    Margin="8"
+                    Grid.Row="0"
+                    Margin="8,8,8,4"
                     Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
                     ClipToBounds="True"
                     CornerRadius="4">
@@ -173,61 +173,23 @@
                     </Grid>
                 </Border>
 
-                <!--  Splitter  -->
+                <!--  Horizontal Splitter  -->
                 <GridSplitter
-                    Grid.Column="1"
-                    Width="4"
-                    Background="Transparent" />
+                    Grid.Row="1"
+                    Height="4"
+                    Background="Transparent"
+                    ResizeDirection="Rows" />
 
-                <!--  Right: ABC and Waveform  -->
-                <Grid Grid.Column="2" RowDefinitions="*,Auto,*">
-                    <!--  ABC Notation  -->
-                    <Border
-                        Grid.Row="0"
-                        Margin="8,8,8,4"
-                        Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
-                        CornerRadius="4">
-                        <Grid RowDefinitions="Auto,*">
-                            <TextBlock
-                                Grid.Row="0"
-                                Padding="12,8"
-                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                                FontWeight="SemiBold"
-                                Text="ABC Notation" />
-
-                            <SelectableTextBlock
-                                Grid.Row="1"
-                                Margin="16"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontFamily="Consolas,Courier New,monospace"
-                                IsVisible="{Binding HasResult}"
-                                Text="{Binding AbcText}"
-                                TextAlignment="Left" />
-                        </Grid>
-                    </Border>
-
-                    <!--  Splitter  -->
-                    <GridSplitter
-                        Grid.Row="1"
-                        Height="4"
-                        Background="Transparent" />
-
-                    <!--  Waveform  -->
-                    <Border
-                        Grid.Row="2"
-                        Margin="8,4,8,8"
-                        Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
-                        CornerRadius="4">
-                        <Grid RowDefinitions="Auto,*">
-                            <TextBlock
-                                Grid.Row="0"
-                                Padding="12,8"
-                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                                FontWeight="SemiBold"
-                                Text="Audio Waveform" />
-
-                            <Panel Grid.Row="1" Margin="8">
+                <!--  Bottom: Tabbed Diagnostics Panel  -->
+                <Border
+                    Grid.Row="2"
+                    Margin="8,4,8,8"
+                    Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                    CornerRadius="4">
+                    <TabControl IsVisible="{Binding HasResult}">
+                        <!--  Original Waveform Tab  -->
+                        <TabItem Header="Original Waveform">
+                            <Panel Margin="8">
                                 <controls:WaveformControl
                                     PlaybackPosition="{Binding PlaybackPosition}"
                                     PlayheadBrush="Red"
@@ -241,9 +203,64 @@
                                     IsVisible="{Binding WaveformSamples, Converter={x:Static ObjectConverters.IsNull}}"
                                     Text="No audio loaded" />
                             </Panel>
-                        </Grid>
-                    </Border>
-                </Grid>
+                        </TabItem>
+
+                        <!--  Normalized Waveform Tab (ML only)  -->
+                        <TabItem
+                            Header="Normalized Waveform"
+                            IsVisible="{Binding NormalizedWaveform, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <controls:WaveformVisualizationControl
+                                Margin="8"
+                                NoiseFloorDb="-50"
+                                PlaybackPosition="{Binding PlaybackPosition}"
+                                SampleRate="16000"
+                                Samples="{Binding NormalizedWaveform}"
+                                ShowNoiseFloor="True" />
+                        </TabItem>
+
+                        <!--  Mel Spectrogram Tab (ML only)  -->
+                        <TabItem
+                            Header="Mel Spectrogram"
+                            IsVisible="{Binding MelSpectrogram, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <controls:HeatmapVisualizationControl
+                                Margin="8"
+                                FrameRate="{Binding MlFrameRate}"
+                                HeatmapData="{Binding MelSpectrogram}"
+                                PlaybackPosition="{Binding PlaybackPosition}"
+                                Title="Mel Spectrogram (Log-compressed)"
+                                YLabel="Mel Bin" />
+                        </TabItem>
+
+                        <!--  ML Pipeline Tab (ML only)  -->
+                        <TabItem
+                            Header="ML Pipeline"
+                            IsVisible="{Binding OnsetProbabilities, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <controls:StackedHeatmapVisualizationControl
+                                Margin="8"
+                                FrameData="{Binding FrameProbabilities}"
+                                FrameRate="{Binding MlFrameRate}"
+                                NoteEvents="{Binding DecodedNoteEvents}"
+                                OffsetData="{Binding OffsetProbabilities}"
+                                OnsetData="{Binding OnsetProbabilities}"
+                                PlaybackPosition="{Binding PlaybackPosition}"
+                                ShowVelocity="True" />
+                        </TabItem>
+
+                        <!--  ABC Notation Tab (always shown)  -->
+                        <TabItem Header="ABC Notation">
+                            <ScrollViewer>
+                                <SelectableTextBlock
+                                    Margin="16"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    FontFamily="Consolas,Courier New,monospace"
+                                    IsVisible="{Binding HasResult}"
+                                    Text="{Binding AbcText}"
+                                    TextAlignment="Left" />
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </Border>
             </Grid>
 
             <!--  Status Bar  -->
