@@ -13,6 +13,7 @@
     <Project Path="src/StaffSharp.Midi/StaffSharp.Midi.csproj" />
     <Project Path="src/StaffSharp.MusicXml/StaffSharp.MusicXml.csproj" />
     <Project Path="src/StaffSharp.Svg/StaffSharp.Svg.csproj" />
+    <Project Path="src/StaffSharp.Synthesis/StaffSharp.Synthesis.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/StaffSharp.Audio.Tests/StaffSharp.Audio.Tests.csproj" />

@@ -33,5 +33,6 @@
     <ProjectReference Include="..\..\..\src\StaffSharp.Midi\StaffSharp.Midi.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.MusicXml\StaffSharp.MusicXml.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.Abc\StaffSharp.Abc.csproj" />
+    <ProjectReference Include="..\..\..\src\StaffSharp.Synthesis\StaffSharp.Synthesis.csproj" />
   </ItemGroup>
 </Project>

@@ -10,6 +10,7 @@ using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Demo.Services;
 using StaffSharp.Demo.Services.Audio;
 using StaffSharp.Notation;
+using StaffSharp.Synthesis;
 
 namespace StaffSharp.Demo.ViewModels;
 
@@ -359,14 +360,21 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        // TODO: Implement score synthesis
-        StatusMessage = "Score playback not yet implemented";
+        try
+        {
+            StatusMessage = "Synthesizing score...";
 
-        // Placeholder for future synthesis implementation:
-        // var synthesizer = new ScoreSynthesizer();
-        // var audioBuffer = synthesizer.Synthesize(Score, sampleRate: 44100);
-        // SynthesizedSamples = audioBuffer.Samples.ToArray();
-        // _audioService.PlaySamples(SynthesizedSamples, 44100, 1);
+            var synthesizer = new ScoreSynthesizer();
+            var audioBuffer = synthesizer.Synthesize(Score, sampleRate: 44100);
+            SynthesizedSamples = audioBuffer;
+
+            StatusMessage = "Playing synthesized score...";
+            _audioService.PlayAudioBuffer(audioBuffer);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error synthesizing score: {ex.Message}";
+        }
     }
 
     private bool CanPlayScore() => Score != null && !IsRecording && !IsPlaying;
