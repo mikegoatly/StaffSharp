@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>StaffSharp.Synthesis</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Numerics.Tensors" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
+		<ProjectReference Include="..\StaffSharp.Audio\StaffSharp.Audio.csproj" />
+	</ItemGroup>
+
+</Project>
