@@ -32,10 +32,18 @@
                 <TextBlock Classes="subheading" Text="Note Detection" />
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
                     <TextBlock VerticalAlignment="Center" Text="Use Machine Learning" />
-                    <ToggleSwitch
-                        Grid.Column="1"
-                        IsChecked="{Binding Options.UseMachineLearning}" />
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.UseMachineLearning}" />
                 </Grid>
+                <StackPanel IsVisible="{Binding Options.UseMachineLearning}" Orientation="Vertical">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Model path (Blank for default model)" />
+                        <TextBox
+                            Grid.Column="1"
+                            Width="200"
+                            Text="{Binding Options.ModelPath}" />
+                    </Grid>
+                </StackPanel>
+
             </StackPanel>
 
             <StackPanel Spacing="8">
