@@ -142,17 +142,6 @@ def export_to_onnx(checkpoint_path: str, output_path: str, opset_version: int = 
             print(f"  Original model is still available at: {output_path}")
 
     print(f"\nExport complete!")
-    print(f"\nNext steps:")
-    print(f"  1. Copy ONNX model to C# project:")
-    if quantize:
-        output_stem = Path(output_path).stem
-        output_dir = Path(output_path).parent
-        quantized_path = output_dir / f"{output_stem}_{quantize}.onnx"
-        print(f"     cp {quantized_path} ../test/StaffSharp.MachineLearning.Tests/TestData/")
-    else:
-        print(f"     cp {output_path} ../test/StaffSharp.MachineLearning.Tests/TestData/")
-    print(f"  2. Run C# tests to verify integration:")
-    print(f"     dotnet test StaffSharp.MachineLearning.Tests")
 
 
 def main():
