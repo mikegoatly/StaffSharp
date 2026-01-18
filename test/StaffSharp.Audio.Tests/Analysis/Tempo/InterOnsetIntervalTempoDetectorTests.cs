@@ -14,22 +14,18 @@ public class InterOnsetIntervalTempoDetectorTests
     }
 
     [Fact]
-    public void EstimateTempo_EmptyOnsets_ReturnsNull()
+    public void EstimateTempo_EmptyOnsets_ThrowsException()
     {
         var detector = new InterOnsetIntervalTempoDetector();
-        var tempoMap = detector.DetectTempo(PipelineProgress.Null, ReadOnlySpan<double>.Empty);
-
-        Assert.Null(tempoMap);
+        var ex = Assert.Throws<ArgumentException>(() => detector.DetectTempo(PipelineProgress.Null, []));   
     }
 
     [Fact]
-    public void EstimateTempo_SingleOnset_ReturnsNull()
+    public void EstimateTempo_SingleOnset_ThrowsException()
     {
         var detector = new InterOnsetIntervalTempoDetector();
         var onsets = new[] { 0.5 };
-        var tempoMap = detector.DetectTempo(PipelineProgress.Null, onsets);
-
-        Assert.Null(tempoMap);
+        var ex = Assert.Throws<ArgumentException>(() => detector.DetectTempo(PipelineProgress.Null, onsets));
     }
 
     [Fact]
@@ -152,15 +148,14 @@ public class InterOnsetIntervalTempoDetectorTests
     }
 
     [Fact]
-    public void EstimateTempo_OutOfRange_ReturnsNull()
+    public void EstimateTempo_OutOfRange_ThrowsException()
     {
         var detector = new InterOnsetIntervalTempoDetector(new TempoDetectionOptions { MinBpm = 100, MaxBpm = 140 });
 
         // 60 BPM - below minimum
         var slowOnsets = new[] { 0.0, 1.0, 2.0, 3.0, 4.0 };
-        var slowTempo = detector.DetectTempo(PipelineProgress.Null, slowOnsets);
-
-        Assert.Null(slowTempo);
+        var ex = Assert.Throws<InvalidOperationException>(() => detector.DetectTempo(PipelineProgress.Null, slowOnsets));
+        Assert.Equal("No valid inter-onset intervals found within the specified tempo range.", ex.Message);
     }
 
     [Fact]
@@ -282,7 +277,7 @@ public class InterOnsetIntervalTempoDetectorTests
             .Select(i => i * (60.0 / 100.0))
             .ToArray();
 
-        var invalidTempo = detector.DetectTempo(PipelineProgress.Null, invalidOnsets);
-        Assert.Null(invalidTempo);
+        var ex = Assert.Throws<InvalidOperationException>(() => detector.DetectTempo(PipelineProgress.Null, invalidOnsets));
+        Assert.Equal("No valid inter-onset intervals found within the specified tempo range.", ex.Message);
     }
 }

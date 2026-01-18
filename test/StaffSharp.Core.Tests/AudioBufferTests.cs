@@ -10,7 +10,7 @@ public class AudioBufferTests
         var buffer = new AudioBuffer(samples, 44100, 1);
 
         // Act
-        var (normalized, _) = buffer.Normalize(1.0f);
+        var (normalized, _) = buffer.Normalize(1.0f, 0.0f, 0.0f);
 
         // Assert
         // Gain should be 1.0 / 0.5 = 2.0
@@ -30,7 +30,7 @@ public class AudioBufferTests
         var buffer = new AudioBuffer(samples, 44100, 1);
 
         // Act
-        var (normalized, stats) = buffer.Normalize(1.0f);
+        var (normalized, stats) = buffer.Normalize(1.0f, 0.0f, 0.0f);
 
         // Assert
         // Max magnitude is |-0.5| = 0.5.
@@ -79,7 +79,7 @@ public class AudioBufferTests
     public void Normalize_AlreadyNormalized_DoesNothing()
     {
         // Arrange
-        var samples = new float[] { 1.0f, 0.5f };
+        var samples = new float[] { 0.6f, 0.5f };
         var buffer = new AudioBuffer(samples, 44100, 1);
 
         // Act
@@ -87,6 +87,37 @@ public class AudioBufferTests
 
         // Assert
         Assert.Same(buffer, normalized);
+    }
+
+    [Fact]
+    public void Normalize_WithinAllowedRange_DoesNothing()
+    {
+        // Arrange
+        var samples = new float[] { 0.5f, 0.4f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, _) = buffer.Normalize(0.6f, 0.3f, 0.8f);
+
+        // Assert
+        Assert.Same(buffer, normalized);
+    }
+
+    [Fact]
+    public void Normalize_OutsideAllowedRange_Normalizes()
+    {
+        // Arrange
+        var samples = new float[] { 0.9f, 0.3f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, _) = buffer.Normalize(0.6f, 0.4f, 0.8f);
+
+        // Assert
+        // Peak 0.9 > 0.8, so normalize to 0.6
+        var span = normalized.Samples.Span;
+        Assert.Equal(0.6f, span[0], 4);
+        Assert.Equal(0.2f, span[1], 4); // 0.3 * (0.6 / 0.9)
     }
 
     [Fact]

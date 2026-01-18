@@ -8,6 +8,7 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
 using StaffSharp.Audio;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Features;
 using StaffSharp.MachineLearning.Options;
 
@@ -70,13 +71,13 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<PolyphonicTranscriptionResult> TranscribeAsync(AudioBuffer audio)
+    public async Task<PolyphonicTranscriptionResult> TranscribeAsync(PipelineProgress progress, AudioBuffer audio)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(audio);
 
         // 1. Extract mel spectrogram features
-        var features = _featureExtractor.ExtractFeatures(audio);
+        var features = _featureExtractor.ExtractFeatures(progress, audio);
 
         // 2. Convert features to ONNX tensor (batch_size=1, time, mel_bins)
         var inputTensor = ConvertToTensor(features);

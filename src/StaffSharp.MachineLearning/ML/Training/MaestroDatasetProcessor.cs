@@ -5,6 +5,7 @@ using Melanchall.DryWetMidi.Interaction;
 
 using StaffSharp.Audio;
 using StaffSharp.Audio.IO;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Features;
 
 /// <summary>
@@ -44,7 +45,7 @@ public sealed class MaestroDatasetProcessor
         }
 
         // 2. Extract mel spectrogram features
-        var melSpec = _extractor.ExtractFeatures(audio);
+        var melSpec = _extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         var numFrames = melSpec.GetLength(0);
         var frameRate = (float)SampleRate / HopSize;

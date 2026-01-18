@@ -54,7 +54,7 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
 
         if (validIntervals.Count == 0)
         {
-                   throw new InvalidOperationException("No valid inter-onset intervals found within the specified tempo range.");
+            throw new InvalidOperationException("No valid inter-onset intervals found within the specified tempo range.");
         }
 
         // Step 3: Find predominant interval using histogram clustering

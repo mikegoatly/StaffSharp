@@ -60,11 +60,24 @@ public sealed class AlgorithmicNoteDetector(
         ArgumentNullException.ThrowIfNull(audio);
         ct.ThrowIfCancellationRequested();
 
-        // Step 1: Detect boundaries (trim silence)
+        if (audio.Channels > 1)
+        {
+            progress.ReportProgress("Normalizing audio to mono");
+            audio = audio.ToMono();
+        }
+
+        progress.ReportProgress("Normalizing audio");
+        (audio, var normalizationReport) = audio.Normalize();
+        progress.EmitDiagnostics("Normalization report", normalizationReport);
+
+        progress.EmitDiagnostics("Channels", audio.Channels);
+        progress.EmitDiagnostics("SampleCount", audio.SampleCount);
+
+        // Detect boundaries (trim silence)
         var boundaries = boundaryDetector.DetectBoundaries(progress, audio)
             ?? throw new InvalidOperationException("Boundary detection failed: detector returned null. This can happen if the input audio is silent, extremely short, or incompatible with the configured boundary detector. Verify the audio buffer contains usable signal and that the boundary detector is correctly configured.");
 
-        // Step 2: Detect onsets
+        // Detect onsets
         // Extract the content region (excluding leading/trailing silence)
         var slice = audio.Samples.Span[boundaries.StartSample..boundaries.EndSample];
 
@@ -74,7 +87,7 @@ public sealed class AlgorithmicNoteDetector(
         // The boundary detection has already trimmed the leading silence.
         var onsets = onsetDetector.DetectOnsets(progress, slice, audio.SampleRate, TimeSpan.Zero);
 
-        // Step 3: Detect pitches and time signatures in parallel
+        // Detect pitches and time signatures in parallel
         var pitchTask = new DetectPitchesStage(progress, pitchDetector)
             .ExecuteAsync(onsets, audio, boundaries, ct);
         var timeSigTask = Task.Run(() => timeSignatureDetector.DetectTimeSignatures(
@@ -84,14 +97,14 @@ public sealed class AlgorithmicNoteDetector(
         var pitches = await pitchTask.ConfigureAwait(false);
         var timeSignatures = await timeSigTask.ConfigureAwait(false);
 
-        // Step 4: Filter unpitched onsets
+        // Filter unpitched onsets
         var (filteredOnsets, filteredPitches) = await new FilterUnpitchedOnsetsStage(progress with { StageName = "Filter pitches" })
             .ExecuteAsync(onsets, pitches, ct).ConfigureAwait(false);
 
-        // Step 5: Detect tempo
+        // Detect tempo
         var tempoMap = tempoDetector.DetectTempo(progress with { StageName = "Detect tempo" }, filteredOnsets);
 
-        // Step 6: Quantize (infers durations from onset spacing)
+        // Quantize (infers durations from onset spacing)
         var (quantizedNotes, refinedTempoMap) = quantizer.Quantize(
             filteredOnsets,
             filteredPitches,

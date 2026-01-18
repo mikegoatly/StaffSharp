@@ -4,6 +4,7 @@ using System.Globalization;
 
 using StaffSharp.Audio;
 using StaffSharp.Audio.IO;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Features;
 using StaffSharp.MachineLearning.Options;
 using StaffSharp.TestHelpers.Builders;
@@ -53,7 +54,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert
         Assert.Equal(229, features.GetLength(1)); // Mel bins
@@ -84,7 +85,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert - should still work and produce valid features
         Assert.Equal(229, features.GetLength(1)); // Mel bins
@@ -107,7 +108,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert - should work without error
         Assert.Equal(229, features.GetLength(1));
@@ -123,7 +124,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert
         Assert.Equal(229, features.GetLength(1));
@@ -163,8 +164,8 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var lowFeatures = extractor.ExtractFeatures(lowFreq);
-        var highFeatures = extractor.ExtractFeatures(highFreq);
+        var lowFeatures = extractor.ExtractFeatures(PipelineProgress.Null, lowFreq);
+        var highFeatures = extractor.ExtractFeatures(PipelineProgress.Null, highFreq);
 
         // Assert - features should be different
         // Calculate total energy difference
@@ -194,7 +195,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert - all values should be non-negative (log compression always positive)
         for (int t = 0; t < features.GetLength(0); t++)
@@ -231,7 +232,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor(options);
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert
         Assert.Equal(melBins, features.GetLength(1));
@@ -256,7 +257,7 @@ public sealed class MelSpectrogramExtractorTests
         var extractor = new MelSpectrogramExtractor();
 
         // Act
-        var features = extractor.ExtractFeatures(audio);
+        var features = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Save features to a text file that Python can read
         var outputPath = Path.Combine(Path.GetTempPath(), "csharp_mel_features.txt");
