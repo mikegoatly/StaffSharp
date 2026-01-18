@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using StaffSharp.Abc.Exporting;
 using StaffSharp.Audio;
+using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Demo.Services;
 using StaffSharp.Demo.Services.Audio;
 using StaffSharp.Notation;
@@ -86,6 +87,39 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial TimeSpan RecordingDuration { get; set; }
+
+    // ML Diagnostics
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[]? NormalizedWaveform { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[,]? MelSpectrogram { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[,]? OnsetProbabilities { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[,]? FrameProbabilities { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[,]? OffsetProbabilities { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial IReadOnlyList<NoteEvent>? DecodedNoteEvents { get; set; }
+
+    [ObservableProperty]
+    public partial double MlFrameRate { get; set; }
+
+    public bool HasMlDiagnostics =>
+        NormalizedWaveform != null ||
+        MelSpectrogram != null ||
+        OnsetProbabilities != null;
 
     // Required for file picker
     public IStorageProvider? StorageProvider { get; set; }
@@ -190,6 +224,15 @@ public partial class MainViewModel : ViewModelBase
         WaveformSamples = null;
         AbcText = null;
         SvgContent = null;
+
+        // Clear ML diagnostics
+        NormalizedWaveform = null;
+        MelSpectrogram = null;
+        OnsetProbabilities = null;
+        FrameProbabilities = null;
+        OffsetProbabilities = null;
+        DecodedNoteEvents = null;
+        MlFrameRate = 0;
     }
 
     private async Task AnalyzeRecordingAsync(AudioBuffer samples)
@@ -215,6 +258,8 @@ public partial class MainViewModel : ViewModelBase
                 Score = result.Score;
                 ScoreTitle = result.Score.Metadata.Title ?? Path.GetFileNameWithoutExtension(InputFilePath);
                 DetectedTempo = result.Score.Metadata.Tempo;
+
+                ExtractMlDiagnostics(result.Diagnostics);
 
                 if (result.SourceAudio != null)
                 {
@@ -526,6 +571,17 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    private void ExtractMlDiagnostics(InMemoryDiagnosticsCollector diagnostics)
+    {
+        // Reset
+        NormalizedWaveform = diagnostics.GetDiagnostic<float[]>("NormalizedWaveform");
+        MelSpectrogram = diagnostics.GetDiagnostic<float[,]>("MelSpectrogram");
+        OnsetProbabilities = diagnostics.GetDiagnostic<float[,]>("OnsetProbabilities");
+        FrameProbabilities = diagnostics.GetDiagnostic<float[,]>("FrameProbabilities");
+        OffsetProbabilities = diagnostics.GetDiagnostic<float[,]>("OffsetProbabilities");
+        DecodedNoteEvents = diagnostics.GetDiagnostic<IReadOnlyList<NoteEvent>>("DecodedNoteEvents");
+        MlFrameRate = diagnostics.GetDiagnostic<double>("Frame rate (Hz)");
+    }
 
     public void Cleanup()
     {

@@ -36,6 +36,7 @@
     <PackageVersion Include="Avalonia.Android" Version="11.3.10" />
     <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="11.3.9.2" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageVersion Include="ScottPlot.Avalonia" Version="5.0.56" />
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.1" />
   </ItemGroup>
 </Project>

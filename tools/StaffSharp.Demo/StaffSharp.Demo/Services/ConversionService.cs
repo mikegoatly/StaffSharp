@@ -84,7 +84,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
             return ConversionResult.Successful(
                 score,
                 audioBuffer,
-                diagnosticsCollector.GetDiagnostics());
+                diagnosticsCollector);
         }
         catch (Exception ex)
         {
@@ -95,7 +95,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
                     Message = $"Failed: {ex.Message}",
                 });
 
-            return ConversionResult.Failure(diagnosticsCollector.GetDiagnostics());
+            return ConversionResult.Failure(diagnosticsCollector);
         }
     }
 
@@ -128,7 +128,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
             return ConversionResult.Successful(
                 score,
                 (importer as AudioScoreImporter)?.LastAudioBuffer,
-                diagnosticsCollector.GetDiagnostics());
+                diagnosticsCollector);
         }
         catch (Exception ex)
         {
@@ -139,7 +139,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
                     Message = $"Failed: {ex.Message}",
                 });
 
-            return ConversionResult.Failure(diagnosticsCollector.GetDiagnostics());
+            return ConversionResult.Failure(diagnosticsCollector);
         }
     }
 

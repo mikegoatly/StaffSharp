@@ -45,6 +45,7 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         // Ensure the audio is normalized
         (processedAudio, var normalizationStats) = processedAudio.Normalize();
         progress.EmitDiagnostics("NormalizationStats", normalizationStats);
+        progress.EmitDiagnostics("NormalizedWaveform", processedAudio.Samples.ToArray());
 
         // 2. Resample audio to target sample rate if needed
         processedAudio = processedAudio.Resample(_options.SampleRate);
@@ -60,6 +61,8 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
 
         // 6. Apply logarithmic compression
         ApplyLogCompression(melSpec);
+
+        progress.EmitDiagnostics("MelSpectrogram", melSpec);
 
         return melSpec;
     }

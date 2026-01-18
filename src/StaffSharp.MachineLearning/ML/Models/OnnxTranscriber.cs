@@ -94,6 +94,10 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
         var pianoRoll = ExtractBatch(frameProbs);
         var velocityRoll = ExtractBatch(velocities);
 
+        progress.EmitDiagnostics("OnsetProbabilities", onsetRoll);
+        progress.EmitDiagnostics("FrameProbabilities", pianoRoll);
+        progress.EmitDiagnostics("OffsetProbabilities", offsetRoll);
+
         // 6. Compute frame rate
         var frameRate = _options.FeatureOptions.SampleRate / _options.FeatureOptions.HopSize;
 

@@ -1,4 +1,5 @@
 ﻿using StaffSharp.Audio;
+using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Notation;
 
 namespace StaffSharp.Demo.Services
@@ -7,15 +8,15 @@ namespace StaffSharp.Demo.Services
         bool Success,
         NotationScore Score, 
         AudioBuffer? SourceAudio,
-        IReadOnlyDictionary<string, IReadOnlyDictionary<string, object>> Diagnostics)
+        InMemoryDiagnosticsCollector Diagnostics)
     {
-        public static ConversionResult Successful(NotationScore score, AudioBuffer? sourceAudio, IReadOnlyDictionary<string, IReadOnlyDictionary<string, object>> diagnostics) => new (
+        public static ConversionResult Successful(NotationScore score, AudioBuffer? sourceAudio, InMemoryDiagnosticsCollector diagnostics) => new (
             true, 
             score, 
             sourceAudio, 
             diagnostics);
 
-        public static ConversionResult Failure(IReadOnlyDictionary<string, IReadOnlyDictionary<string, object>> diagnostics) => new (
+        public static ConversionResult Failure(InMemoryDiagnosticsCollector diagnostics) => new (
             false, 
             new(ScoreMetadata.Empty, []), 
             null, 
