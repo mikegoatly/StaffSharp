@@ -13,6 +13,8 @@ namespace StaffSharp.Demo.ViewModels;
 /// </summary>
 public partial class ProcessingOptions : ObservableObject
 {
+    private static readonly MLTranscriptionOptions _defaultMLOptions = new();
+
     // SVG Rendering
     [ObservableProperty]
     public partial SvgExportOptions ExportOptions { get; set; } = new SvgExportOptions();
@@ -24,6 +26,18 @@ public partial class ProcessingOptions : ObservableObject
     [ObservableProperty]
     public partial string ModelPath { get; set; }
 
+    [ObservableProperty]
+    public partial float OnsetThreshold { get; set; } = _defaultMLOptions.OnsetThreshold;
+
+    [ObservableProperty]
+    public partial float FrameThreshold { get; set; } = _defaultMLOptions.FrameThreshold;
+
+    [ObservableProperty]
+    public partial float OffsetThreshold { get; set; } = _defaultMLOptions.OffsetThreshold;
+
+    [ObservableProperty]
+    public partial float MinNoteLengthSeconds { get; set; } = _defaultMLOptions.MinNoteLengthSeconds;
+
     /// <summary>
     /// Resets all options to their default values.
     /// </summary>
@@ -32,6 +46,10 @@ public partial class ProcessingOptions : ObservableObject
         ExportOptions = new SvgExportOptions();
         UseMachineLearning = true;
         ModelPath = string.Empty;
+        OnsetThreshold = _defaultMLOptions.OnsetThreshold;
+        FrameThreshold = _defaultMLOptions.FrameThreshold;
+        OffsetThreshold = _defaultMLOptions.OffsetThreshold;
+        MinNoteLengthSeconds = _defaultMLOptions.MinNoteLengthSeconds;
     }
 
     public AudioPipelineOptions CreateAudioPipelineOptions(IDiagnosticsCollector diagnosticsCollector)
@@ -49,10 +67,13 @@ public partial class ProcessingOptions : ObservableObject
 
     private MLTranscriptionOptions CreateMLTranscriptionOptions()
     {
-        // TODO other options
         return new()
         {
             ModelPath = string.IsNullOrWhiteSpace(ModelPath) ? null : ModelPath,
+            OnsetThreshold = OnsetThreshold,
+            FrameThreshold = FrameThreshold,
+            OffsetThreshold = OffsetThreshold,
+            MinNoteLengthSeconds = MinNoteLengthSeconds,
         };
     }
 }
