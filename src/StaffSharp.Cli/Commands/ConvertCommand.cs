@@ -16,35 +16,50 @@ internal static class ConvertCommand
 {
     private static Dictionary<string, Option> dynamicOptions = [];
 
+    // Arguments
+    private static readonly Argument<string> inputArg = new("input")
+    {
+        Description = "Input file path (use '-' for stdin)"
+    };
+
+    private static readonly Argument<string> outputArg = new("output")
+    {
+        Description = "Output file path (use '-' for stdout)"
+    };
+
+    // Options for format override
+    private static readonly Option<string?> fromOption = new("--from") { Description = "Override input format detection (e.g., 'abc')" };
+    private static readonly Option<string?> toOption = new("--to") { Description = "Override output format detection (e.g., 'midi')" };
+
+    // Verbosity options
+    private static readonly Option<bool> quietOption = new("--quiet") { Description = "Suppress all output except errors" };
+    private static readonly Option<bool> verboseOption = new("--verbose") { Description = "Show detailed conversion information" };
+
+    // ML note detection options
+    private static readonly Option<bool> useMlOption = new("--use-ml") { Description = "Use machine learning for audio note detection (instead of algorithmic)" };
+    private static readonly Option<string?> modelPathOption = new("--model-path") { Description = "Path to ONNX model file (optional, uses default if not specified)" };
+    private static readonly Option<float?> onsetThresholdOption = new("--onset-threshold") { Description = "ML onset detection threshold (0.0-1.0, default: 0.5)" };
+    private static readonly Option<float?> frameThresholdOption = new("--frame-threshold") { Description = "ML frame activation threshold (0.0-1.0, default: 0.5)" };
+    private static readonly Option<float?> offsetThresholdOption = new("--offset-threshold") { Description = "ML offset detection threshold (0.0-1.0, default: 0.5)" };
+    private static readonly Option<float?> minNoteLengthOption = new("--min-note-length") { Description = "Minimum note length in seconds (default: 0.05)" };
+
     public static Command Create()
     {
         var command = new Command("convert", "Convert between music notation formats");
 
-        // Arguments
-        var inputArg = new Argument<string>("input")
-        {
-            Description = "Input file path (use '-' for stdin)"
-        };
-
-        var outputArg = new Argument<string>("output")
-        {
-            Description = "Output file path (use '-' for stdout)"
-        };
-
         command.Arguments.Add(inputArg);
         command.Arguments.Add(outputArg);
 
-        // Options for format override
-        var fromOption = new Option<string?>("--from") { Description = "Override input format detection (e.g., 'abc')" };
-        var toOption = new Option<string?>("--to") { Description = "Override output format detection (e.g., 'midi')" };
         command.Options.Add(fromOption);
         command.Options.Add(toOption);
-
-        // Verbosity options
-        var quietOption = new Option<bool>("--quiet") { Description = "Suppress all output except errors" };
-        var verboseOption = new Option<bool>("--verbose") { Description = "Show detailed conversion information" };
         command.Options.Add(quietOption);
         command.Options.Add(verboseOption);
+        command.Options.Add(useMlOption);
+        command.Options.Add(modelPathOption);
+        command.Options.Add(onsetThresholdOption);
+        command.Options.Add(frameThresholdOption);
+        command.Options.Add(offsetThresholdOption);
+        command.Options.Add(minNoteLengthOption);
 
         // Add format-specific options dynamically
         foreach (var exporter in FormatRegistry.Exporters)
@@ -116,6 +131,22 @@ internal static class ConvertCommand
             if (verbose)
             {
                 Console.WriteLine($"Converting {importer.FormatName} → {exporter.FormatName}...");
+            }
+
+            // Configure audio importer with ML options if applicable
+            if (importer is AudioScoreImporter audioImporter)
+            {
+                var useMl = parseResult.GetValue(useMlOption);
+                if (useMl)
+                {
+                    var modelPath = parseResult.GetValue(modelPathOption);
+                    var onsetThreshold = parseResult.GetValue(onsetThresholdOption);
+                    var frameThreshold = parseResult.GetValue(frameThresholdOption);
+                    var offsetThreshold = parseResult.GetValue(offsetThresholdOption);
+                    var minNoteLength = parseResult.GetValue(minNoteLengthOption);
+
+                    audioImporter.ConfigureMLOptions(modelPath, onsetThreshold, frameThreshold, offsetThreshold, minNoteLength);
+                }
             }
 
             // Import

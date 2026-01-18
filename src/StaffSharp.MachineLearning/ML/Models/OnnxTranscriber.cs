@@ -350,7 +350,9 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
     private byte[] LoadModel()
     {
         // Use the provided model path, or fallback to Models/model_dynamic.zip in the output directory
-        var modelPath = string.IsNullOrWhiteSpace(_options.ModelPath) ? "Models/model_dynamic.zip" : _options.ModelPath;
+        var modelPath = string.IsNullOrWhiteSpace(_options.ModelPath)
+            ? Path.Combine(AppContext.BaseDirectory, "Models", "model_dynamic.zip")
+            : _options.ModelPath;
         return ModelLoader.LoadModel(modelPath);
     }
 
