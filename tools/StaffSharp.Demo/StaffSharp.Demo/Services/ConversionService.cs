@@ -78,7 +78,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
         {
             var score = await AudioPipeline.FromAudioBufferAsync(
                 audioBuffer,
-                CreateAudioPipelineOptions(diagnosticsCollector, options),
+                options.CreateAudioPipelineOptions(diagnosticsCollector),
                 cancellationToken);
 
             return ConversionResult.Successful(
@@ -120,7 +120,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
             using var fileStream = File.OpenRead(filePath);
             if (importer is AudioScoreImporter audioImporter)
             {
-                audioImporter.Options = CreateAudioPipelineOptions(diagnosticsCollector, options);
+                audioImporter.Options = options.CreateAudioPipelineOptions(diagnosticsCollector);
             }
 
             var score = await importer.ImportAsync(fileStream, this, cancellationToken);
@@ -143,18 +143,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
         }
     }
 
-    private static AudioPipelineOptions CreateAudioPipelineOptions(InMemoryDiagnosticsCollector diagnosticsCollector, ProcessingOptions options)
-    {
-        INoteDetector noteDetector = options.UseMachineLearning
-            ? MLNoteDetector.Create()
-            : AlgorithmicNoteDetector.Create();
-
-        return new AudioPipelineOptions
-        {
-            NoteDetector = noteDetector,
-            DiagnosticsCollector = diagnosticsCollector
-        };
-    }
+    
 
     public async Task ExportAsync(
         string fileName,

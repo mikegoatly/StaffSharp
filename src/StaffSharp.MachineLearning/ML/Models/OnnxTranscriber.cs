@@ -27,7 +27,6 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 {
     private const int PianoKeyCount = 88; // MIDI notes 21-108 (A0-C8)
 
-    private byte[]? embeddedModel;
     private readonly InferenceSession _session;
     private readonly MelSpectrogramExtractor _featureExtractor;
     private readonly MLTranscriptionOptions _options;
@@ -349,52 +348,9 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 
     private byte[] LoadModel()
     {
-        Stream modelStream;
-        if (_options.ModelPath is null)
-        {
-            if (embeddedModel is not null)
-            {
-                return embeddedModel;
-            }
-
-            // Use the embedded default model from Models/model_dynamic.onnx
-            modelStream = this.GetType().Assembly.GetManifestResourceStream("StaffSharp.MachineLearning.Models.model_dynamic.onnx")
-                ?? throw new InvalidOperationException("Embedded model resource not found.");
-        }
-        else
-        {
-            // Load model from specified file path
-            if (!File.Exists(_options.ModelPath))
-            {
-                throw new FileNotFoundException($"ONNX model not found at: {_options.ModelPath}", _options.ModelPath);
-            }
-
-            modelStream = File.OpenRead(_options.ModelPath);
-        }
-
-        try
-        {
-            var length = (int)modelStream.Length;
-            var modelData = new byte[length];
-            var bytesRead = modelStream.Read(modelData, 0, length);
-
-            if (bytesRead != length)
-            {
-                throw new InvalidOperationException("Failed to read the complete ONNX model file.");
-            }
-
-            if (_options.ModelPath is null)
-            {
-                // Cache the embedded model for future use
-                embeddedModel = modelData;
-            }
-
-            return modelData;
-        }
-        finally
-        {
-            modelStream.Dispose();
-        }
+        // Use the provided model path, or fallback to Models/model_dynamic.zip in the output directory
+        var modelPath = string.IsNullOrWhiteSpace(_options.ModelPath) ? "Models/model_dynamic.zip" : _options.ModelPath;
+        return ModelLoader.LoadModel(modelPath);
     }
 
     /// <summary>

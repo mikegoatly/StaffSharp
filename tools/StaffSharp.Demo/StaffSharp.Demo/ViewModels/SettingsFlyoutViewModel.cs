@@ -10,21 +10,20 @@ namespace StaffSharp.Demo.ViewModels;
 /// </summary>
 public partial class SettingsFlyoutViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    private ProcessingOptions _options;
-
-    [ObservableProperty]
-    private bool _isOpen;
-
     public SettingsFlyoutViewModel()
     {
-        _options = new ProcessingOptions();
+        Options = new ProcessingOptions();
     }
+
+    [ObservableProperty]
+    public partial ProcessingOptions Options { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsOpen { get; set; }
 
     /// <summary>
     /// Event fired when settings should be applied.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1003:Use generic event handler instances", Justification = "Simple action is more convenient for this use case")]
     public event Action<ProcessingOptions>? SettingsApplied;
 
     /// <summary>
