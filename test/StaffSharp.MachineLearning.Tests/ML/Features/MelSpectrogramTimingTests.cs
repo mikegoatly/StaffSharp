@@ -1,6 +1,7 @@
 namespace StaffSharp.MachineLearning.Tests.ML.Features;
 
 using StaffSharp.Audio;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Features;
 using StaffSharp.MachineLearning.Options;
 using Xunit.Abstractions;
@@ -48,7 +49,7 @@ public class MelSpectrogramTimingTests
         var extractor = new MelSpectrogramExtractor(options);
 
         // Act
-        var melSpec = extractor.ExtractFeatures(audio);
+        var melSpec = extractor.ExtractFeatures(PipelineProgress.Null, audio);
 
         // Assert: Find which frame has the strongest energy
         var numFrames = melSpec.GetLength(0);
@@ -111,7 +112,7 @@ public class MelSpectrogramTimingTests
         var extractor = new MelSpectrogramExtractor(options);
 
         // Act
-        var melSpec = extractor.ExtractFeatures(audio);
+        var melSpec = extractor.ExtractFeatures(PipelineProgress.Null, audio);
         
         // Find peak frame
         var numFrames = melSpec.GetLength(0);
@@ -197,7 +198,7 @@ public class MelSpectrogramTimingTests
         var extractor = new MelSpectrogramExtractor(options);
 
         // Act
-        var melSpec = extractor.ExtractFeatures(audio);
+        var melSpec = extractor.ExtractFeatures(PipelineProgress.Null, audio);
         
         // Find onset frame: first frame where energy significantly increases
         var numFrames = melSpec.GetLength(0);

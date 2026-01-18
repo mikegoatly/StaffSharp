@@ -61,7 +61,7 @@ public sealed class MLNoteDetector(
         progress.ReportProgress("Transcribing audio with ML model");
 
         // Step 1: ONNX inference (audio → piano roll)
-        var transcriptionResult = await transcriber.TranscribeAsync(audio).ConfigureAwait(false);
+        var transcriptionResult = await transcriber.TranscribeAsync(progress, audio).ConfigureAwait(false);
 
         progress.EmitDiagnostics("Frame count", transcriptionResult.NumFrames);
         progress.EmitDiagnostics("Duration (seconds)", transcriptionResult.DurationSeconds);

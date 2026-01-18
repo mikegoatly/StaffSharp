@@ -20,13 +20,14 @@ internal sealed class NormalizeAudioStage(PipelineProgress progress)
 
         // Convert to mono first
         var monoAudio = audio.ToMono();
-        
+
         // Then normalize volume
-        var (normalized, normalizationStats) = monoAudio.Normalize();
+        //var (normalized, normalizationStats) = monoAudio.Normalize();
+        var normalized = monoAudio;
 
         progress.EmitDiagnostics("Channels", normalized.Channels);
         progress.EmitDiagnostics("SampleCount", normalized.SampleCount);
-        progress.EmitDiagnostics("NormalizationStats", normalizationStats);
+        //progress.EmitDiagnostics("NormalizationStats", normalizationStats);
 
         return Task.FromResult(normalized);
     }

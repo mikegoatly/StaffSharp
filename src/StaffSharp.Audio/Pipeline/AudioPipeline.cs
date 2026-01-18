@@ -52,23 +52,20 @@ public static class AudioPipeline
 
         var progress = PipelineProgress.ForPipeline(options);
 
-        // Step 1: Normalize audio
-        progress = progress with { StageName = "Audio normalization" };
-        var audio = await new NormalizeAudioStage(progress).ExecuteAsync(audioBuffer, ct).ConfigureAwait(false);
+        // Note detection (sub-pipeline: detect → tempo → quantize)
+        var timeline = await options.NoteDetector.DetectAsync(
+            progress with { StageName = "Note detection" }, 
+            audioBuffer, 
+            ct).ConfigureAwait(false);
 
-        // Step 2: Note detection (sub-pipeline: detect → tempo → quantize)
-        progress = progress with { StageName = "Note detection" };
-        var timeline = await options.NoteDetector.DetectAsync(progress, audio, ct).ConfigureAwait(false);
-
-        // Step 3: Convert to notation score
-        progress = progress with { StageName = "Score conversion" };
+        // Convert to notation score
         var score = await new ConvertToScoreStage(
             new NotationEngine(), // TODO allow voice assigner configuration
             new NotationOptions())
-            .ExecuteAsync(progress, timeline, ct)
+            .ExecuteAsync(progress with { StageName = "Score conversion" }, timeline, ct)
             .ConfigureAwait(false);
 
-        options.Progress?.Report(new("Import", "Complete"));
+        progress.ReportProgress("Complete");
 
         return score;
     }

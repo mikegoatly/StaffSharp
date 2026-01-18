@@ -1,6 +1,7 @@
 namespace StaffSharp.MachineLearning.Tests.ML.Models;
 
 using StaffSharp.Audio;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Models;
 using StaffSharp.MachineLearning.Options;
 using StaffSharp.TestHelpers.Builders;
@@ -33,7 +34,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = await transcriber.TranscribeAsync(audio);
+        var result = await transcriber.TranscribeAsync(PipelineProgress.Null, audio);
 
         // Assert
         Assert.NotNull(result);
@@ -60,7 +61,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = await transcriber.TranscribeAsync(audio);
+        var result = await transcriber.TranscribeAsync(PipelineProgress.Null, audio);
 
         // Assert
         // Frame rate should be sampleRate / hopSize (16000 / 512 = 31.25 fps)
@@ -91,7 +92,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = await transcriber.TranscribeAsync(audio);
+        var result = await transcriber.TranscribeAsync(PipelineProgress.Null, audio);
 
         // Assert - all output values should be in [0, 1] range (probabilities)
         AssertAllValuesInRange(result.OnsetRoll, 0f, 1f, "Onset probabilities");
@@ -115,7 +116,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         var audio = new AudioBuffer(samples, sampleRate, channels: 1);
 
         // Act
-        var result = await transcriber.TranscribeAsync(audio);
+        var result = await transcriber.TranscribeAsync(PipelineProgress.Null, audio);
 
         // Assert - should resample and produce valid output
         Assert.NotNull(result);
@@ -130,7 +131,7 @@ public sealed class OnnxPolyphonicTranscriberTests
         using var transcriber = new OnnxTranscriber();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => transcriber.TranscribeAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => transcriber.TranscribeAsync(PipelineProgress.Null, null!));
     }
 
     private static void AssertAllValuesInRange(float[,] array, float min, float max, string name)

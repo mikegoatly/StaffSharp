@@ -7,6 +7,7 @@ using MathNet.Numerics.IntegralTransforms;
 
 using StaffSharp.Audio;
 using StaffSharp.Audio.Numerics;
+using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.Options;
 
 /// <summary>
@@ -29,16 +30,21 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
     }
 
     /// <inheritdoc/>
-    public float[,] ExtractFeatures(AudioBuffer audio)
+    public float[,] ExtractFeatures(PipelineProgress progress, AudioBuffer audio)
     {
+        ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(audio);
 
-        // 1. Convert to mono first (matches librosa.load(mono=True) behavior)
+        // 1. Convert to mono first
         var processedAudio = audio;
         if (processedAudio.Channels > 1)
         {
             processedAudio = processedAudio.ToMono();
         }
+
+        // Ensure the audio is normalized
+        (processedAudio, var normalizationStats) = processedAudio.Normalize();
+        progress.EmitDiagnostics("NormalizationStats", normalizationStats);
 
         // 2. Resample audio to target sample rate if needed
         processedAudio = processedAudio.Resample(_options.SampleRate);

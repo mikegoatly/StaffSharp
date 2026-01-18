@@ -85,9 +85,11 @@ public sealed class AudioBuffer
     /// <summary>
     /// Normalizes the audio volume so the peak amplitude matches the target.
     /// </summary>
-    /// <param name="targetAmplitude">Target peak amplitude (default 1.0).</param>
+    /// <param name="targetAmplitude">Target peak amplitude (default 0.6).</param>
+    /// <param name="minAllowedPeak">Minimum allowed peak amplitude before normalization (default 0.4).</param>
+    /// <param name="maxAllowedPeak">Maximum allowed peak amplitude before normalization (default 0.85).</param>
     /// <returns>A new normalized AudioBuffer, or the original if no change is needed.</returns>
-    public (AudioBuffer, NormalizationStats) Normalize(float targetAmplitude = 1.0f)
+    public (AudioBuffer, NormalizationStats) Normalize(float targetAmplitude = 0.6f, float minAllowedPeak = 0.4f, float maxAllowedPeak = 0.85f)
     {
         if (targetAmplitude <= 0)
         {
@@ -100,9 +102,9 @@ public sealed class AudioBuffer
         float max = TensorPrimitives.MaxMagnitude(span);
         float absMax = Math.Abs(max);
 
-        // If silent or already close to target, return original
+        // If silent or between allowed ranges, return original
         // 1e-4f is roughly 0.01% tolerance
-        if (absMax <= Minus120Db || Math.Abs(absMax - targetAmplitude) < 1e-4f)
+        if (absMax <= Minus120Db || (absMax >= minAllowedPeak - 1e-4f && absMax <= maxAllowedPeak + 1e-4f))
         {
             return (this, new NormalizationStats(absMax, 0f));
         }
