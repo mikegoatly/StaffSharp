@@ -1,7 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <None Remove="Models\model_dynamic.onnx" />
+    <Content Include="Models\model_dynamic.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -14,12 +16,6 @@
     <PackageReference Include="MathNet.Numerics" />
     <PackageReference Include="System.Numerics.Tensors" />
     <PackageReference Include="Melanchall.DryWetMidi" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Models\model_dynamic.zip">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
