@@ -89,23 +89,15 @@ public class HeatmapVisualizationControl : UserControl
         // We need to transpose: [bins, timeFrames] so bins map to Y-axis and time to X-axis
         var timeFrames = HeatmapData.GetLength(0);
         var bins = HeatmapData.GetLength(1);
-        
-        // Transpose: swap dimensions so time is on X-axis, frequency bins on Y-axis
-        var heatmapDouble = new double[bins, timeFrames];  // [bins/Y, time/X]
 
-        for (int t = 0; t < timeFrames; t++)
-        {
-            for (int b = 0; b < bins; b++)
-            {
-                heatmapDouble[b, t] = HeatmapData[t, b];  // Transpose: swap indices
-            }
-        }
+        // Transpose: swap dimensions so time is on X-axis, frequency bins on Y-axis
+        var heatmapDouble = HeatmapData.SwapDimensionsToDouble();
+        
+        // Flip vertically: ScottPlot renders row 0 at the top, but we want low frequencies (bin 0) at the bottom
+        heatmapDouble = FlipVertically(heatmapDouble);
 
         var heatmap = _plot.Plot.Add.Heatmap(heatmapDouble);
-
-        // Use grayscale colormap (white background, dark signals) for better visibility
         heatmap.Colormap = new ScottPlot.Colormaps.Magma();
-        //heatmap.Interpolation = ScottPlot.Image.Interpolation.NearestNeighbor; // Prevent blurring
 
         // Scale X-axis to time (seconds)
         var duration = timeFrames / FrameRate;
@@ -113,16 +105,12 @@ public class HeatmapVisualizationControl : UserControl
         heatmap.Extent = new CoordinateRect(0, duration, 0, bins);
 
         // Configure axes
-        _plot.Plot.XLabel("Time (seconds)");
         _plot.Plot.YLabel(YLabel ?? "Frequency Bin");
 
         if (!string.IsNullOrEmpty(Title))
         {
             _plot.Plot.Title(Title);
         }
-
-        // Add colorbar
-        _plot.Plot.Add.ColorBar(heatmap);
 
         // Set default view to first 15 seconds (or full duration if shorter)
         var defaultViewDuration = Math.Min(15.0, duration);
@@ -152,5 +140,22 @@ public class HeatmapVisualizationControl : UserControl
         _playbackMarker.IsVisible = PlaybackPosition > 0;
 
         _plot.Refresh();
+    }
+
+    private static double[,] FlipVertically(double[,] data)
+    {
+        var rows = data.GetLength(0);
+        var cols = data.GetLength(1);
+        var flipped = new double[rows, cols];
+
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < cols; j++)
+            {
+                flipped[rows - 1 - i, j] = data[i, j];
+            }
+        }
+
+        return flipped;
     }
 }

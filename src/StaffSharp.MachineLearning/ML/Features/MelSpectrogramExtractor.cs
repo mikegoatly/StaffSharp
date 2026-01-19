@@ -46,12 +46,19 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         (processedAudio, var normalizationStats) = processedAudio.Normalize();
         progress.EmitDiagnostics("NormalizationStats", normalizationStats);
         progress.EmitDiagnostics("NormalizedWaveform", processedAudio.Samples.ToArray());
+        progress.EmitDiagnostics("NormalizedSampleRate", processedAudio.SampleRate);
 
         // 2. Resample audio to target sample rate if needed
-        processedAudio = processedAudio.Resample(_options.SampleRate);
+        var resampledAudio = processedAudio.Resample(_options.SampleRate);
+
+        if (resampledAudio != processedAudio)
+        {
+            progress.EmitDiagnostics("ResampledRate", resampledAudio.SampleRate);
+            progress.EmitDiagnostics("ResampledWaveform", resampledAudio.Samples.ToArray());
+        }
 
         // 3. Compute STFT (Short-Time Fourier Transform)
-        var stft = ComputeStft(processedAudio);
+        var stft = ComputeStft(resampledAudio);
 
         // 4. Convert to power spectrogram
         var powerSpec = ComputePowerSpectrogram(stft);

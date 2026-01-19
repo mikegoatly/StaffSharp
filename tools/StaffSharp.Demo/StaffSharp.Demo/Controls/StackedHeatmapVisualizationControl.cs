@@ -2,8 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+
 using ScottPlot;
 using ScottPlot.Avalonia;
+using ScottPlot.Plottables;
 
 namespace StaffSharp.Demo.Controls;
 
@@ -102,23 +105,10 @@ public class StackedHeatmapVisualizationControl : UserControl
         _offsetPlot = new AvaPlot();
         _pianoRollPlot = new AvaPlot();
 
-        var grid = new Grid
+        var grid = new UniformGrid
         {
-            RowDefinitions = new RowDefinitions("*,*"), // 2 equal rows
-            ColumnDefinitions = new ColumnDefinitions("*,*") // 2 equal columns
+            Columns = 4
         };
-
-        // Top row: Onset (left), Frame (right)
-        Grid.SetRow(_onsetPlot, 0);
-        Grid.SetColumn(_onsetPlot, 0);
-        Grid.SetRow(_framePlot, 0);
-        Grid.SetColumn(_framePlot, 1);
-
-        // Bottom row: Offset (left), Piano Roll (right)
-        Grid.SetRow(_offsetPlot, 1);
-        Grid.SetColumn(_offsetPlot, 0);
-        Grid.SetRow(_pianoRollPlot, 1);
-        Grid.SetColumn(_pianoRollPlot, 1);
 
         grid.Children.Add(_onsetPlot);
         grid.Children.Add(_framePlot);
@@ -159,85 +149,31 @@ public class StackedHeatmapVisualizationControl : UserControl
         // We need to transpose: [keys, timeFrames] so keys map to Y-axis and time to X-axis
         var timeFrames = OnsetData.GetLength(0);
         var keys = OnsetData.GetLength(1); // Should be 88
-        
-        // Transpose: swap dimensions so time is on X-axis, notes on Y-axis
-        var onsetDouble = new double[keys, timeFrames];  // [notes/Y, time/X]
-        for (int t = 0; t < timeFrames; t++)
-        {
-            for (int k = 0; k < keys; k++)
-            {
-                onsetDouble[k, t] = OnsetData[t, k];  // Transpose: swap indices
-            }
-        }
 
-        // Transpose frame data the same way
-        var frameDouble = new double[keys, timeFrames];  // [notes/Y, time/X]
-        for (int t = 0; t < timeFrames; t++)
-        {
-            for (int k = 0; k < keys; k++)
-            {
-                frameDouble[k, t] = FrameData[t, k];  // Transpose: swap indices
-            }
-        }
-
-        // Transpose offset data the same way
-        var offsetDouble = new double[keys, timeFrames];  // [notes/Y, time/X]
-        for (int t = 0; t < timeFrames; t++)
-        {
-            for (int k = 0; k < keys; k++)
-            {
-                offsetDouble[k, t] = OffsetData[t, k];  // Transpose: swap indices
-            }
-        }
+        // Transpose: swap dimensions and cast as a doulbe so time is on X-axis, notes on Y-axis
+        var onsetDouble = OnsetData.SwapDimensionsToDouble();
+        var frameDouble = FrameData.SwapDimensionsToDouble();
+        var offsetDouble = OffsetData.SwapDimensionsToDouble();
 
         var duration = timeFrames / FrameRate;
 
         // Left plot: Onset probabilities
         var onsetHeatmap = _onsetPlot.Plot.Add.Heatmap(onsetDouble);
-        onsetHeatmap.Colormap = new ScottPlot.Colormaps.Magma();
-        //onsetHeatmap.Interpolation = ScottPlot.Image.Interpolation.NearestNeighbor; // Prevent blurring
-        // Map heatmap to time in seconds (X: 0 to duration, Y: MIDI 109-21)
-        // Y is reversed (109 to 21) so low notes are at bottom, high notes at top
-        // Data resolution: timeFrames columns × 88 rows mapped to duration seconds × 88 notes
-        onsetHeatmap.Extent = new CoordinateRect(0, duration, 109, 21);
-        _onsetPlot.Plot.Title("Onset Probabilities");
-        _onsetPlot.Plot.YLabel("Note");
-        _onsetPlot.Plot.XLabel("Time (seconds)");
-        AddMusicalNoteGridLines(_onsetPlot.Plot);
-        SetNoteNameTicks(_onsetPlot.Plot);
+        _onsetPlot.Plot.ConfigurePianoRollHeatmap(onsetHeatmap, "Onset Probabilities", duration);
 
         // Middle plot: Frame probabilities  
         var frameHeatmap = _framePlot.Plot.Add.Heatmap(frameDouble);
-        frameHeatmap.Colormap = new ScottPlot.Colormaps.Magma();
-        //frameHeatmap.Interpolation = ScottPlot.Image.Interpolation.NearestNeighbor; // Prevent blurring
-        // Map heatmap to time in seconds (X: 0 to duration, Y: MIDI 109-21)
-        // Y is reversed (109 to 21) so low notes are at bottom, high notes at top
-        // Data resolution: timeFrames columns × 88 rows mapped to duration seconds × 88 notes
-        frameHeatmap.Extent = new CoordinateRect(0, duration, 109, 21);
-        _framePlot.Plot.Title("Frame Probabilities");
-        _framePlot.Plot.YLabel("Note");
-        _framePlot.Plot.XLabel("Time (seconds)");
-        AddMusicalNoteGridLines(_framePlot.Plot);
-        SetNoteNameTicks(_framePlot.Plot);
+        _framePlot.Plot.ConfigurePianoRollHeatmap(frameHeatmap, "Frame Probabilities", duration);
 
         // Bottom left plot: Offset probabilities
         var offsetHeatmap = _offsetPlot.Plot.Add.Heatmap(offsetDouble);
-        offsetHeatmap.Colormap = new ScottPlot.Colormaps.Magma();
-        //offsetHeatmap.Interpolation = ScottPlot.Image.Interpolation.NearestNeighbor; // Prevent blurring
-        // Y is reversed (109 to 21) so low notes are at bottom, high notes at top
-        offsetHeatmap.Extent = new CoordinateRect(0, duration, 109, 21);
-        _offsetPlot.Plot.Title("Offset Probabilities");
-        _offsetPlot.Plot.YLabel("Note");
-        _offsetPlot.Plot.XLabel("Time (seconds)");
-        AddMusicalNoteGridLines(_offsetPlot.Plot);
-        SetNoteNameTicks(_offsetPlot.Plot);
+        _offsetPlot.Plot.ConfigurePianoRollHeatmap(offsetHeatmap, "Offset Probabilities", duration);
 
         // Bottom right plot: Piano roll (decoded notes)
         _pianoRollPlot.Plot.Title("Piano Roll (Decoded)");
         _pianoRollPlot.Plot.YLabel("Note");
-        _pianoRollPlot.Plot.XLabel("Time (seconds)");
-        AddMusicalNoteGridLines(_pianoRollPlot.Plot);
-        SetNoteNameTicks(_pianoRollPlot.Plot);
+        _pianoRollPlot.Plot.AddMusicalNoteGridLines();
+        _pianoRollPlot.Plot.SetMusicalNoteTickLabels();
 
         if (NoteEvents != null && NoteEvents.Count > 0)
         {
@@ -249,7 +185,7 @@ public class StackedHeatmapVisualizationControl : UserControl
                 var y2 = y1 + 0.8; // Leave small gap between notes
 
                 // Use opacity for velocity: loud notes = solid, soft notes = transparent
-                var baseColor = Colors.DodgerBlue;
+                var baseColor = Colors.DarkBlue;
                 var color = ShowVelocity
                     ? baseColor.WithAlpha(note.Velocity.Value)
                     : baseColor;
@@ -269,18 +205,7 @@ public class StackedHeatmapVisualizationControl : UserControl
         _pianoRollPlot.Plot.Axes.SetLimits(0, defaultViewDuration, 21, 109);
 
         // Synchronize both X and Y axes across all 4 plots
-        _onsetPlot.Plot.Axes.Link(_framePlot, x: true, y: true);
-        _onsetPlot.Plot.Axes.Link(_offsetPlot, x: true, y: true);
-        _onsetPlot.Plot.Axes.Link(_pianoRollPlot, x: true, y: true);
-        _framePlot.Plot.Axes.Link(_onsetPlot, x: true, y: true);
-        _framePlot.Plot.Axes.Link(_offsetPlot, x: true, y: true);
-        _framePlot.Plot.Axes.Link(_pianoRollPlot, x: true, y: true);
-        _offsetPlot.Plot.Axes.Link(_onsetPlot, x: true, y: true);
-        _offsetPlot.Plot.Axes.Link(_framePlot, x: true, y: true);
-        _offsetPlot.Plot.Axes.Link(_pianoRollPlot, x: true, y: true);
-        _pianoRollPlot.Plot.Axes.Link(_onsetPlot, x: true, y: false);
-        _pianoRollPlot.Plot.Axes.Link(_framePlot, x: true, y: false);
-        _pianoRollPlot.Plot.Axes.Link(_offsetPlot, x: true, y: false);
+        SynchronizePlots(_onsetPlot, _framePlot, _offsetPlot, _pianoRollPlot);
 
         // Add crosshairs (initially hidden)
         _onsetCrosshair = _onsetPlot.Plot.Add.Crosshair(0, 60);
@@ -335,10 +260,23 @@ public class StackedHeatmapVisualizationControl : UserControl
         _pianoRollPlot.Refresh();
     }
 
+    private static void SynchronizePlots(params AvaPlot[] plots)
+    {
+        foreach (var plot in plots)
+        {
+            foreach (var syncWith in plots.Where(p => p != plot))
+            {
+                syncWith.Plot.Axes.Link(plot, x: true, y: true);
+            }
+        }
+    }
+
     private void OnPlotPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
     {
-        var plot = sender as AvaPlot;
-        if (plot == null || _onsetCrosshair == null) return;
+        if (sender is not AvaPlot plot || _onsetCrosshair is null)
+        {
+            return;
+        }
 
         var position = e.GetPosition(plot);
         var coords = plot.Plot.GetCoordinates((float)position.X, (float)position.Y);
@@ -365,11 +303,26 @@ public class StackedHeatmapVisualizationControl : UserControl
 
     private void HideAllCrosshairs()
     {
-        if (_onsetCrosshair != null) _onsetCrosshair.IsVisible = false;
-        if (_frameCrosshair != null) _frameCrosshair.IsVisible = false;
-        if (_offsetCrosshair != null) _offsetCrosshair.IsVisible = false;
-        if (_pianoRollCrosshair != null) _pianoRollCrosshair.IsVisible = false;
-        
+        if (_onsetCrosshair != null)
+        {
+            _onsetCrosshair.IsVisible = false;
+        }
+
+        if (_frameCrosshair != null)
+        {
+            _frameCrosshair.IsVisible = false;
+        }
+
+        if (_offsetCrosshair != null)
+        {
+            _offsetCrosshair.IsVisible = false;
+        }
+
+        if (_pianoRollCrosshair != null)
+        {
+            _pianoRollCrosshair.IsVisible = false;
+        }
+
         _onsetPlot.Refresh();
         _framePlot.Refresh();
         _offsetPlot.Refresh();
@@ -379,7 +332,9 @@ public class StackedHeatmapVisualizationControl : UserControl
     private void UpdatePlaybackMarkers()
     {
         if (_onsetPlaybackMarker == null || OnsetData == null)
+        {
             return;
+        }
 
         var timeFrames = OnsetData.GetLength(0);
         var duration = timeFrames / FrameRate;
@@ -401,31 +356,5 @@ public class StackedHeatmapVisualizationControl : UserControl
         _framePlot.Refresh();
         _offsetPlot.Refresh();
         _pianoRollPlot.Refresh();
-    }
-
-    private static void AddMusicalNoteGridLines(Plot plot)
-    {
-        // Add horizontal grid lines at every C note (octaves)
-        // MIDI notes: C1=24, C2=36, C3=48, C4=60 (middle C), C5=72, C6=84, C7=96, C8=108
-        int[] cNotes = [24, 36, 48, 60, 72, 84, 96, 108];
-        string[] labels = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"];
-
-        for (int i = 0; i < cNotes.Length; i++)
-        {
-            var line = plot.Add.HorizontalLine(cNotes[i]);
-            line.Color = Colors.Gray.WithAlpha(0.3);
-            line.LineWidth = 1;
-            line.LinePattern = LinePattern.Dotted;
-        }
-    }
-
-    private static void SetNoteNameTicks(Plot plot)
-    {
-        // Set Y-axis tick labels to show note names (C, C#, D, etc.) at octave markers
-        // MIDI notes: C1=24, C2=36, C3=48, C4=60 (middle C), C5=72, C6=84, C7=96, C8=108
-        double[] tickPositions = [24, 36, 48, 60, 72, 84, 96, 108];
-        string[] tickLabels = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"];
-
-        plot.Axes.Left.TickGenerator = new ScottPlot.TickGenerators.NumericManual(tickPositions, tickLabels);
     }
 }
