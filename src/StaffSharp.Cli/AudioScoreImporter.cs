@@ -15,6 +15,9 @@ internal sealed class AudioScoreImporter : IScoreImporter
     private float? _frameThreshold;
     private float? _offsetThreshold;
     private float? _minNoteLength;
+    private float? _minGapSeconds;
+    private float? _minVelocity;
+    private float? _minFrameForOnset;
     private bool _useMl;
 
     public string FormatName => "Audio (WAV)";
@@ -29,7 +32,10 @@ internal sealed class AudioScoreImporter : IScoreImporter
         float? onsetThreshold,
         float? frameThreshold,
         float? offsetThreshold,
-        float? minNoteLength)
+        float? minNoteLength,
+        float? minGapSeconds,
+        float? minVelocity,
+        float? minFrameForOnset)
     {
         _useMl = true;
         _modelPath = modelPath;
@@ -37,6 +43,9 @@ internal sealed class AudioScoreImporter : IScoreImporter
         _frameThreshold = frameThreshold;
         _offsetThreshold = offsetThreshold;
         _minNoteLength = minNoteLength;
+        _minGapSeconds = minGapSeconds;
+        _minVelocity = minVelocity;
+        _minFrameForOnset = minFrameForOnset;
     }
 
     public async Task<NotationScore> ImportAsync(
@@ -77,6 +86,21 @@ internal sealed class AudioScoreImporter : IScoreImporter
             if (_minNoteLength is { } minNoteLength)
             {
                 mlOptions = mlOptions with { MinNoteLengthSeconds = minNoteLength };
+            }
+
+            if (_minGapSeconds is { } minGapSeconds)
+            {
+                mlOptions = mlOptions with { MinGapSeconds = minGapSeconds };
+            }
+
+            if (_minVelocity is { } minVelocity)
+            {
+                mlOptions = mlOptions with { MinVelocity = minVelocity };
+            }
+
+            if (_minFrameForOnset is { } minFrameForOnset)
+            {
+                mlOptions = mlOptions with { MinFrameForOnset = minFrameForOnset };
             }
 
             options.NoteDetector = MLNoteDetector.Create(mlOptions);

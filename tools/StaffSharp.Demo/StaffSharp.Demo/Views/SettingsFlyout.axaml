@@ -86,6 +86,39 @@
                             Minimum="0.001"
                             Value="{Binding Options.MinNoteLengthSeconds}" />
                     </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Min Gap (seconds)" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.000"
+                            Increment="0.01"
+                            Maximum="0.5"
+                            Minimum="0.001"
+                            Value="{Binding Options.MinGapSeconds}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Min Velocity" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.00"
+                            Increment="0.05"
+                            Maximum="1.0"
+                            Minimum="0.0"
+                            Value="{Binding Options.MinVelocity}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                        <TextBlock VerticalAlignment="Center" Text="Min Frame For Onset" />
+                        <NumericUpDown
+                            Grid.Column="1"
+                            Width="120"
+                            FormatString="0.00"
+                            Increment="0.05"
+                            Maximum="1.0"
+                            Minimum="0.0"
+                            Value="{Binding Options.MinFrameForOnset}" />
+                    </Grid>
                 </StackPanel>
 
             </StackPanel>

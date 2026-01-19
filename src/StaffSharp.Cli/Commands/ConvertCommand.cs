@@ -42,6 +42,9 @@ internal static class ConvertCommand
     private static readonly Option<float?> frameThresholdOption = new("--frame-threshold") { Description = "ML frame activation threshold (0.0-1.0, default: 0.5)" };
     private static readonly Option<float?> offsetThresholdOption = new("--offset-threshold") { Description = "ML offset detection threshold (0.0-1.0, default: 0.5)" };
     private static readonly Option<float?> minNoteLengthOption = new("--min-note-length") { Description = "Minimum note length in seconds (default: 0.05)" };
+    private static readonly Option<float?> minGapSecondsOption = new("--min-gap-seconds") { Description = "Maximum gap duration in seconds to tolerate before ending a note (default: 0.05)" };
+    private static readonly Option<float?> minVelocityOption = new("--min-velocity") { Description = "Minimum velocity threshold for onset detection (0.0-1.0, default: 0.1)" };
+    private static readonly Option<float?> minFrameForOnsetOption = new("--min-frame-for-onset") { Description = "Minimum frame probability required for onset validation (0.0-1.0, default: 0.3)" };
 
     public static Command Create()
     {
@@ -60,6 +63,9 @@ internal static class ConvertCommand
         command.Options.Add(frameThresholdOption);
         command.Options.Add(offsetThresholdOption);
         command.Options.Add(minNoteLengthOption);
+        command.Options.Add(minGapSecondsOption);
+        command.Options.Add(minVelocityOption);
+        command.Options.Add(minFrameForOnsetOption);
 
         // Add format-specific options dynamically
         foreach (var exporter in FormatRegistry.Exporters)
@@ -144,8 +150,11 @@ internal static class ConvertCommand
                     var frameThreshold = parseResult.GetValue(frameThresholdOption);
                     var offsetThreshold = parseResult.GetValue(offsetThresholdOption);
                     var minNoteLength = parseResult.GetValue(minNoteLengthOption);
+                    var minGapSeconds = parseResult.GetValue(minGapSecondsOption);
+                    var minVelocity = parseResult.GetValue(minVelocityOption);
+                    var minFrameForOnset = parseResult.GetValue(minFrameForOnsetOption);
 
-                    audioImporter.ConfigureMLOptions(modelPath, onsetThreshold, frameThreshold, offsetThreshold, minNoteLength);
+                    audioImporter.ConfigureMLOptions(modelPath, onsetThreshold, frameThreshold, offsetThreshold, minNoteLength, minGapSeconds, minVelocity, minFrameForOnset);
                 }
             }
 
