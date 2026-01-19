@@ -96,6 +96,10 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
+    public partial float[]? ResampledWaveform { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMlDiagnostics))]
     public partial float[,]? MelSpectrogram { get; set; }
 
     [ObservableProperty]
@@ -119,6 +123,7 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasMlDiagnostics =>
         NormalizedWaveform != null ||
+        ResampledWaveform != null ||
         MelSpectrogram != null ||
         OnsetProbabilities != null;
 
@@ -228,6 +233,7 @@ public partial class MainViewModel : ViewModelBase
 
         // Clear ML diagnostics
         NormalizedWaveform = null;
+        ResampledWaveform = null;
         MelSpectrogram = null;
         OnsetProbabilities = null;
         FrameProbabilities = null;
@@ -583,6 +589,8 @@ public partial class MainViewModel : ViewModelBase
     {
         // Reset
         NormalizedWaveform = diagnostics.GetDiagnostic<float[]>("NormalizedWaveform");
+        ResampledWaveform = diagnostics.GetDiagnostic<float[]>("ResampledWaveform");
+        ResampledWaveform = diagnostics.GetDiagnostic<float[]>("ResampledWaveform");
         MelSpectrogram = diagnostics.GetDiagnostic<float[,]>("MelSpectrogram");
         OnsetProbabilities = diagnostics.GetDiagnostic<float[,]>("OnsetProbabilities");
         FrameProbabilities = diagnostics.GetDiagnostic<float[,]>("FrameProbabilities");

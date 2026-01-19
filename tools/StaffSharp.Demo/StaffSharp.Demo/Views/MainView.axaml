@@ -187,14 +187,15 @@
                     Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
                     CornerRadius="4">
                     <TabControl IsVisible="{Binding HasResult}">
-                        <!--  Original Waveform Tab  -->
-                        <TabItem Header="Original Waveform">
+                        <!--  Waveforms Tab  -->
+                        <TabItem Header="Waveforms">
                             <Panel Margin="8">
-                                <controls:WaveformControl
+                                <controls:StackedWaveformVisualizationControl
+                                    NormalizedWaveform="{Binding NormalizedWaveform}"
+                                    OriginalWaveform="{Binding WaveformSamples}"
                                     PlaybackPosition="{Binding PlaybackPosition}"
-                                    PlayheadBrush="Red"
-                                    Samples="{Binding WaveformSamples.Samples}"
-                                    WaveformBrush="{DynamicResource SystemAccentColor}" />
+                                    ResampledSampleRate="16000"
+                                    ResampledWaveform="{Binding ResampledWaveform}" />
 
                                 <TextBlock
                                     HorizontalAlignment="Center"
@@ -203,19 +204,6 @@
                                     IsVisible="{Binding WaveformSamples, Converter={x:Static ObjectConverters.IsNull}}"
                                     Text="No audio loaded" />
                             </Panel>
-                        </TabItem>
-
-                        <!--  Normalized Waveform Tab (ML only)  -->
-                        <TabItem
-                            Header="Normalized Waveform"
-                            IsVisible="{Binding NormalizedWaveform, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <controls:WaveformVisualizationControl
-                                Margin="8"
-                                NoiseFloorDb="-50"
-                                PlaybackPosition="{Binding PlaybackPosition}"
-                                SampleRate="16000"
-                                Samples="{Binding NormalizedWaveform}"
-                                ShowNoiseFloor="True" />
                         </TabItem>
 
                         <!--  Mel Spectrogram Tab (ML only)  -->
