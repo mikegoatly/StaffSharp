@@ -1228,6 +1228,23 @@ public class AbcParserTests : ScoreTestBase
         Assert.Equal(4, voice2Notes.Count);
         Assert.Equal(PitchClass.G, voice2Notes[0].Pitch.PitchClass);
         Assert.Equal(3, voice2Notes[0].Pitch.Octave); // G, = octave 3
+
+        // Verify multi-staff structure
+        var part = score.Parts[0];
+        Assert.True(part.IsGrandStaff);
+        Assert.Equal(2, part.Staves.Count);
+
+        // Verify Staff 1 contains Voice 1
+        Assert.Equal(1, part.Staves[0].Number);
+        Assert.Equal(Clef.Treble, part.Staves[0].Clef);
+        Assert.Single(part.Staves[0].Voices);
+        Assert.Equal(1, part.Staves[0].Voices[0].Number);
+
+        // Verify Staff 2 contains Voice 2
+        Assert.Equal(2, part.Staves[1].Number);
+        Assert.Equal(Clef.Treble, part.Staves[1].Clef);
+        Assert.Single(part.Staves[1].Voices);
+        Assert.Equal(2, part.Staves[1].Voices[0].Number);
     }
 
     [Fact]
@@ -1255,6 +1272,20 @@ public class AbcParserTests : ScoreTestBase
         AssertVoice(score, 0, expectedNumber: 1, expectedMeasureCount: 1);
         AssertVoice(score, 1, expectedNumber: 2, expectedMeasureCount: 1);
         AssertVoice(score, 2, expectedNumber: 3, expectedMeasureCount: 1);
+
+        // Verify multi-staff structure
+        var part = score.Parts[0];
+        Assert.True(part.IsGrandStaff);
+        Assert.Equal(3, part.Staves.Count);
+
+        // Verify each voice is on its own staff
+        for (int i = 0; i < 3; i++)
+        {
+            Assert.Equal(i + 1, part.Staves[i].Number);
+            Assert.Equal(Clef.Treble, part.Staves[i].Clef);
+            Assert.Single(part.Staves[i].Voices);
+            Assert.Equal(i + 1, part.Staves[i].Voices[0].Number);
+        }
     }
 
     [Fact]
@@ -1318,6 +1349,70 @@ public class AbcParserTests : ScoreTestBase
         var v1m2 = part.Voices[0].Measures[1].Events.OfType<NotationNote>().ToList();
         Assert.Equal(PitchClass.C, v1m1[0].Pitch.PitchClass);
         Assert.Equal(PitchClass.G, v1m2[0].Pitch.PitchClass);
+    }
+
+    [Fact]
+    public void Parse_SingleVoice_CreatesSingleStaff()
+    {
+        var abc = """
+            X:1
+            T:Single Voice
+            M:4/4
+            L:1/4
+            K:C
+            C D E F|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        // Should use legacy single-staff structure (backward compatibility)
+        Assert.False(part.IsGrandStaff);
+        Assert.Single(part.Staves);
+        Assert.Single(part.Voices);
+        Assert.Equal(1, part.Staves[0].Number);
+        Assert.Equal(Clef.Treble, part.Staves[0].Clef);
+    }
+
+    [Fact]
+    public void Parse_MultiVoice_WithTies_AssignsCorrectStaffNumbers()
+    {
+        var abc = """
+            X:1
+            T:Ties Across Staves
+            M:4/4
+            L:1/4
+            K:C
+            V:1
+            C-C D E F|
+            V:2
+            C,-C, D, E, F,|
+            """;
+
+        var score = AbcParser.Parse(abc);
+        var part = score.Parts[0];
+
+        // Should have ties (at least one from each voice)
+        Assert.NotEmpty(part.Ties);
+        Assert.True(part.Ties.Count >= 2, $"Expected at least 2 ties, got {part.Ties.Count}");
+
+        // Verify tie staff numbers match voice locations
+        var v1Ties = part.Ties.Where(t => t.StartVoiceNumber == 1).ToList();
+        Assert.NotEmpty(v1Ties);
+        Assert.All(v1Ties, tie =>
+        {
+            Assert.Equal(1, tie.StartStaffNumber);
+            Assert.Equal(1, tie.EndStaffNumber);
+        });
+
+        // Check voice 2 ties
+        var v2Ties = part.Ties.Where(t => t.StartVoiceNumber == 2).ToList();
+        Assert.NotEmpty(v2Ties);
+        Assert.All(v2Ties, tie =>
+        {
+            Assert.Equal(2, tie.StartStaffNumber);
+            Assert.Equal(2, tie.EndStaffNumber);
+        });
     }
 
     [Fact]

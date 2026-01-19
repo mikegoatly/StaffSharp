@@ -441,4 +441,113 @@ public sealed class NotationEngineTests
             .IsGrandStaff()
             .HasEmptyBassStaff();
     }
+
+    [Fact]
+    public void Convert_NotesCrossingBarLines_CreatesTieSpans()
+    {
+        // Arrange: Create a note that crosses a bar line
+        // In 4/4 time (4 beats per measure):
+        // - Note starts at beat 3.5
+        // - Note duration is 2 beats
+        // - Note ends at beat 5.5 (next measure, beat 1.5)
+        // This should create two notes with a TieSpan between them
+        var events = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Create(7, 2), MidiNote.C4, duration: Rational.Create(2, 1))  // 3.5 beats, 2 beats duration
+            .Build();
+
+        var tempoMap = new TempoMap(
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]  // 4/4 time
+        );
+
+        var timeline = new PerformanceTimeline(
+            events: events,
+            tempoMap: tempoMap,
+            metadata: new PerformanceMetadata(Title: "Tie Test")
+        );
+
+        var engine = new NotationEngine();
+        var options = new NotationOptions();
+
+        // Act
+        var score = engine.Convert(timeline, options);
+
+        // Assert
+        var part = score.Parts[0];
+
+        // Should have ties
+        Assert.NotEmpty(part.Ties);
+        Assert.Single(part.Ties);
+
+        // Verify the tie connects two notes
+        var tie = part.Ties[0];
+        Assert.NotNull(tie.StartEvent);
+        Assert.NotNull(tie.EndEvent);
+        Assert.NotEqual(tie.StartEvent, tie.EndEvent);
+
+        // Both notes should be C4
+        Assert.IsType<NotationNote>(tie.StartEvent);
+        Assert.IsType<NotationNote>(tie.EndEvent);
+        var startNote = (NotationNote)tie.StartEvent;
+        var endNote = (NotationNote)tie.EndEvent;
+        Assert.Equal(PitchClass.C, startNote.Pitch.PitchClass);
+        Assert.Equal(4, startNote.Pitch.Octave);
+        Assert.Equal(PitchClass.C, endNote.Pitch.PitchClass);
+        Assert.Equal(4, endNote.Pitch.Octave);
+    }
+
+    [Fact]
+    public void Convert_NoteSpanningMultipleMeasures_CreatesMultipleTieSpans()
+    {
+        // Arrange: Create a long note spanning 3 measures
+        // In 4/4 time (4 beats per measure):
+        // - Note starts at beat 0
+        // - Note duration is 10 beats
+        // - Should create 3 tied notes across 3 measures (4 + 4 + 2 beats)
+        var events = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.G5, duration: Rational.Create(10, 1))  // 10 beats duration
+            .Build();
+
+        var tempoMap = new TempoMap(
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]  // 4/4 time
+        );
+
+        var timeline = new PerformanceTimeline(
+            events: events,
+            tempoMap: tempoMap,
+            metadata: new PerformanceMetadata(Title: "Long Tie Test")
+        );
+
+        var engine = new NotationEngine();
+        var options = new NotationOptions();
+
+        // Act
+        var score = engine.Convert(timeline, options);
+
+        // Assert
+        var part = score.Parts[0];
+
+        // Should have 2 ties connecting 3 notes (note1->note2, note2->note3)
+        Assert.Equal(2, part.Ties.Count);
+
+        // Verify first tie
+        var tie1 = part.Ties[0];
+        Assert.IsType<NotationNote>(tie1.StartEvent);
+        Assert.IsType<NotationNote>(tie1.EndEvent);
+        var note1 = (NotationNote)tie1.StartEvent;
+        var note2 = (NotationNote)tie1.EndEvent;
+        Assert.Equal(PitchClass.G, note1.Pitch.PitchClass);
+        Assert.Equal(5, note1.Pitch.Octave);
+        Assert.Equal(PitchClass.G, note2.Pitch.PitchClass);
+        Assert.Equal(5, note2.Pitch.Octave);
+
+        // Verify second tie
+        var tie2 = part.Ties[1];
+        Assert.Equal(tie1.EndEvent, tie2.StartEvent);  // Second note is shared
+        Assert.IsType<NotationNote>(tie2.EndEvent);
+        var note3 = (NotationNote)tie2.EndEvent;
+        Assert.Equal(PitchClass.G, note3.Pitch.PitchClass);
+        Assert.Equal(5, note3.Pitch.Octave);
+    }
 }
