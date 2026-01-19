@@ -18,8 +18,16 @@ internal class SystemGenerationPass : ILayoutPass
             system.Y = currentY;
             system.X = context.Margins.Left;
 
+            // Position staves within the system vertically
+            double staffY = 0;
+            foreach (var staff in system.Staves)
+            {
+                staff.Y = staffY;
+                staffY += staff.Height + (2.0 * context.StaffSpace); // Inter-staff spacing
+            }
+
             // Calculate system height based on actual staff heights, including inter-staff spacing
-            double systemHeight = system.Staves.Sum(s => s.Height) + 
+            double systemHeight = system.Staves.Sum(s => s.Height) +
                 (2.0 * context.StaffSpace * (system.Staves.Count - 1));
 
             currentY += systemHeight + (3.0 * context.StaffSpace); // System spacing
