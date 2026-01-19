@@ -46,16 +46,20 @@ public sealed class NotationEngine : INotationEngine
             part = CreateSingleStaffPart(timeline, voiceAssignments, options);
         }
 
+        // Build TieSpans and SlurSpans from markers on notes
+        SpanBuilder.BuildTieSpans(part);
+        SpanBuilder.BuildSlurSpans(part);
+
         // Create score metadata
         var metadata = new ScoreMetadata(
             Title: timeline.Metadata.Title,
             Composer: timeline.Metadata.Composer,
             KeySignature: options.DefaultKeySignature,
-            TimeSignature: timeline.TempoMap.TimeSignatures.Count > 0 
-                ? timeline.TempoMap.TimeSignatures[0].TimeSignature 
+            TimeSignature: timeline.TempoMap.TimeSignatures.Count > 0
+                ? timeline.TempoMap.TimeSignatures[0].TimeSignature
                 : TimeSignature.CommonTime,
-            Tempo: (int)Math.Round(timeline.TempoMap.TempoChanges.Count > 0 
-                ? timeline.TempoMap.TempoChanges[0].BeatsPerMinute 
+            Tempo: (int)Math.Round(timeline.TempoMap.TempoChanges.Count > 0
+                ? timeline.TempoMap.TempoChanges[0].BeatsPerMinute
                 : 120.0)
         );
 

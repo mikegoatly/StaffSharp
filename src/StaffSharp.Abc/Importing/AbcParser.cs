@@ -2,6 +2,7 @@ namespace StaffSharp.Abc.Importing;
 
 using StaffSharp;
 using StaffSharp.Notation;
+using StaffSharp.Core.Notation;
 
 /// <summary>
 /// Parses ABC notation (v2.1 standard) into a NotationScore.
@@ -106,130 +107,24 @@ public static partial class AbcParser
 
         // Build score
         var metadata = new ScoreMetadata(title, composer, keySignature, timeSignature, tempo);
-        var part = new Part("Melody", Clef.Treble, voices);
 
-        // Build TieSpans and SlurSpans from markers on notes
-        BuildTieSpans(voices, part);
-        BuildSlurSpans(voices, part);
+        Part part;
+        if (voices.Count == 1)
+        {
+            // Single voice - use legacy single-staff constructor for backward compatibility
+            part = new Part("Melody", Clef.Treble, voices);
+        }
+        else
+        {
+            // Multiple voices - create separate staves (one per voice)
+            part = CreateMultiStaffPart(title ?? "Score", voices);
+        }
+
+        // Build TieSpans and SlurSpans using shared SpanBuilder
+        SpanBuilder.BuildTieSpans(part);
+        SpanBuilder.BuildSlurSpans(part);
 
         return new NotationScore(metadata, [part]);
-    }
-
-    /// <summary>
-    /// Generic helper for building span objects from start/stop marker pairs across measures.
-    /// Handles the common pattern of iterating voices/measures/events and matching marker pairs.
-    /// </summary>
-    /// <typeparam name="TKey">The type of key used to match start and stop markers (e.g., Pitch for ties, int for slurs).</typeparam>
-    /// <typeparam name="TMarkerData">Additional data to carry from start marker to span creation.</typeparam>
-    private static void BuildSpansFromMarkers<TKey, TMarkerData>(
-        List<Voice> voices,
-        Func<INotationEvent, IEnumerable<(TKey Key, bool HasStart, bool HasStop, TMarkerData Data)>> extractMarkers,
-        Action<INotationEvent, INotationEvent, Voice, TKey, TMarkerData, TMarkerData> onMatch)
-        where TKey : notnull
-    {
-        foreach (var voice in voices)
-        {
-            var pendingStarts = new Dictionary<TKey, (INotationEvent Event, TMarkerData Data)>();
-
-            foreach (var noteEvent in voice.Measures.SelectMany(m => m.Events))
-            {
-                foreach (var (key, hasStart, hasStop, data) in extractMarkers(noteEvent))
-                {
-                    // Process stop first (for tie chains where Both means end previous + start next)
-                    if (hasStop && pendingStarts.TryGetValue(key, out var startInfo))
-                    {
-                        onMatch(startInfo.Event, noteEvent, voice, key, startInfo.Data, data);
-                        pendingStarts.Remove(key);
-                    }
-
-                    // Then process start
-                    if (hasStart)
-                    {
-                        pendingStarts[key] = (noteEvent, data);
-                    }
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Builds TieSpan objects from TieMarkers on notes across all voices.
-    /// </summary>
-    private static void BuildTieSpans(List<Voice> voices, Part part)
-    {
-        BuildSpansFromMarkers<Pitch, TieMarker>(
-            voices,
-            extractMarkers: noteEvent =>
-            {
-                if (noteEvent switch
-                {
-                    NotationNote note => (note.Pitch, note.TieMarker),
-                    Chord chord => (chord.Pitches.ElementAtOrDefault(0), chord.TieMarker),
-                    _ => (pitch: (Pitch?)null, tie: (TieMarker?)null)
-                } is { pitch: { } pitch, tie: { } tie })
-                {
-                    return [
-                        (
-                        Key: pitch,
-                        HasStart: tie.Type is TieMarkerType.Start or TieMarkerType.Both,
-                        HasStop: tie.Type is TieMarkerType.Stop or TieMarkerType.Both,
-                        Data: tie
-                    )
-                    ];
-                }
-                return [];
-            },
-            onMatch: (startEvent, endEvent, voice, pitch, startMarker, endMarker) =>
-            {
-                part.Ties.Add(new TieSpan(
-                    startEvent,
-                    endEvent,
-                    StartStaffNumber: 1,
-                    EndStaffNumber: 1,
-                    StartVoiceNumber: voice.Number,
-                    EndVoiceNumber: voice.Number));
-            });
-    }
-
-    /// <summary>
-    /// Builds SlurSpan objects from SlurMarkers on notes across all voices.
-    /// </summary>
-    private static void BuildSlurSpans(List<Voice> voices, Part part)
-    {
-        BuildSpansFromMarkers<int, SlurMarker>(
-            voices,
-            extractMarkers: noteEvent =>
-            {
-                var markers = noteEvent switch
-                {
-                    NotationNote note => note.SlurMarkers,
-                    Chord chord => chord.SlurMarkers,
-                    _ => []
-                };
-
-                return markers.Select(m => (
-                    Key: m.Number,
-                    HasStart: m.Type == SlurMarkerType.Start,
-                    HasStop: m.Type == SlurMarkerType.Stop,
-                    Data: m
-                ));
-            },
-            onMatch: (startEvent, endEvent, voice, number, startMarker, endMarker) =>
-            {
-                // Only create SlurSpan if start and end are different events (ignore single-note slurs)
-                if (!ReferenceEquals(startEvent, endEvent))
-                {
-                    part.Slurs.Add(new SlurSpan(
-                        startEvent,
-                        endEvent,
-                        Number: number,
-                        IsDotted: startMarker.IsDotted || endMarker.IsDotted,
-                        StartStaffNumber: 1,
-                        EndStaffNumber: 1,
-                        StartVoiceNumber: voice.Number,
-                        EndVoiceNumber: voice.Number));
-                }
-            });
     }
 
     private static List<Measure> ParseNotes(
@@ -618,5 +513,23 @@ public static partial class AbcParser
             },
             _ => noteEvent
         };
+    }
+
+    /// <summary>
+    /// Creates a multi-staff part where each voice gets its own staff.
+    /// Staff numbers are sequential (1, 2, 3...), one per voice.
+    /// All staves use treble clef (ABC default).
+    /// </summary>
+    private static Part CreateMultiStaffPart(string partName, List<Voice> voices)
+    {
+        var staves = new List<Staff>();
+        int staffNumber = 1;
+
+        foreach (var voice in voices)
+        {
+            staves.Add(new Staff(staffNumber++, Clef.Treble, [voice]));
+        }
+
+        return new Part(partName, staves);
     }
 }
