@@ -25,43 +25,33 @@ using StaffSharp.MachineLearning.Options;
 internal sealed class NoteEventDecoder
 {
     private const int PianoKeyCount = 88;
-    private const int LowestPianoKey = 21; // MIDI note A0
+    private const int LowestPianoKey = 21;
 
     private readonly MLTranscriptionOptions _options;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="NoteEventDecoder"/> class.
-    /// </summary>
-    /// <param name="options">Transcription options including thresholds.</param>
     public NoteEventDecoder(MLTranscriptionOptions? options = null)
     {
         _options = options ?? new MLTranscriptionOptions();
     }
 
-    /// <summary>
-    /// Decodes a polyphonic transcription result into a list of note events.
-    /// </summary>
-    /// <param name="result">The transcription result containing piano roll predictions.</param>
-    /// <returns>A sorted list of note events ordered by onset time.</returns>
     public IReadOnlyList<NoteEvent> Decode(PolyphonicTranscriptionResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-
         ValidateResult(result);
 
         var notes = new List<NoteEvent>();
-        var frameDuration = 1.0 / result.FrameRate; // Duration of each frame in seconds
+        var frameDuration = 1.0 / result.FrameRate;
 
-        // Process each piano key independently
+        // Calculate gap tolerance in frames from time-based setting
+        int gapTolerance = (int)Math.Ceiling(_options.MinGapSeconds * result.FrameRate);
+
         for (int keyIndex = 0; keyIndex < PianoKeyCount; keyIndex++)
         {
             var midiNote = LowestPianoKey + keyIndex;
-            DecodeKeyNotes(result, keyIndex, midiNote, frameDuration, notes);
+            DecodeKeyNotes(result, keyIndex, midiNote, frameDuration, notes, gapTolerance);
         }
 
-        // Sort by onset time (stable sort to preserve insertion order for simultaneous notes)
         notes.Sort((a, b) => a.Onset.CompareTo(b.Onset));
-
         return notes;
     }
 
@@ -70,13 +60,15 @@ internal sealed class NoteEventDecoder
         int keyIndex,
         int midiNote,
         double frameDuration,
-        List<NoteEvent> notes)
+        List<NoteEvent> notes,
+        int gapTolerance)
     {
         var numFrames = result.NumFrames;
 
-        // Track active note state
+        // State Tracking
         int? activeNoteStartFrame = null;
         float activeNoteVelocity = 0f;
+        int gapFrameCount = 0; // How many frames have we been "missing" the note?
 
         for (int frameIndex = 0; frameIndex < numFrames; frameIndex++)
         {
@@ -89,57 +81,79 @@ internal sealed class NoteEventDecoder
             var isOffset = offsetProb >= _options.OffsetThreshold;
             var isActive = frameProb >= _options.FrameThreshold;
 
-            // Case 1: New onset detected
-            if (isOnset)
+            // 1. Check for New Onset
+            // We enforce a "Consensus" check: Frame prob shouldn't be zero.
+            if (isOnset && frameProb > _options.MinFrameForOnset)
             {
-                // If there's an active note, end it first (re-articulation)
+                // If velocity is too low, ignore this onset entirely (Ghost busting)
+                if (velocity < _options.MinVelocity)
+                {
+                    continue;
+                }
+
+                // If there was an active note, end it immediately (Re-articulation)
+                // Note: We use (frameIndex - gapFrameCount) to trim any trailing silence if we were in a gap
                 if (activeNoteStartFrame.HasValue)
                 {
-                    TryCreateNote(
-                        midiNote,
-                        activeNoteStartFrame.Value,
-                        frameIndex,
-                        activeNoteVelocity,
-                        frameDuration,
-                        notes);
+                    TryCreateNote(midiNote, activeNoteStartFrame.Value, frameIndex - gapFrameCount, activeNoteVelocity, frameDuration, notes);
                 }
 
                 // Start new note
                 activeNoteStartFrame = frameIndex;
                 activeNoteVelocity = velocity;
+                gapFrameCount = 0;
             }
-            // Case 2: Explicit offset detected or active note becomes inactive
-            else if (activeNoteStartFrame.HasValue && (isOffset || !isActive))
-            {
-                TryCreateNote(
-                    midiNote,
-                    activeNoteStartFrame.Value,
-                    frameIndex,
-                    activeNoteVelocity,
-                    frameDuration,
-                    notes);
-
-                activeNoteStartFrame = null;
-                activeNoteVelocity = 0f;
-            }
-            // Case 3: Note is just sustaining (Holding)
+            // 2. Handle Active Note Logic
             else if (activeNoteStartFrame.HasValue)
             {
-                // TODO if needed we can check if the current velocity is higher than the active note velocity
-                // and use that instead
+                // Determine if we should turn off the note
+                bool explicitStop = isOffset; // Offset head says STOP
+                bool signalLost = !isActive;  // Frame head says SILENCE
+
+                if (explicitStop)
+                {
+                    // If Offset Head fires, we trust it and stop immediately.
+                    // (Unless you want to ignore offsets due to low F1 score, 
+                    //  but usually explicit offset > 0.5 is trustworthy).
+                    TryCreateNote(midiNote, activeNoteStartFrame.Value, frameIndex, activeNoteVelocity, frameDuration, notes);
+                    activeNoteStartFrame = null;
+                    activeNoteVelocity = 0f;
+                    gapFrameCount = 0;
+                }
+                else if (signalLost)
+                {
+                    // Signal died, but no explicit offset.
+                    // Start counting the gap.
+                    gapFrameCount++;
+
+                    // If gap is too long, confirm the kill.
+                    if (gapFrameCount > gapTolerance)
+                    {
+                        // The note actually ended 'gapTolerance' frames ago
+                        int actualEndFrame = frameIndex - gapTolerance;
+
+                        TryCreateNote(midiNote, activeNoteStartFrame.Value, actualEndFrame, activeNoteVelocity, frameDuration, notes);
+
+                        activeNoteStartFrame = null;
+                        activeNoteVelocity = 0f;
+                        gapFrameCount = 0;
+                    }
+                }
+                else
+                {
+                    // Signal is alive!
+                    // Reset gap counter (Bridge the gap)
+                    gapFrameCount = 0;
+                }
             }
         }
 
-        // Handle note still active at end of audio
+        // Handle end of file
         if (activeNoteStartFrame.HasValue)
         {
-            TryCreateNote(
-                midiNote,
-                activeNoteStartFrame.Value,
-                numFrames,
-                activeNoteVelocity,
-                frameDuration,
-                notes);
+            // If we ended while in a gap, trim the gap
+            int finalFrame = numFrames - gapFrameCount;
+            TryCreateNote(midiNote, activeNoteStartFrame.Value, finalFrame, activeNoteVelocity, frameDuration, notes);
         }
     }
 
@@ -151,69 +165,57 @@ internal sealed class NoteEventDecoder
         double frameDuration,
         List<NoteEvent> notes)
     {
+        // Sanity check: Ensure positive length
+        if (endFrame <= startFrame) return;
+
         var durationSeconds = (endFrame - startFrame) * frameDuration;
 
-        // Filter out notes shorter than minimum duration
-        if (durationSeconds < _options.MinNoteLengthSeconds)
-        {
-            return;
-        }
+        // Filter min length
+        if (durationSeconds < _options.MinNoteLengthSeconds) return;
 
-        // Filter out notes with zero velocity (likely false positives)
-        if (velocity <= 0f)
-        {
-            return;
-        }
+        // Note: MinVelocity check is done at Onset detection now, 
+        // but can be repeated here if logic changes.
 
         var onset = TimeSpan.FromSeconds(startFrame * frameDuration);
         var duration = TimeSpan.FromSeconds(durationSeconds);
-
-        // Clamp velocity to valid range [0, 1]
         var clampedVelocity = Math.Clamp(velocity, 0f, 1f);
 
-        var noteEvent = new NoteEvent(
+        notes.Add(new NoteEvent(
             Pitch: MidiNote.Create(midiNote),
             Onset: onset,
             Duration: duration,
             Velocity: Velocity.Create(clampedVelocity)
-        );
-
-        notes.Add(noteEvent);
+        ));
     }
 
     private static void ValidateResult(PolyphonicTranscriptionResult result)
     {
-        if (result.PianoRoll.GetLength(1) != PianoKeyCount)
-        {
-            throw new ArgumentException(
-                $"Piano roll must have {PianoKeyCount} keys, got {result.PianoRoll.GetLength(1)}",
-                nameof(result));
-        }
-
-        if (result.OnsetRoll.GetLength(1) != PianoKeyCount)
-        {
-            throw new ArgumentException(
-                $"Onset roll must have {PianoKeyCount} keys, got {result.OnsetRoll.GetLength(1)}",
-                nameof(result));
-        }
-
-        if (result.OffsetRoll.GetLength(1) != PianoKeyCount)
-        {
-            throw new ArgumentException(
-                $"Offset roll must have {PianoKeyCount} keys, got {result.OffsetRoll.GetLength(1)}",
-                nameof(result));
-        }
-
-        if (result.VelocityRoll.GetLength(1) != PianoKeyCount)
-        {
-            throw new ArgumentException(
-                $"Velocity roll must have {PianoKeyCount} keys, got {result.VelocityRoll.GetLength(1)}",
-                nameof(result));
-        }
-
         if (result.FrameRate <= 0)
         {
             throw new ArgumentException("Frame rate must be positive", nameof(result));
+        }
+
+        var numFrames = result.PianoRoll.GetLength(0);
+        var numKeys = result.PianoRoll.GetLength(1);
+
+        if (numKeys != PianoKeyCount)
+        {
+            throw new ArgumentException($"Piano roll must have {PianoKeyCount} keys (MIDI 21-108), got {numKeys}", nameof(result));
+        }
+
+        if (result.OnsetRoll.GetLength(0) != numFrames || result.OnsetRoll.GetLength(1) != PianoKeyCount)
+        {
+            throw new ArgumentException($"Onset roll must have {PianoKeyCount} keys and match piano roll frame count", nameof(result));
+        }
+
+        if (result.OffsetRoll.GetLength(0) != numFrames || result.OffsetRoll.GetLength(1) != PianoKeyCount)
+        {
+            throw new ArgumentException($"Offset roll must have {PianoKeyCount} keys and match piano roll frame count", nameof(result));
+        }
+
+        if (result.VelocityRoll.GetLength(0) != numFrames || result.VelocityRoll.GetLength(1) != PianoKeyCount)
+        {
+            throw new ArgumentException($"Velocity roll must have {PianoKeyCount} keys and match piano roll frame count", nameof(result));
         }
     }
 }
