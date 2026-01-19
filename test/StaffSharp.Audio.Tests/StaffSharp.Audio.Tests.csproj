@@ -27,7 +27,7 @@
     <!-- Include shared test data files -->
     <None Include="..\TestData\Audio\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>IntegrationTests\TestData\Audio\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>TestData\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
 

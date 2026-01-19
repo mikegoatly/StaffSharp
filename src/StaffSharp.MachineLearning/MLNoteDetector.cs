@@ -61,6 +61,7 @@ public sealed class MLNoteDetector(
         progress.ReportProgress("Transcribing audio with ML model");
 
         // Step 1: ONNX inference (audio → piano roll)
+        // Note: We pass the FULL audio to the ML model to preserve context
         var transcriptionResult = await transcriber.TranscribeAsync(progress, audio).ConfigureAwait(false);
 
         progress.EmitDiagnostics("Frame count", transcriptionResult.NumFrames);
@@ -71,6 +72,18 @@ public sealed class MLNoteDetector(
 
         // Step 2: Decode piano roll to note events
         var noteEvents = _decoder.Decode(transcriptionResult);
+
+        // Step 2a: Shift note events to remove leading silence
+        // (Align first note to beat 0, like the monophonic detector does)
+        if (noteEvents.Count > 0)
+        {
+            var firstNoteOnset = noteEvents[0].Onset;
+            if (firstNoteOnset > TimeSpan.Zero)
+            {
+                noteEvents = ShiftNoteEvents(noteEvents, -firstNoteOnset);
+                progress.EmitDiagnostics("Leading silence trimmed", firstNoteOnset);
+            }
+        }
 
         progress.EmitDiagnostics("Note count", noteEvents.Count);
         progress.EmitDiagnostics("DecodedNoteEvents", noteEvents);
@@ -121,6 +134,34 @@ public sealed class MLNoteDetector(
         progress.EmitDiagnostics("Quantized note count", quantizedNotes.Count);
 
         return new PerformanceTimeline(refinedTempoMap, quantizedNotes);
+    }
+
+    /// <summary>
+    /// Shifts all note event onsets by the specified time delta.
+    /// Used to trim leading silence and align notes to beat 0.
+    /// </summary>
+    private static IReadOnlyList<NoteEvent> ShiftNoteEvents(IReadOnlyList<NoteEvent> events, TimeSpan delta)
+    {
+        if (events.Count == 0 || delta == TimeSpan.Zero)
+        {
+            return events;
+        }
+
+        var shifted = new List<NoteEvent>(events.Count);
+        foreach (var evt in events)
+        {
+            var newOnset = evt.Onset + delta;
+
+            // Skip notes that would have negative onset (shouldn't happen, but be safe)
+            if (newOnset < TimeSpan.Zero)
+            {
+                continue;
+            }
+
+            shifted.Add(evt with { Onset = newOnset });
+        }
+
+        return shifted;
     }
 
     /// <summary>
