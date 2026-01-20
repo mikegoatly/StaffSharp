@@ -41,37 +41,10 @@ public class ArticulationCalculatorTests
         return new NoteLayoutSymbol
         {
             Note = new NotationNote(new Pitch(PitchClass.C, 4), SymbolicDuration.Quarter, Velocity.MezzoForte),
-            X = x,
-            Y = y,
+            Bounds = new(x, y, 0, 0),
             Stem = new StemInfo(stemX, stemY1, stemY2, stemUp),
             Beam = BeamInfo.None
         };
-    }
-
-    private static ChordLayoutSymbol CreateChordSymbol(double x, List<double> noteheadYs, bool stemUp, double stemLength = 35.0)
-    {
-        var stemY1 = stemUp ? noteheadYs.Max() : noteheadYs.Min();
-        var stemY2 = stemUp ? stemY1 - stemLength : stemY1 + stemLength;
-        var stemX = stemUp ? x + 11 : x + 1;
-
-        var chord = new ChordLayoutSymbol
-        {
-            Chord = new Chord(
-                [new Pitch(PitchClass.C, 4), new Pitch(PitchClass.E, 4)],
-                SymbolicDuration.Quarter,
-                Velocity.MezzoForte),
-            X = x,
-            Y = noteheadYs.Average(),
-            Stem = new StemInfo(stemX, stemY1, stemY2, stemUp),
-            Beam = BeamInfo.None
-        };
-
-        foreach (var noteY in noteheadYs)
-        {
-            chord.NoteheadYPositions.Add(noteY);
-        }
-
-        return chord;
     }
 
     [Fact]
@@ -139,7 +112,7 @@ public class ArticulationCalculatorTests
         // Assert
         Assert.Single(resultStemUp);
         // Fermata always goes above - for stem up, above is at the notehead
-        Assert.True(resultStemUp[0].Y < noteStemUp.Y, "Fermata should be above note when stem is up");
+        Assert.True(resultStemUp[0].Y < noteStemUp.Bounds.Y, "Fermata should be above note when stem is up");
 
         Assert.Single(resultStemDown);
         // Fermata always goes above - for stem down, above is at the stem endpoint
@@ -197,6 +170,6 @@ public class ArticulationCalculatorTests
         // Staccato should be below stem endpoint (stem up)
         Assert.True(staccato.Y > note.Stem.Y2, "Staccato should be below stem endpoint when stem is up");
         // Fermata should be above notehead (stem up)
-        Assert.True(fermata.Y < note.Y, "Fermata should be above note when stem is up");
+        Assert.True(fermata.Y < note.Bounds.Y, "Fermata should be above note when stem is up");
     }
 }

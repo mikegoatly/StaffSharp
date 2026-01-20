@@ -110,10 +110,10 @@ internal sealed class SlurAndTiePass : ILayoutPass
                 var endHalfWidth = context.GetNoteheadWidth(endSymbol.Duration.Base) / 2.0;
                 curve = LayoutCurve.Create(
                     startSymbol,
-                    startSymbol.X + startHalfWidth,
-                    startSymbol.Y,
-                    endSymbol.X + endHalfWidth,
-                    endSymbol.Y,
+                    startSymbol.Bounds.X + startHalfWidth,
+                    startSymbol.Bounds.Y,
+                    endSymbol.Bounds.X + endHalfWidth,
+                    endSymbol.Bounds.Y,
                     context,
                     CurveEndTaper.Both,
                     isTie);
@@ -123,16 +123,16 @@ internal sealed class SlurAndTiePass : ILayoutPass
             else
             {
                 // Case 2: Starts here, continues to next system
-                var endX = startSystem.X + startSystem.Width - (context.StaffSpace * 0.5);
+                var endX = startSystem.Bounds.X2 - (context.StaffSpace * 0.5);
                 var endY = startSymbol.Stem.Up
-                    ? startSymbol.Y + (context.StaffSpace * 2.0)
-                    : startSymbol.Y - (context.StaffSpace * 2.0);
+                    ? startSymbol.Bounds.Y + (context.StaffSpace * 2.0)
+                    : startSymbol.Bounds.Y - (context.StaffSpace * 2.0);
 
                 var startHalfWidth = context.GetNoteheadWidth(startSymbol.Duration.Base) / 2.0;
                 curve = LayoutCurve.Create(
                     startSymbol,
-                    startSymbol.X + startHalfWidth,
-                    startSymbol.Y,
+                    startSymbol.Bounds.X + startHalfWidth,
+                    startSymbol.Bounds.Y,
                     endX,
                     endY,
                     context,
@@ -145,18 +145,18 @@ internal sealed class SlurAndTiePass : ILayoutPass
         else if (endSymbolInfo is { Symbol: { } endSymbol, System: { } endSystem, Measure: { } endMeasure })
         {
             // Case 3: Ends here, started in previous system
-            var startX = endSystem.X + (context.StaffSpace * 0.5);
+            var startX = endSystem.Bounds.X + (context.StaffSpace * 0.5);
             var startY = endSymbol.Stem.Up
-                ? endSymbol.Y + (context.StaffSpace * 2.0)
-                : endSymbol.Y - (context.StaffSpace * 2.0);
+                ? endSymbol.Bounds.Y + (context.StaffSpace * 2.0)
+                : endSymbol.Bounds.Y - (context.StaffSpace * 2.0);
 
             var endHalfWidth = context.GetNoteheadWidth(endSymbol.Duration.Base) / 2.0;
             curve = LayoutCurve.Create(
                 endSymbol,
                 startX,
                 startY,
-                endSymbol.X + endHalfWidth,
-                endSymbol.Y,
+                endSymbol.Bounds.X + endHalfWidth,
+                endSymbol.Bounds.Y,
                 context,
                 CurveEndTaper.End,
                 isTie);

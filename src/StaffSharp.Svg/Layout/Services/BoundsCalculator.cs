@@ -16,8 +16,8 @@ internal static class BoundsCalculator
     /// <returns>Tuple of (MinY, MaxY) coordinates</returns>
     public static (double MinY, double MaxY) CalculateSymbolBounds(LayoutSymbol symbol, double staffSpace)
     {
-        var minY = symbol.Y;
-        var maxY = symbol.Y;
+        var minY = symbol.Bounds.Y;
+        var maxY = symbol.Bounds.Y;
 
         // Include stem bounds
         if (symbol is IStemmedSymbol stemmedSymbol && (stemmedSymbol.Stem.Y1 != 0 || stemmedSymbol.Stem.Y2 != 0))
@@ -32,11 +32,11 @@ internal static class BoundsCalculator
             var ledgerExtent = symbol.LedgerLineCount * staffSpace;
             if (symbol.LedgerLinesAbove)
             {
-                minY = Math.Min(minY, symbol.Y - ledgerExtent);
+                minY = Math.Min(minY, symbol.Bounds.Y - ledgerExtent);
             }
             else
             {
-                maxY = Math.Max(maxY, symbol.Y + ledgerExtent);
+                maxY = Math.Max(maxY, symbol.Bounds.Y + ledgerExtent);
             }
         }
 
@@ -48,7 +48,7 @@ internal static class BoundsCalculator
         }
 
         // Add some padding for the symbol itself (noteheads have height)
-        maxY = Math.Max(maxY, symbol.Y + staffSpace);
+        maxY = Math.Max(maxY, symbol.Bounds.Y + staffSpace);
 
         return (minY, maxY);
     }
@@ -61,8 +61,8 @@ internal static class BoundsCalculator
     public static (double MinY, double MaxY) CalculateCurveBounds(LayoutCurve curve)
     {
         // For a quadratic Bézier curve, extrema can occur at start, end, or apex
-        var minY = Math.Min(Math.Min(curve.Y, curve.EndY), curve.ApexY);
-        var maxY = Math.Max(Math.Max(curve.Y, curve.EndY), curve.ApexY);
+        var minY = Math.Min(Math.Min(curve.Bounds.Y, curve.EndY), curve.ApexY);
+        var maxY = Math.Max(Math.Max(curve.Bounds.Y, curve.EndY), curve.ApexY);
         return (minY, maxY);
     }
 
@@ -132,7 +132,7 @@ internal static class BoundsCalculator
         for (int i = 0; i < system.Staves.Count; i++)
         {
             var staff = system.Staves[i];
-            totalHeight += staff.Height;
+            totalHeight += staff.Bounds.Height;
 
             // Add inter-staff spacing (except after last staff)
             if (i < system.Staves.Count - 1)

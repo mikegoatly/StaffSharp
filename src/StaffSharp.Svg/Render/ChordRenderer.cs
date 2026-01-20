@@ -14,7 +14,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "chord"),
-            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
+            new XAttribute("transform", CreateTranslate(symbol.Bounds.X, symbol.Bounds.Y))
         );
 
         // Render accidentals if present
@@ -22,7 +22,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         {
             var accidental = symbol.Accidentals[i];
             var xOffset = symbol.AccidentalXOffsets[i];
-            var yPos = symbol.AccidentalYPositions[i] - symbol.Y;  // Make relative to chord Y
+            var yPos = symbol.AccidentalYPositions[i] - symbol.Bounds.Y;  // Make relative to chord Y
             group.Add(RenderAccidental(accidental, xOffset, yPos, context));
         }
 
@@ -31,7 +31,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
         // Render each notehead at its calculated Y position with optional X shift
         for (int i = 0; i < symbol.NoteheadYPositions.Count; i++)
         {
-            var y = symbol.NoteheadYPositions[i] - symbol.Y;
+            var y = symbol.NoteheadYPositions[i] - symbol.Bounds.Y;
             var xShift = symbol.NoteheadXShifts.Count > i ? symbol.NoteheadXShifts[i] : 0;
             var transform = CreateTranslate(xShift, y);
 

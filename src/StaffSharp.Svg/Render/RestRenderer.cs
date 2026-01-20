@@ -14,7 +14,7 @@ internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "rest"),
-            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
+            new XAttribute("transform", CreateTranslate(symbol.Bounds.X, symbol.Bounds.Y))
         );
 
         var restGlyph = GetRestGlyph(symbol.Rest.Duration);

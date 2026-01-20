@@ -15,7 +15,7 @@ internal sealed class TimeSignatureRenderer : LayoutElementRenderer<TimeSignatur
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "time-signature"),
-            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
+            new XAttribute("transform", CreateTranslate(symbol.Bounds.X, symbol.Bounds.Y))
         );
 
         // Handle special time signatures with dedicated glyphs

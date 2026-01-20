@@ -19,19 +19,22 @@ internal interface IStemmedSymbol : ILayoutSymbol
     BeamInfo Beam { get; set; }
 
     /// <summary>
-    /// Gets the effective top Y position accounting for stem, beam, and flags.
-    /// This is the highest point of the symbol that articulations need to clear.
+    /// Gets or sets the bounding rectangle of the note head.
     /// </summary>
-    double GetEffectiveTopY();
-
-    /// <summary>
-    /// Gets the effective bottom Y position accounting for stem, beam, and flags.
-    /// This is the lowest point of the symbol that articulations need to clear.
-    /// </summary>
-    double GetEffectiveBottomY();
+    Bounds NoteHeadBounds { get; set; }
 
     /// <summary>
     /// The symbolic duration of the stemmed symbol.
     /// </summary>
     SymbolicDuration Duration { get; }
+
+    /// <summary>
+    /// Gets the effective top Y position accounting for stem, beam, and flags.
+    /// </summary>
+    double GetEffectiveTopY();
+
+    /// <summary>
+    /// Gets the effective bottom Y position accounting for stem, beam, and flags.
+    /// </summary>
+    double GetEffectiveBottomY();
 }

@@ -161,10 +161,7 @@ public class BoundsCalculatorTests
         var symbol = new ClefLayoutSymbol
         {
             Clef = Clef.Treble,
-            Y = 0.0,
-            X = 0.0,
-            Width = 10.0,
-            Height = 20.0
+            Bounds = new(0, 0, 10, 20.0),
         };
 
         // Act
@@ -201,8 +198,7 @@ public class BoundsCalculatorTests
         // Arrange
         var staff = LayoutTestHelpers.CreateStaff();
         var measure = LayoutTestHelpers.CreateMeasure();
-        var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6);
-        symbol.Y = 0.0; // Relative to staff
+        var symbol = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6, y: 0);
         symbol.Stem = symbol.Stem with { Y1 = 0.0, Y2 = -30.0 }; // Extends above staff
         measure.Symbols.Add(symbol);
         staff.Measures.Add(measure);
@@ -223,8 +219,7 @@ public class BoundsCalculatorTests
         // Arrange
         var staff = LayoutTestHelpers.CreateStaff();
         var measure = LayoutTestHelpers.CreateMeasure();
-        var highNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6);
-        highNote.Y = -20.0;
+        var highNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6, y: -20);
         highNote.LedgerLineCount = 2;
         highNote.LedgerLinesAbove = true;
         measure.Symbols.Add(highNote);
@@ -245,12 +240,8 @@ public class BoundsCalculatorTests
         // Arrange
         var staff = LayoutTestHelpers.CreateStaff(width: 200.0);
         var measure = LayoutTestHelpers.CreateMeasure(width: 200.0);
-        var highNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6);
-        highNote.Y = -10.0;
-        highNote.X = 10.0;
-        var lowNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 2);
-        lowNote.Y = 60.0;
-        lowNote.X = 50.0;
+        var highNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 6, x: 10, y: -10);
+        var lowNote = LayoutTestHelpers.CreateNoteSymbol(PitchClass.C, 2, x: 50, y: 60);
         measure.Symbols.Add(highNote);
         measure.Symbols.Add(lowNote);
         staff.Measures.Add(measure);

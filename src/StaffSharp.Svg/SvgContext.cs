@@ -46,6 +46,14 @@ internal record SvgContext
     public string? BailAfterPass { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether debug artifacts are rendered during output generation.
+    /// </summary>
+    /// <remarks>Enable this property to display additional visual elements or overlays that assist in
+    /// debugging or development. These artifacts are not intended for production use and may affect performance or
+    /// output appearance.</remarks>
+    public bool RenderDebugArtifacts { get; set; }
+
+    /// <summary>
     /// Registers a glyph as used during rendering.
     /// </summary>
     /// <param name="glyph">The glyph to register.</param>

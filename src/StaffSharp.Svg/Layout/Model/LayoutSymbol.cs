@@ -16,7 +16,7 @@ internal abstract class LayoutSymbol : LayoutElement, ILayoutSymbol
     public int VoiceNumber { get; set; }
 
     /// <summary>
-    /// Spacing (padding) around this symbol, calculated during MeasureWidthCalculationPass.
+    /// Spacing (padding) around this symbol.
     /// Left and Right padding are used by HorizontalPositionPass for positioning.
     /// </summary>
     public LayoutSpacing Spacing { get; set; }

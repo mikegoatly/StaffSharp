@@ -21,6 +21,7 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
     // Stem and beam information (IStemmedSymbol implementation)
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }
+    public Bounds NoteHeadBounds { get; set; }
 
     // Positioned decorations/articulations
     public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
@@ -34,7 +35,7 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
         if (Stem.Up)
         {
             // Stem up: top is at the topmost notehead
-            return NoteheadYPositions.Count > 0 ? NoteheadYPositions.Min() : Y;
+            return NoteheadYPositions.Count > 0 ? NoteheadYPositions.Min() : Bounds.Y;
         }
         else
         {
@@ -57,7 +58,7 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
         else
         {
             // Stem down: bottom is at the bottommost notehead
-            return NoteheadYPositions.Count > 0 ? NoteheadYPositions.Max() : Y;
+            return NoteheadYPositions.Count > 0 ? NoteheadYPositions.Max() : Bounds.Y;
         }
     }
 }

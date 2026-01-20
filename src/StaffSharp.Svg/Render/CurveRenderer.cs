@@ -16,8 +16,8 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
             ? 0.18 * context.StaffSpace  // Ties thinner
             : 0.22 * context.StaffSpace; // Slurs thicker
 
-        var sx = curve.X;
-        var sy = curve.Y;
+        var sx = curve.Bounds.X;
+        var sy = curve.Bounds.Y;
         var ex = curve.EndX;
         var ey = curve.EndY;
 

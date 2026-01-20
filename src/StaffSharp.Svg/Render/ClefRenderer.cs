@@ -12,12 +12,12 @@ internal sealed class ClefRenderer : LayoutElementRenderer<ClefLayoutSymbol>
     public override XElement Render(ClefLayoutSymbol symbol, SvgContext context)
     {
         // HACK: Pad the clefs to the left slightly
-        var x = symbol.X + 5;
+        var x = symbol.Bounds.X + 5;
 
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "clef"),
-            new XAttribute("transform", CreateTranslate(x, symbol.Y))
+            new XAttribute("transform", CreateTranslate(x, symbol.Bounds.Y))
         );
 
         var (clefGlyph, scale) = symbol.Clef switch

@@ -47,8 +47,8 @@ internal class MeasureWidthCalculationPass : ILayoutPass
             // Set individual symbol widths and spacing
             foreach (var symbol in timeGroup)
             {
-                symbol.Width = SymbolWidthCalculator.CalculateSymbolWidth(symbol, context);
-                symbol.Spacing = SymbolWidthCalculator.CalculateSpacing(symbol, symbol.Width, context);
+                symbol.Bounds = symbol.Bounds with { Width = SymbolWidthCalculator.CalculateSymbolWidth(symbol, context) };
+                symbol.Spacing = SymbolWidthCalculator.CalculateSpacing(symbol, symbol.Bounds.Width, context);
             }
 
             // Calculate total width for this time position (use max width for spacing calculation)
@@ -61,6 +61,6 @@ internal class MeasureWidthCalculationPass : ILayoutPass
             totalWidth += spacing.Left + maxWidth + spacing.Right;
         }
 
-        measure.Width = totalWidth;
+        measure.Bounds = measure.Bounds with { Width = totalWidth };
     }
 }

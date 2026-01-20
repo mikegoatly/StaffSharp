@@ -46,7 +46,7 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
 
     private static void RenderNormalBarline(XElement group, BarlineLayoutSymbol symbol)
     {
-        var line = CreateLine(symbol.X, symbol.Y, symbol.X, symbol.Y + symbol.Height, strokeWidth: 2);
+        var line = CreateLine(symbol.Bounds.X, symbol.Bounds.Y, symbol.Bounds.X, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
         group.Add(line);
     }
 
@@ -55,8 +55,8 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
         var spacing = context.StaffSpace * 0.15;
 
         // Two thin lines
-        var line1 = CreateLine(symbol.X - spacing, symbol.Y, symbol.X - spacing, symbol.Y + symbol.Height, strokeWidth: 2);
-        var line2 = CreateLine(symbol.X + spacing, symbol.Y, symbol.X + spacing, symbol.Y + symbol.Height, strokeWidth: 2);
+        var line1 = CreateLine(symbol.Bounds.X - spacing, symbol.Bounds.Y, symbol.Bounds.X - spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
+        var line2 = CreateLine(symbol.Bounds.X + spacing, symbol.Bounds.Y, symbol.Bounds.X + spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
 
         group.Add(line1);
         group.Add(line2);
@@ -67,8 +67,8 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
         var spacing = context.StaffSpace * 0.15;
 
         // Thin line on left, thick line on right
-        var thinLine = CreateLine(symbol.X - spacing, symbol.Y, symbol.X - spacing, symbol.Y + symbol.Height, strokeWidth: 2);
-        var thickLine = CreateLine(symbol.X + spacing, symbol.Y, symbol.X + spacing, symbol.Y + symbol.Height, strokeWidth: 6);
+        var thinLine = CreateLine(symbol.Bounds.X - spacing, symbol.Bounds.Y, symbol.Bounds.X - spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
+        var thickLine = CreateLine(symbol.Bounds.X + spacing, symbol.Bounds.Y, symbol.Bounds.X + spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 6);
 
         group.Add(thinLine);
         group.Add(thickLine);
@@ -80,14 +80,14 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
         var dotOffset = context.StaffSpace * 0.4;
 
         // Thick line on left, thin line on right, dots on right
-        var thickLine = CreateLine(symbol.X - spacing, symbol.Y, symbol.X - spacing, symbol.Y + symbol.Height, strokeWidth: 6);
-        var thinLine = CreateLine(symbol.X + spacing, symbol.Y, symbol.X + spacing, symbol.Y + symbol.Height, strokeWidth: 2);
+        var thickLine = CreateLine(symbol.Bounds.X - spacing, symbol.Bounds.Y, symbol.Bounds.X - spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 6);
+        var thinLine = CreateLine(symbol.Bounds.X + spacing, symbol.Bounds.Y, symbol.Bounds.X + spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
 
         group.Add(thickLine);
         group.Add(thinLine);
 
         // Add repeat dots (in spaces 2 and 4, counting from bottom)
-        AddRepeatDots(group, symbol.X + spacing + dotOffset, symbol.Y, symbol.Height, context);
+        AddRepeatDots(group, symbol.Bounds.X + spacing + dotOffset, symbol.Bounds.Y, symbol.Bounds.Height, context);
     }
 
     private static void RenderRepeatEndBarline(XElement group, BarlineLayoutSymbol symbol, SvgContext context)
@@ -96,14 +96,14 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
         var dotOffset = context.StaffSpace * 0.4;
 
         // Dots on left, thin line on left, thick line on right
-        var thinLine = CreateLine(symbol.X - spacing, symbol.Y, symbol.X - spacing, symbol.Y + symbol.Height, strokeWidth: 2);
-        var thickLine = CreateLine(symbol.X + spacing, symbol.Y, symbol.X + spacing, symbol.Y + symbol.Height, strokeWidth: 6);
+        var thinLine = CreateLine(symbol.Bounds.X - spacing, symbol.Bounds.Y, symbol.Bounds.X - spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
+        var thickLine = CreateLine(symbol.Bounds.X + spacing, symbol.Bounds.Y, symbol.Bounds.X + spacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 6);
 
         group.Add(thinLine);
         group.Add(thickLine);
 
         // Add repeat dots (in spaces 2 and 4, counting from bottom)
-        AddRepeatDots(group, symbol.X - spacing - dotOffset, symbol.Y, symbol.Height, context);
+        AddRepeatDots(group, symbol.Bounds.X - spacing - dotOffset, symbol.Bounds.Y, symbol.Bounds.Height, context);
     }
 
     private static void RenderRepeatBothBarline(XElement group, BarlineLayoutSymbol symbol, SvgContext context)
@@ -113,17 +113,17 @@ internal sealed class BarlineRenderer : LayoutElementRenderer<BarlineLayoutSymbo
 
         // Dots, thin line, thick line, thin line, dots
         var threeSpacing = spacing * 3;
-        var thinLine1 = CreateLine(symbol.X - threeSpacing, symbol.Y, symbol.X - threeSpacing, symbol.Y + symbol.Height, strokeWidth: 2);
-        var thickLine = CreateLine(symbol.X, symbol.Y, symbol.X, symbol.Y + symbol.Height, strokeWidth: 6);
-        var thinLine2 = CreateLine(symbol.X + threeSpacing, symbol.Y, symbol.X + threeSpacing, symbol.Y + symbol.Height, strokeWidth: 2);
+        var thinLine1 = CreateLine(symbol.Bounds.X - threeSpacing, symbol.Bounds.Y, symbol.Bounds.X - threeSpacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
+        var thickLine = CreateLine(symbol.Bounds.X, symbol.Bounds.Y, symbol.Bounds.X, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 6);
+        var thinLine2 = CreateLine(symbol.Bounds.X + threeSpacing, symbol.Bounds.Y, symbol.Bounds.X + threeSpacing, symbol.Bounds.Y + symbol.Bounds.Height, strokeWidth: 2);
 
         group.Add(thinLine1);
         group.Add(thickLine);
         group.Add(thinLine2);
 
         // Add repeat dots on both sides
-        AddRepeatDots(group, symbol.X - spacing * 3 - dotOffset, symbol.Y, symbol.Height, context);
-        AddRepeatDots(group, symbol.X + spacing * 3 + dotOffset, symbol.Y, symbol.Height, context);
+        AddRepeatDots(group, symbol.Bounds.X - spacing * 3 - dotOffset, symbol.Bounds.Y, symbol.Bounds.Height, context);
+        AddRepeatDots(group, symbol.Bounds.X + spacing * 3 + dotOffset, symbol.Bounds.Y, symbol.Bounds.Height, context);
     }
 
     private static void AddRepeatDots(XElement group, double x, double y, double height, SvgContext context)

@@ -15,7 +15,7 @@ internal class StemAndBeamPass : ILayoutPass
         foreach (var staff in model.Systems.SelectMany(s => s.Staves))
         {
             // Staff baseline (middle line)
-            var staffBaseline = staff.Y + (2.0 * context.StaffSpace);
+            var staffBaseline = staff.Bounds.Y + (2.0 * context.StaffSpace);
 
             foreach (var measure in staff.Measures)
             {

@@ -20,11 +20,11 @@ internal class HorizontalPositionPass : ILayoutPass
             foreach (var staff in system.Staves)
             {
                 double currentX = context.Margins.Left;
-                staff.X = currentX;
+                staff.Bounds = staff.Bounds with { X = currentX };
 
                 foreach (var measure in staff.Measures)
                 {
-                    measure.X = currentX;
+                    measure.Bounds = measure.Bounds with { X = currentX };
                     double measureStartX = currentX;
 
                     // Group symbols by time position to handle multi-voice alignment
@@ -38,7 +38,7 @@ internal class HorizontalPositionPass : ILayoutPass
                         // Use pre-calculated spacing from MeasureWidthCalculationPass (NO recalculation!)
                         var firstSymbol = timeGroup.First();
                         var spacing = firstSymbol.Spacing;
-                        var maxWidth = timeGroup.Max(s => s.Width);
+                        var maxWidth = timeGroup.Max(s => s.Bounds.Width);
 
                         // Position symbol: currentX + left spacing
                         var symbolX = currentX + spacing.Left;
@@ -46,7 +46,7 @@ internal class HorizontalPositionPass : ILayoutPass
                         // All symbols at this time get the same X position
                         foreach (var symbol in timeGroup)
                         {
-                            symbol.X = symbolX;
+                            symbol.Bounds = symbol.Bounds with { X = symbolX };
                         }
 
                         // Advance by total width: left padding + symbol width + right padding
@@ -54,13 +54,13 @@ internal class HorizontalPositionPass : ILayoutPass
                     }
                 }
 
-                staff.Width = currentX - staff.X;
+                staff.Bounds = staff.Bounds with { Width = currentX - staff.Bounds.X };
             }
 
             // Update system width (use the widest staff)
             if (system.Staves.Count > 0)
             {
-                system.Width = system.Staves.Max(s => s.Width);
+                system.Bounds = system.Bounds with { Width = system.Staves.Max(s => s.Bounds.Width) };
             }
         }
     }

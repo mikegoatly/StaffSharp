@@ -24,10 +24,7 @@ internal static class LayoutTestHelpers
         return new NoteLayoutSymbol
         {
             Note = new NotationNote(new Pitch(pitchClass, octave), duration ?? SymbolicDuration.Quarter),
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height,
+            Bounds = new(x, y, width, height),
             VoiceNumber = voice
         };
     }
@@ -46,10 +43,7 @@ internal static class LayoutTestHelpers
         return new ChordLayoutSymbol
         {
             Chord = new Chord(notes, duration),
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height
+            Bounds = new(x, y, width, height)
         };
     }
 
@@ -64,10 +58,7 @@ internal static class LayoutTestHelpers
     {
         return new LayoutStaff
         {
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height
+            Bounds = new(x, y, width, height)
         };
     }
 
@@ -82,10 +73,7 @@ internal static class LayoutTestHelpers
     {
         return new LayoutMeasure
         {
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height
+            Bounds = new(x, y, width, height)
         };
     }
 
@@ -100,10 +88,7 @@ internal static class LayoutTestHelpers
     {
         return new LayoutSystem
         {
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height
+            Bounds = new(x, y, width, height)
         };
     }
 
@@ -120,10 +105,7 @@ internal static class LayoutTestHelpers
         return new RestLayoutSymbol
         {
             Rest = new Rest(quarter),
-            Y = y,
-            X = x,
-            Width = width,
-            Height = height
+            Bounds = new(x, y, width, height)
         };
     }
 }

@@ -149,7 +149,7 @@ internal static class ArticulationCalculator
             return result;
         }
 
-        var noteX = symbol.X;
+        var noteX = symbol.Bounds.X;
         var stemUp = symbol.Stem.Up;
 
         // Get the effective top and bottom boundaries (accounting for stem/beam)

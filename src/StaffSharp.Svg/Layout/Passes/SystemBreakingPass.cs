@@ -96,7 +96,7 @@ internal class SystemBreakingPass : ILayoutPass
             {
                 if (measureIndex < staff.Measures.Count)
                 {
-                    maxMeasureWidth = Math.Max(maxMeasureWidth, staff.Measures[measureIndex].Width);
+                    maxMeasureWidth = Math.Max(maxMeasureWidth, staff.Measures[measureIndex].Bounds.Width);
                 }
             }
 

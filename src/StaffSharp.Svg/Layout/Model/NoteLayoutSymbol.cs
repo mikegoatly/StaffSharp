@@ -17,6 +17,7 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     // Stem and beam information (IStemmedSymbol implementation)
     public StemInfo Stem { get; set; }
     public BeamInfo Beam { get; set; }
+    public Bounds NoteHeadBounds { get; set; }
 
     public SymbolicDuration Duration => Note.Duration;
 
@@ -30,7 +31,7 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     {
         // If stem goes up, top is at the notehead
         // If stem goes down, top is at the stem end (which extends above)
-        return Stem.Up ? Y : Stem.Y2;
+        return Stem.Up ? Bounds.Y : Stem.Y2;
     }
 
     /// <summary>
@@ -40,6 +41,6 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     {
         // If stem goes up, bottom is at the stem end (which extends below)
         // If stem goes down, bottom is at the notehead
-        return Stem.Up ? Stem.Y2 : Y;
+        return Stem.Up ? Stem.Y2 : Bounds.Y;
     }
 }

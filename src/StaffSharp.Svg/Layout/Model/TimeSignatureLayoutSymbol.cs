@@ -16,7 +16,11 @@ internal sealed class TimeSignatureLayoutSymbol : LayoutSymbol
         {
             TimeSignature = timeSignature,
             TimePosition = -1.0,
-            Width = TimeSignatureCalculator.CalculateWidth(timeSignature, context),
+            Bounds = new(
+                0,
+                0, 
+                TimeSignatureCalculator.CalculateWidth(timeSignature, context),
+                context.StaffSpace * 4),
         };
     }
 }

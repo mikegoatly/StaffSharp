@@ -64,7 +64,7 @@ internal class AccidentalPlacementPass : ILayoutPass
             var accidental = KeySignatureService.GetAccidental(pitch);
             noteSymbol.Accidental = accidental;
             noteSymbol.AccidentalX = -context.StaffSpace; // Position to the left of notehead
-            noteSymbol.AccidentalY = noteSymbol.Y;
+            noteSymbol.AccidentalY = noteSymbol.Bounds.Y;
 
             // Update measure tracking
             var midiNote = (int)pitch.ToMidiNote().Value;

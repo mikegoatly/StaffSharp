@@ -94,18 +94,18 @@ internal static class SymbolWidthCalculator
 
         // Clef
         var clefSymbol = ClefLayoutSymbol.Create(staff.CurrentClef, context);
-        width += clefSymbol.Spacing.Left + clefSymbol.Width + clefSymbol.Spacing.Right;
+        width += clefSymbol.Spacing.Left + clefSymbol.Bounds.Width + clefSymbol.Spacing.Right;
 
         // Key signature (if not C major)
         if (staff.CurrentKeySignature != KeySignature.C)
         {
             var keySymbol = KeySignatureLayoutSymbol.Create(staff.CurrentKeySignature, staff.CurrentClef, context);
-            width += keySymbol.Spacing.Left + keySymbol.Width + keySymbol.Spacing.Right;
+            width += keySymbol.Spacing.Left + keySymbol.Bounds.Width + keySymbol.Spacing.Right;
         }
 
         // Time signature
         var timeSymbol = TimeSignatureLayoutSymbol.Create(new TimeSignature(4, 4), context);
-        width += timeSymbol.Spacing.Left + timeSymbol.Width + timeSymbol.Spacing.Right;
+        width += timeSymbol.Spacing.Left + timeSymbol.Bounds.Width + timeSymbol.Spacing.Right;
 
         return width;
     }

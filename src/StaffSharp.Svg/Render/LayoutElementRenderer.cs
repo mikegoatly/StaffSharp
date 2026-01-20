@@ -27,6 +27,22 @@ internal abstract class LayoutElementRenderer<T>
         );
     }
 
+    protected static void AddBoundsRectangle(XElement group, Bounds bounds, string color)
+    {
+        var rectangle = new XElement(SvgNamespace + "rect",
+            new XAttribute("x", bounds.X),
+            new XAttribute("y", bounds.Y),
+            new XAttribute("width", bounds.Width),
+            new XAttribute("height", bounds.Height),
+            new XAttribute("fill", "none"),
+            new XAttribute("stroke", color),
+            new XAttribute("stroke-width", 0.5),
+            new XAttribute("stroke-dasharray", "4,1")
+        );
+
+        group.Add(rectangle);
+    }
+
     /// <summary>
     /// Renders an accidental glyph at the specified position.
     /// </summary>
@@ -80,15 +96,15 @@ internal abstract class LayoutElementRenderer<T>
     {
         // Stem X is calculated in layout pass and stored in symbol.Stem (absolute coordinates)
         // Convert to relative coordinates (relative to the note/chord group's transform)
-        var layoutElement = (LayoutElement)symbol;
-        var stemX = symbol.Stem.X - layoutElement.X;
+        var stemX = symbol.Stem.X - symbol.Bounds.X;
 
+        var symbolCenter = symbol.Bounds.Y;
         group.Add(
             CreateLine(
                 stemX,
-                symbol.Stem.Y1 - layoutElement.Y,
+                symbol.Stem.Y1 - symbolCenter,
                 stemX,
-                symbol.Stem.Y2 - layoutElement.Y,
+                symbol.Stem.Y2 - symbolCenter,
                 strokeWidth: 1.5));
     }
 
@@ -116,8 +132,8 @@ internal abstract class LayoutElementRenderer<T>
 
         // Position flag at the stem endpoint (relative to note/chord origin)
         var layoutElement = (LayoutElement)symbol;
-        var flagX = symbol.Stem.X - layoutElement.X;
-        var flagY = symbol.Stem.Y2 - layoutElement.Y;
+        var flagX = symbol.Stem.X - layoutElement.Bounds.X;
+        var flagY = symbol.Stem.Y2 - layoutElement.Bounds.Y;
 
         var flagElement = new XElement(SvgNamespace + "path",
             new XAttribute("d", flagPath),
@@ -163,7 +179,7 @@ internal abstract class LayoutElementRenderer<T>
         {
             foreach (var (type, x, y) in noteSymbol.PositionedDecorations)
             {
-                var decorationElement = RenderDecoration(type, x - symbol.X, y - symbol.Y, context);
+                var decorationElement = RenderDecoration(type, x - symbol.Bounds.X, y - symbol.Bounds.Y, context);
                 if (decorationElement != null)
                 {
                     group.Add(decorationElement);
@@ -174,7 +190,7 @@ internal abstract class LayoutElementRenderer<T>
         {
             foreach (var (type, x, y) in chordSymbol.PositionedDecorations)
             {
-                var decorationElement = RenderDecoration(type, x - symbol.X, y - symbol.Y, context);
+                var decorationElement = RenderDecoration(type, x - symbol.Bounds.X, y - symbol.Bounds.Y, context);
                 if (decorationElement != null)
                 {
                     group.Add(decorationElement);
@@ -381,8 +397,8 @@ internal abstract class LayoutElementRenderer<T>
 
         for (int i = 0; i < symbol.DotCount; i++)
         {
-            var dotX = symbol.DotXPositions[i] - symbol.X; // Relative to symbol position
-            var dotYRelative = dotY - symbol.Y;      // Relative to symbol position
+            var dotX = symbol.DotXPositions[i] - symbol.Bounds.X; // Relative to symbol position
+            var dotYRelative = dotY - symbol.Bounds.Y;      // Relative to symbol position
 
             var dotElement = RenderGlyph(
                 MusicGlyphs.AugmentationDot,

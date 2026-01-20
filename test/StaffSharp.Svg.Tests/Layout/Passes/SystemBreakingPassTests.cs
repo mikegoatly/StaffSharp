@@ -234,8 +234,7 @@ public class SystemBreakingPassTests
         {
             var measure = new LayoutMeasure
             {
-                Width = measureWidth,
-                Height = 40.0,
+                Bounds = new(0, 0, measureWidth, 40.0),
                 TimeSignature = TimeSignature.CommonTime
             };
 

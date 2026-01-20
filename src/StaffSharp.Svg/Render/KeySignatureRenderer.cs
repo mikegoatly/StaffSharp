@@ -20,7 +20,7 @@ internal sealed class KeySignatureRenderer : LayoutElementRenderer<KeySignatureL
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "key-signature"),
-            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
+            new XAttribute("transform", CreateTranslate(symbol.Bounds.X, symbol.Bounds.Y))
         );
 
         // Get accidental positions from service (handles all clef types)

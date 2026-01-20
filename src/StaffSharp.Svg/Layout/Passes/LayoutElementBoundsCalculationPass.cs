@@ -25,9 +25,13 @@ internal class LayoutElementBoundsCalculationPass : ILayoutPass
 
     private static void CalculateStaffBounds(LayoutStaff staff, SvgContext context)
     {
-        staff.Height = BoundsCalculator.CalculateStaffBounds(
-            staff,
-            staff.Y,
-            context.StaffSpace).Height;
+        // TODO - I wonder if this should be a method on LayoutStaff, maybe RecalculateBounds(recalcWidth, recalcHeight)?
+        staff.Bounds = staff.Bounds with
+        {
+            Height = BoundsCalculator.CalculateStaffBounds(
+                staff,
+                staff.Bounds.Y,
+                context.StaffSpace).Height
+        };
     }
 }

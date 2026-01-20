@@ -18,7 +18,11 @@ internal sealed class KeySignatureLayoutSymbol : LayoutSymbol
             KeySignature = keySignature,
             Clef = clef,
             TimePosition = -2.0,
-            Width = KeySignatureService.CalculateWidth(keySignature, context),
+            Bounds = new(
+                0, 
+                0, 
+                KeySignatureService.CalculateWidth(keySignature, context), 
+                context.StaffSpace * 4),
             Spacing = KeySignatureService.KeySignatureSpacing(context)
         };
     }

@@ -15,12 +15,12 @@ internal class VerticalPositionPass : ILayoutPass
     {
         foreach (var system in model.Systems)
         {
-            double currentY = system.Y;
+            double currentY = system.Bounds.Y;
 
             foreach (var staff in system.Staves)
             {
                 // Position the staff
-                staff.Y = currentY;
+                staff.Bounds = staff.Bounds with { Y = currentY };
 
                 // Staff baseline (middle line of a 5-line staff) - RELATIVE to staff origin
                 var staffBaseline = 2.0 * context.StaffSpace;
@@ -36,7 +36,7 @@ internal class VerticalPositionPass : ILayoutPass
             }
 
             // Update system height
-            system.Height = currentY - system.Y;
+            system.Bounds = system.Bounds with { Height = currentY - system.Bounds.Y };
         }
     }
 
@@ -47,7 +47,7 @@ internal class VerticalPositionPass : ILayoutPass
             case NoteLayoutSymbol noteSymbol:
                 {
                     var staffPosition = PitchCalculator.PitchToStaffPosition(noteSymbol.Note.Pitch, staff.CurrentClef);
-                    symbol.Y = staffBaseline - (staffPosition * 0.5 * context.StaffSpace);
+                    symbol.Bounds = symbol.Bounds with { Y = staffBaseline - (staffPosition * 0.5 * context.StaffSpace) };
 
                     // Calculate ledger lines needed
                     if (staffPosition > 5)
@@ -69,7 +69,7 @@ internal class VerticalPositionPass : ILayoutPass
 
             case RestLayoutSymbol:
                 // Center rests on the staff
-                symbol.Y = staffBaseline;
+                symbol.Bounds = symbol.Bounds with { Y = staffBaseline };
                 break;
 
             case ChordLayoutSymbol chordSymbol:
@@ -90,7 +90,7 @@ internal class VerticalPositionPass : ILayoutPass
                         }
 
                         // Symbol Y is positioned at the bottom note
-                        symbol.Y = staffBaseline - (lowestPosition * 0.5 * context.StaffSpace);
+                        symbol.Bounds = symbol.Bounds with { Y = staffBaseline - (lowestPosition * 0.5 * context.StaffSpace) };
 
                         // Calculate ledger lines
                         if (highestPosition > 5)
@@ -101,7 +101,7 @@ internal class VerticalPositionPass : ILayoutPass
                             // the offset from the highest note position
                             var highNoteY = staffBaseline - (highestPosition * 0.5 * context.StaffSpace);
                             var offsetAtHighNote = CalculateSpaceNoteOffset(highestPosition, context.StaffSpace);
-                            symbol.FirstLedgerLineOffsetY = (highNoteY - symbol.Y) + offsetAtHighNote;
+                            symbol.FirstLedgerLineOffsetY = (highNoteY - symbol.Bounds.Y) + offsetAtHighNote;
                         }
                         else if (lowestPosition < -5)
                         {
@@ -115,23 +115,22 @@ internal class VerticalPositionPass : ILayoutPass
                 }
 
             case ClefLayoutSymbol clefSymbol:
-                symbol.Y = ClefCalculator.GetClefYPosition(clefSymbol.Clef, context);
+                symbol.Bounds = symbol.Bounds with { Y = ClefCalculator.GetClefYPosition(clefSymbol.Clef, context) };
                 break;
 
             case KeySignatureLayoutSymbol:
                 // Position at top of staff (Y coordinates are relative to staff)
-                symbol.Y = 0;
+                symbol.Bounds = symbol.Bounds with { Y = 0 };
                 break;
 
             case TimeSignatureLayoutSymbol:
                 // Position at top of staff
-                symbol.Y = 0;
+                symbol.Bounds = symbol.Bounds with { Y = 0 };
                 break;
 
             case BarlineLayoutSymbol:
                 // Position at top of staff, spanning full staff height
-                symbol.Y = 0;
-                symbol.Height = 4.0 * context.StaffSpace;  // 5 lines = 4 spaces
+                symbol.Bounds = symbol.Bounds with { Y = 0, Height = 4.0 * context.StaffSpace };  // 5 lines = 4 spaces
                 break;
         }
     }

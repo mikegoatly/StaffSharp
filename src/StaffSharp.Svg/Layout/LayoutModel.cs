@@ -14,14 +14,14 @@ internal class LayoutModel
     /// Gets the total width of all content, calculated from system bounds.
     /// </summary>
     public double TotalWidth => Systems.Count > 0 
-        ? Systems.Max(s => s.X + s.Width) 
+        ? Systems.Max(s => s.Bounds.X2) 
         : 0;
 
     /// <summary>
     /// Gets the total height of all content, calculated from system bounds.
     /// </summary>
     public double TotalHeight => Systems.Count > 0
-        ? Systems.Max(s => s.Y + s.Height)
+        ? Systems.Max(s => s.Bounds.Y2)
         : 0;
 
     /// <summary>

@@ -14,13 +14,13 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         var group = new XElement(
             SvgNamespace + "g",
             new XAttribute("class", "note"),
-            new XAttribute("transform", CreateTranslate(symbol.X, symbol.Y))
+            new XAttribute("transform", CreateTranslate(symbol.Bounds.X, symbol.Bounds.Y))
         );
 
         // Render accidental if present
         if (symbol.Accidental.HasValue)
         {
-            group.Add(RenderAccidental(symbol.Accidental.Value, symbol.AccidentalX, symbol.AccidentalY - symbol.Y, context));
+            group.Add(RenderAccidental(symbol.Accidental.Value, symbol.AccidentalX, symbol.AccidentalY - symbol.Bounds.Y, context));
         }
 
         // Choose notehead based on duration and render it
@@ -49,6 +49,11 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
 
         // Render decorations/articulations
         RenderDecorations(group, symbol, context);
+
+        if (context.RenderDebugArtifacts)
+        {
+            AddBoundsRectangle(group, symbol.Bounds.AtZero(), "green");
+        }
 
         return group;
     }

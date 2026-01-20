@@ -12,7 +12,7 @@ internal class SystemLayoutRenderer : LayoutElementRenderer<LayoutSystem>
     {
         var group = new XElement(SvgNamespace + "g",
             new XAttribute("class", "system"),
-            new XAttribute("transform", CreateTranslate(0, system.Y))
+            new XAttribute("transform", CreateTranslate(0, system.Bounds.Y))
         );
 
         foreach (var staff in system.Staves)

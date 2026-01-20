@@ -57,12 +57,13 @@ internal class DotPositioningPass : ILayoutPass
     {
         // Calculate X positions for each dot
         var noteHeadWidth = context.GetNoteheadWidth(noteSymbol.Note.Duration.Base);
-        var baseX = noteSymbol.X + noteHeadWidth + (DotOffset * context.StaffSpace);
+        var baseX = noteSymbol.Bounds.X + noteHeadWidth + (DotOffset * context.StaffSpace);
 
         // Y position: if note is on a line, move dot to the space above
-        var dotY = IsOnStaffLine(noteSymbol.Y, context)
-            ? noteSymbol.Y - (context.StaffSpace * 0.5)
-            : noteSymbol.Y;
+        var symbolY = noteSymbol.Bounds.Y;
+        var dotY = IsOnStaffLine(symbolY, context)
+            ? symbolY - (context.StaffSpace * 0.5)
+            : symbolY;
 
         PositionAugmentationDots(noteSymbol, context, baseX, dotY);
     }
@@ -71,14 +72,14 @@ internal class DotPositioningPass : ILayoutPass
     {
         // Calculate X positions for each dot
         var restWidth = GetRestWidth(restSymbol.Rest.Duration.Base, context);
-        var baseX = restSymbol.X + restWidth + (DotOffset * context.StaffSpace);
+        var baseX = restSymbol.Bounds.X + restWidth + (DotOffset * context.StaffSpace);
 
         // Add a little padding to the right of the rest for dots - the "bar" rests are wider
         baseX += 0.1 * context.StaffSpace;
 
         // Rest dots typically go in the third space (from bottom)
         // Y position is already set for the rest itself, use same position
-        PositionAugmentationDots(restSymbol, context, baseX, restSymbol.Y);
+        PositionAugmentationDots(restSymbol, context, baseX, restSymbol.Bounds.Y);
     }
 
     private static void PositionAugmentationDots(AugmentationDottedLayoutSymbol symbol, SvgContext context, double baseX, double dotY)
@@ -101,7 +102,7 @@ internal class DotPositioningPass : ILayoutPass
             ? chordSymbol.NoteheadXShifts.Max()
             : 0.0;
 
-        var baseX = chordSymbol.X + noteHeadWidth + maxXShift + (DotOffset * context.StaffSpace);
+        var baseX = chordSymbol.Bounds.X + noteHeadWidth + maxXShift + (DotOffset * context.StaffSpace);
 
         // For chords, find the topmost note and position dots relative to it
         // If topmost note is on a line, move dot to space above
@@ -115,7 +116,7 @@ internal class DotPositioningPass : ILayoutPass
         }
         else
         {
-            dotY = chordSymbol.Y;
+            dotY = chordSymbol.Bounds.Y;
         }
 
         PositionAugmentationDots(chordSymbol, context, baseX, dotY);

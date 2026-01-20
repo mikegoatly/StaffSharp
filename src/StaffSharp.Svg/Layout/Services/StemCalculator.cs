@@ -23,7 +23,7 @@ internal static class StemCalculator
         bool? forceStemDirection = null)
     {
         // Determine stem direction based on average position (for chords) or notehead position (for single notes)
-        var noteheadY = symbol.Y;
+        var noteheadY = symbol.Bounds.Y;
         var avgY = noteheadY;
 
         if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
@@ -51,12 +51,35 @@ internal static class StemCalculator
         // Set stem info
         symbol.Stem = new StemInfo(stemX, stemY1, stemY2, stemUp);
         symbol.Beam = BeamInfo.None;
+
+        // Set note head bounds
+        var noteWidth = context.GetNoteheadWidth(symbol.Duration.Base);
+        if (symbol is NoteLayoutSymbol note)
+        {
+            symbol.NoteHeadBounds = new Bounds(
+                symbol.Bounds.X,
+                symbol.Bounds.Y,
+                noteWidth,
+                context.StaffSpace
+            );
+        }
+        else if (symbol is ChordLayoutSymbol chord && chord.NoteheadYPositions.Count > 0)
+        {
+            var minY = chord.NoteheadYPositions.Min();
+            var maxY = chord.NoteheadYPositions.Max();
+            symbol.NoteHeadBounds = new Bounds(
+                symbol.Bounds.X,
+                minY,
+                noteWidth,
+                maxY - minY + context.StaffSpace
+            );
+        }
     }
 
     private static double GetStemX(IStemmedSymbol symbol, SvgContext context, bool stemUp)
     {
         var noteWidth = context.GetNoteheadWidth(symbol.Duration.Base);
-        return symbol.X + (stemUp ? noteWidth * 0.95 : noteWidth * 0.05);
+        return symbol.Bounds.X + (stemUp ? noteWidth * 0.95 : noteWidth * 0.05);
     }
 
     /// <summary>
@@ -82,7 +105,7 @@ internal static class StemCalculator
             var beamCount = BeamGrouper.GetBeamCount(symbol);
 
             // Calculate stem attachment point (where stem meets notehead)
-            var noteheadY = symbol.Y;
+            var noteheadY = symbol.Bounds.Y;
             if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
             {
                 noteheadY = stemUp ? chordSymbol.NoteheadYPositions.Max() : chordSymbol.NoteheadYPositions.Min();
@@ -98,6 +121,29 @@ internal static class StemCalculator
             var stemX = GetStemX(stemmedSymbol, context, stemUp);
             stemmedSymbol.Stem = new StemInfo(stemX, stemY1, stemY1, stemUp); // Y2 will be updated
             stemmedSymbol.Beam = new BeamInfo(beamGroupId, i == 0, i == layoutGroup.Count - 1, beamCount, false, 0);
+
+            // Set note head bounds
+            var noteWidth = context.GetNoteheadWidth(stemmedSymbol.Duration.Base);
+            if (stemmedSymbol is NoteLayoutSymbol note)
+            {
+                stemmedSymbol.NoteHeadBounds = new Bounds(
+                    stemmedSymbol.Bounds.X,
+                    stemmedSymbol.Bounds.Y,
+                    noteWidth,
+                    context.StaffSpace
+                );
+            }
+            else if (stemmedSymbol is ChordLayoutSymbol chord && chord.NoteheadYPositions.Count > 0)
+            {
+                var minY = chord.NoteheadYPositions.Min();
+                var maxY = chord.NoteheadYPositions.Max();
+                stemmedSymbol.NoteHeadBounds = new Bounds(
+                    stemmedSymbol.Bounds.X,
+                    minY,
+                    noteWidth,
+                    maxY - minY + context.StaffSpace
+                );
+            }
         }
 
         // Calculate slanted beam position based on melodic contour
@@ -178,7 +224,7 @@ internal static class StemCalculator
             {
                 if (symbol is NoteLayoutSymbol noteSymbol)
                 {
-                    avgY += noteSymbol.Y;
+                    avgY += noteSymbol.Bounds.Y;
                 }
                 else if (symbol is ChordLayoutSymbol chordSymbol && chordSymbol.NoteheadYPositions.Count > 0)
                 {
@@ -286,6 +332,6 @@ internal static class StemCalculator
                 : chordSymbol.NoteheadYPositions.Min(); // Top note (lowest Y) for stem down
         }
 
-        return symbol.Y;
+        return symbol.Bounds.Y;
     }
 }

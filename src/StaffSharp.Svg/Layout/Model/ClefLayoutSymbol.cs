@@ -18,8 +18,7 @@ internal sealed class ClefLayoutSymbol : LayoutSymbol
         {
             Clef = clef,
             TimePosition = -3.0,  // Negative time positions sort before measure content
-            Width = ClefCalculator.GetClefWidth(clef, context),
-            Y = ClefCalculator.GetClefYPosition(clef, context),
+            Bounds = ClefCalculator.GetClefBounds(clef, context),
             Spacing = ClefCalculator.ClefSpacing(context)
         };
     }

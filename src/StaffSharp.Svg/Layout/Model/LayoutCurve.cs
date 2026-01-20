@@ -41,7 +41,7 @@ internal class LayoutCurve : LayoutElement
     /// <summary>
     /// X coordinate of the apex point (midpoint between start and end).
     /// </summary>
-    public double ApexX => X + (Width / 2.0);
+    public double ApexX => Bounds.X + (Bounds.Width / 2.0);
 
     /// <summary>
     /// Specifies which ends of the curve should be tapered (pointed) vs square.
@@ -83,13 +83,10 @@ internal class LayoutCurve : LayoutElement
         {
             IsTie = isTie,
             CurveAbove = curveAbove,
-            X = startX,
-            Y = startY,
+            Bounds = new(startX, startY, Math.Abs(endX - startX), Math.Abs(endY - startY)),
             EndX = endX,
             EndY = endY,
             EndTaper = endTaper,
-            Width = Math.Abs(endX - startX),
-            Height = Math.Abs(endY - startY),
             ApexY = apexY
         };
     }
@@ -105,19 +102,16 @@ internal class LayoutCurve : LayoutElement
     {
         // Position above the staff to avoid barlines
         // Staff top line is at Y=0, so negative Y is above the staff
-        var y = system.Y - (context.StaffSpace * 1.5);
+        var y = system.Bounds.Y - (context.StaffSpace * 1.5);
 
         return new LayoutCurve
         {
             IsTie = isTie,
             CurveAbove = true,
-            X = system.X,
-            Y = y,
-            EndX = system.X + system.Width,
+            Bounds = new(system.Bounds.X, y, system.Bounds.Width, 2.0),
+            EndX = system.Bounds.X + system.Bounds.Width,
             EndY = y,
             EndTaper = CurveEndTaper.None,
-            Width = system.Width,
-            Height = 2.0,
             ApexY = y + 2.0
         };
     }

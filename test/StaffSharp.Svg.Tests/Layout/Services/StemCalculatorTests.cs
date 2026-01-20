@@ -64,7 +64,7 @@ public class StemCalculatorTests
         {
             Note = new NotationNote(new Pitch(PitchClass.C, 4), SymbolicDuration.Quarter),
             VoiceNumber = 1,
-            Y = 60.0
+            Bounds = new Bounds(0, 60, 0, 0),
         };
         var staffBaseline = 50.0;
 
@@ -83,7 +83,7 @@ public class StemCalculatorTests
         {
             Note = new NotationNote(new Pitch(PitchClass.C, 4), SymbolicDuration.Quarter),
             VoiceNumber = 2,
-            Y = 60.0
+            Bounds = new Bounds(0, 60, 0, 0),
         };
         var staffBaseline = 50.0;
 
@@ -278,15 +278,13 @@ public class StemCalculatorTests
             {
                 Note = new NotationNote(new Pitch(PitchClass.C, 4), SymbolicDuration.Eighth),
                 VoiceNumber = 2,
-                Y = 60.0,
-                X = 10.0
+                Bounds = new Bounds(10, 60, 0, 0)
             },
             new NoteLayoutSymbol
             {
                 Note = new NotationNote(new Pitch(PitchClass.D, 4), SymbolicDuration.Eighth),
                 VoiceNumber = 2,
-                Y = 65.0,
-                X = 20.0
+                Bounds = new Bounds(20, 65, 0, 0),
             }
         };
         var staffBaseline = 50.0;
@@ -343,7 +341,7 @@ public class StemCalculatorTests
         // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Bounds.Y };
         }
 
         var staffBaseline = 50.0;
@@ -353,12 +351,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert - all notes should have at least minimum stem length
-        foreach (var symbol in group)
-        {
-            var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
-            Assert.True(actualStemLength >= minStemLength - 0.01, // Small tolerance
-                $"Stem length {actualStemLength} should be at least {minStemLength}");
-        }
+        AssertNotesHaveMinimumStemLength(group, minStemLength);
     }
 
     [Fact]
@@ -376,7 +369,7 @@ public class StemCalculatorTests
         // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Bounds.Y };
         }
 
         var staffBaseline = 50.0;
@@ -386,12 +379,7 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert - the middle notes (especially the highest one) should still have minimum stem length
-        foreach (var symbol in group)
-        {
-            var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
-            Assert.True(actualStemLength >= minStemLength - 0.01,
-                $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
-        }
+        AssertNotesHaveMinimumStemLength(group, minStemLength);
     }
 
     [Fact]
@@ -409,7 +397,7 @@ public class StemCalculatorTests
         // Set Stem.Y1 to simulate notehead positions
         for (int i = 0; i < group.Count; i++)
         {
-            group[i].Stem = group[i].Stem with { Y1 = group[i].Y };
+            group[i].Stem = group[i].Stem with { Y1 = group[i].Bounds.Y };
         }
 
         var staffBaseline = 50.0;
@@ -419,11 +407,16 @@ public class StemCalculatorTests
         StemCalculator.CalculateBeamedGroupStems(group, staffBaseline, _context);
 
         // Assert - the middle notes (especially the lowest one) should still have minimum stem length
+        AssertNotesHaveMinimumStemLength(group, minStemLength);
+    }
+
+    private static void AssertNotesHaveMinimumStemLength(List<NoteLayoutSymbol> group, double minStemLength)
+    {
         foreach (var symbol in group)
         {
             var actualStemLength = Math.Abs(symbol.Stem.Y2 - symbol.Stem.Y1);
             Assert.True(actualStemLength >= minStemLength - 0.01,
-                $"Note at Y={symbol.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
+                $"Note at Y={symbol.Bounds.Y} has stem length {actualStemLength}, expected at least {minStemLength}");
         }
     }
 }

@@ -26,8 +26,11 @@ internal class LayoutBoundsCalculationPass : ILayoutPass
     private static void CalculateSystemBounds(LayoutSystem system, SvgContext context)
     {
         var interStaffSpacing = 2.0 * context.StaffSpace;
-        system.Height = BoundsCalculator.CalculateSystemHeight(
-            system,
-            interStaffSpacing);
+
+        // TODO - I wonder if this should be a method on LayoutSystem, maybe RecalculateBounds(recalcWidth, recalcHeight)?
+        system.Bounds = system.Bounds with
+        {
+            Height = BoundsCalculator.CalculateSystemHeight(system, interStaffSpacing)
+        };
     }
 }
