@@ -10,11 +10,11 @@ internal abstract class LayoutElement : ILayoutElement
     public Bounds Bounds { get; set; }
 
     /// <summary>
-    /// Virtual implementation that does nothing by default.
-    /// Override in derived classes to implement specific bounds calculation logic.
+    /// Offsets the bounds by the given amounts.
+    /// Override in derived classes to also offset child elements.
     /// </summary>
-    public virtual void UpdateBounds(SvgContext context)
+    public virtual void Offset(double dx, double dy)
     {
-        // Default: no-op
+        Bounds = Bounds.Offset(dx, dy);
     }
 }

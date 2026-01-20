@@ -17,12 +17,12 @@ internal class StaffLayoutRenderer : LayoutElementRenderer<LayoutStaff>
             new XAttribute("transform", CreateTranslate(0, staffY))
         );
 
-        // Draw 5 staff lines
+        // Draw 5 staff lines at StaffYOffset
         var staffX = staff.Bounds.X;
         var staffWidth = staff.Bounds.Width;
         for (int i = 0; i < 5; i++)
         {
-            var y = i * context.StaffSpace;
+            var y = staff.StaffYOffset + (i * context.StaffSpace);
             var x1 = staffX;
             var x2 = staffX + staffWidth;
             group.Add(CreateLine(x1, y, x2, y, strokeWidth: 0.5));

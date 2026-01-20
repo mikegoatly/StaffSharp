@@ -61,4 +61,34 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
             return NoteheadYPositions.Count > 0 ? NoteheadYPositions.Max() : Bounds.Y;
         }
     }
+
+    public override void Offset(double dx, double dy)
+    {
+        base.Offset(dx, dy);
+
+        // Offset notehead Y positions
+        for (int i = 0; i < NoteheadYPositions.Count; i++)
+        {
+            NoteheadYPositions[i] += dy;
+        }
+
+        // Offset accidental Y positions
+        for (int i = 0; i < AccidentalYPositions.Count; i++)
+        {
+            AccidentalYPositions[i] += dy;
+        }
+
+        // Offset stem positions
+        Stem = Stem with { Y1 = Stem.Y1 + dy, Y2 = Stem.Y2 + dy };
+
+        // Offset note head bounds
+        NoteHeadBounds = NoteHeadBounds.Offset(dx, dy);
+
+        // Offset positioned decorations
+        for (int i = 0; i < PositionedDecorations.Count; i++)
+        {
+            var (type, x, y) = PositionedDecorations[i];
+            PositionedDecorations[i] = (type, x + dx, y + dy);
+        }
+    }
 }

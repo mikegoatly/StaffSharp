@@ -5,9 +5,10 @@
         Bounds Bounds { get; set; }
 
         /// <summary>
-        /// Updates the bounds of this element based on its current properties.
+        /// Offsets all positions (X, Y) in this element by the given amounts.
+        /// Used to shift content when adjusting layout bounds.
         /// </summary>
-        void UpdateBounds(SvgContext context);
+        void Offset(double dx, double dy);
     }
 
     internal readonly record struct Bounds(double X, double Y, double Width, double Height)
@@ -18,6 +19,11 @@
         internal Bounds AtZero()
         {
             return this with { X = 0, Y = 0 };
+        }
+
+        internal Bounds Offset(double dx, double dy)
+        {
+            return this with { X = X + dx, Y = Y + dy };
         }
     }
 }

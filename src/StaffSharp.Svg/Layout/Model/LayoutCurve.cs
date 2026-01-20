@@ -16,27 +16,27 @@ internal class LayoutCurve : LayoutElement
     /// <summary>
     /// True if this is a tie (same pitch), false if slur (different pitches).
     /// </summary>
-    public bool IsTie { get; init; }
+    public bool IsTie { get; set; }
 
     /// <summary>
     /// True if the curve should arc above the notes, false if below.
     /// </summary>
-    public bool CurveAbove { get; init; }
+    public bool CurveAbove { get; set; }
 
     /// <summary>
     /// X coordinate of the curve end.
     /// </summary>
-    public double EndX { get; init; }
+    public double EndX { get; set; }
 
     /// <summary>
     /// Y coordinate of the curve end.
     /// </summary>
-    public double EndY { get; init; }
+    public double EndY { get; set; }
 
     /// <summary>
     /// Y coordinate of the apex point (highest/lowest point of the curve).
     /// </summary>
-    public double ApexY { get; init; }
+    public double ApexY { get; set; }
 
     /// <summary>
     /// X coordinate of the apex point (midpoint between start and end).
@@ -114,5 +114,15 @@ internal class LayoutCurve : LayoutElement
             EndTaper = CurveEndTaper.None,
             ApexY = y + 2.0
         };
+    }
+
+    public override void Offset(double dx, double dy)
+    {
+        base.Offset(dx, dy);
+
+        // Offset curve end and apex positions
+        EndX += dx;
+        EndY += dy;
+        ApexY += dy;
     }
 }

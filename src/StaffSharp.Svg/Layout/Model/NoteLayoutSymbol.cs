@@ -43,4 +43,25 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
         // If stem goes down, bottom is at the notehead
         return Stem.Up ? Stem.Y2 : Bounds.Y;
     }
+
+    public override void Offset(double dx, double dy)
+    {
+        base.Offset(dx, dy);
+
+        // Offset accidental position
+        AccidentalY += dy;
+
+        // Offset stem positions
+        Stem = Stem with { Y1 = Stem.Y1 + dy, Y2 = Stem.Y2 + dy };
+
+        // Offset note head bounds
+        NoteHeadBounds = NoteHeadBounds.Offset(dx, dy);
+
+        // Offset positioned decorations
+        for (int i = 0; i < PositionedDecorations.Count; i++)
+        {
+            var (type, x, y) = PositionedDecorations[i];
+            PositionedDecorations[i] = (type, x + dx, y + dy);
+        }
+    }
 }
