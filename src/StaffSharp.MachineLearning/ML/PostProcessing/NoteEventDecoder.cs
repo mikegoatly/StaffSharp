@@ -113,8 +113,6 @@ internal sealed class NoteEventDecoder
                 if (explicitStop)
                 {
                     // If Offset Head fires, we trust it and stop immediately.
-                    // (Unless you want to ignore offsets due to low F1 score, 
-                    //  but usually explicit offset > 0.5 is trustworthy).
                     TryCreateNote(midiNote, activeNoteStartFrame.Value, frameIndex, activeNoteVelocity, frameDuration, notes);
                     activeNoteStartFrame = null;
                     activeNoteVelocity = 0f;
@@ -173,7 +171,7 @@ internal sealed class NoteEventDecoder
         // Filter min length
         if (durationSeconds < _options.MinNoteLengthSeconds) return;
 
-        // Note: MinVelocity check is done at Onset detection now, 
+        // Note: MinVelocity check is done at Onset detection, 
         // but can be repeated here if logic changes.
 
         var onset = TimeSpan.FromSeconds(startFrame * frameDuration);

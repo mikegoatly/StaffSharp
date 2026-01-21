@@ -19,6 +19,9 @@
         <Style Selector="TextBlock.subheading">
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="MinWidth" Value="170" />
+        </Style>
     </UserControl.Styles>
 
     <Design.DataContext>
@@ -46,9 +49,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Onset Threshold" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.00"
-                            Increment="0.05"
+                            FormatString="0.00000"
+                            Increment="0.001"
                             Maximum="1.0"
                             Minimum="0.0"
                             Value="{Binding Options.OnsetThreshold}" />
@@ -57,9 +59,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Frame Threshold" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.00"
-                            Increment="0.05"
+                            FormatString="0.00000"
+                            Increment="0.001"
                             Maximum="1.0"
                             Minimum="0.0"
                             Value="{Binding Options.FrameThreshold}" />
@@ -68,9 +69,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Offset Threshold" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.00"
-                            Increment="0.05"
+                            FormatString="0.00000"
+                            Increment="0.001"
                             Maximum="1.0"
                             Minimum="0.0"
                             Value="{Binding Options.OffsetThreshold}" />
@@ -79,9 +79,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Min Note Length (seconds)" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.000"
-                            Increment="0.01"
+                            FormatString="0.00000"
+                            Increment="0.001"
                             Maximum="1.0"
                             Minimum="0.001"
                             Value="{Binding Options.MinNoteLengthSeconds}" />
@@ -90,9 +89,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Min Gap (seconds)" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.000"
-                            Increment="0.01"
+                            FormatString="0.00000"
+                            Increment="0.001"
                             Maximum="0.5"
                             Minimum="0.001"
                             Value="{Binding Options.MinGapSeconds}" />
@@ -101,8 +99,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Min Velocity" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.00"
+
+                            FormatString="0.00000"
                             Increment="0.05"
                             Maximum="1.0"
                             Minimum="0.0"
@@ -112,8 +110,8 @@
                         <TextBlock VerticalAlignment="Center" Text="Min Frame For Onset" />
                         <NumericUpDown
                             Grid.Column="1"
-                            Width="120"
-                            FormatString="0.00"
+
+                            FormatString="0.00000"
                             Increment="0.05"
                             Maximum="1.0"
                             Minimum="0.0"
@@ -129,7 +127,7 @@
                     <TextBlock VerticalAlignment="Center" Text="SVG Width" />
                     <NumericUpDown
                         Grid.Column="1"
-                        Width="120"
+
                         Increment="100"
                         Maximum="3000"
                         Minimum="400"
