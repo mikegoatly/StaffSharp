@@ -9,6 +9,7 @@
     <Project Path="src/StaffSharp.Cli/StaffSharp.Cli.csproj" />
     <Project Path="src/StaffSharp.Core/StaffSharp.Core.csproj" />
     <Project Path="src/StaffSharp.Abc/StaffSharp.Abc.csproj" />
+    <Project Path="src/StaffSharp.Json/StaffSharp.Json.csproj" />
     <Project Path="src/StaffSharp.MachineLearning/StaffSharp.MachineLearning.csproj" Id="7fd24833-dc94-e6bb-63da-2d634977c187" />
     <Project Path="src/StaffSharp.Midi/StaffSharp.Midi.csproj" />
     <Project Path="src/StaffSharp.MusicXml/StaffSharp.MusicXml.csproj" />
@@ -19,6 +20,7 @@
     <Project Path="test/StaffSharp.Audio.Tests/StaffSharp.Audio.Tests.csproj" />
     <Project Path="test/StaffSharp.Core.Tests/StaffSharp.Core.Tests.csproj" Id="cfcc95b0-f1fc-4634-a82a-98445a4ee61f" />
     <Project Path="test/StaffSharp.Abc.Tests/StaffSharp.Abc.Tests.csproj" />
+    <Project Path="test/StaffSharp.Json.Tests/StaffSharp.Json.Tests.csproj" />
     <Project Path="test/StaffSharp.MachineLearning.Tests/StaffSharp.MachineLearning.Tests.csproj" Id="e8329d32-943a-1067-3f5f-b78f73f7efeb" />
     <Project Path="test/StaffSharp.Midi.Tests/StaffSharp.Midi.Tests.csproj" />
     <Project Path="test/StaffSharp.MusicXml.Tests/StaffSharp.MusicXml.Tests.csproj" />

@@ -9,6 +9,7 @@ using StaffSharp.Audio;
 using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Demo.Services;
 using StaffSharp.Demo.Services.Audio;
+using StaffSharp.Json;
 using StaffSharp.Notation;
 using StaffSharp.Synthesis;
 
@@ -539,6 +540,32 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task SaveJsonAsync()
+    {
+        if (StorageProvider == null || Score == null)
+        {
+            return;
+        }
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save JSON File",
+            SuggestedFileName = $"{ScoreTitle ?? "output"}.json",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("JSON File") { Patterns = ["*.json"] }
+            ]
+        });
+
+        if (file != null)
+        {
+            StatusMessage = "Generating JSON...";
+            await _conversionService.ExportAsync(file.Path.LocalPath, Score, SettingsFlyout.Options);
+            StatusMessage = $"Saved JSON to {file.Name}";
+        }
+    }
+
 
     [RelayCommand]
     private async Task CopySvgAsync()
@@ -582,6 +609,42 @@ public partial class MainViewModel : ViewModelBase
         if (this.AbcText is not null)
         {
             await _clipboardService.SetTextAsync(this.AbcText);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CopyJsonAsync()
+    {
+        if (Score == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!_clipboardService.IsAvailable)
+            {
+                StatusMessage = "Clipboard not available";
+                return;
+            }
+
+            StatusMessage = "Generating JSON...";
+
+            // Generate JSON to memory stream
+            using var memoryStream = new MemoryStream();
+            var jsonExporter = new JsonScoreExporter();
+            await jsonExporter.ExportAsync(Score, memoryStream, SettingsFlyout.Options.ExportOptions.ToDictionary());
+
+            memoryStream.Position = 0;
+            using var reader = new StreamReader(memoryStream);
+            var jsonContent = await reader.ReadToEndAsync();
+
+            await _clipboardService.SetTextAsync(jsonContent);
+            StatusMessage = "JSON copied to clipboard";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error copying JSON: {ex.Message}";
         }
     }
 

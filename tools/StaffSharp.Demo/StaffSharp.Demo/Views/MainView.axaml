@@ -104,6 +104,7 @@
                                 <MenuItem Command="{Binding SaveSvgCommand}" Header="SVG" />
                                 <MenuItem Command="{Binding SaveAbcCommand}" Header="ABC Notation" />
                                 <MenuItem Command="{Binding SaveMidiCommand}" Header="MIDI" />
+                                <MenuItem Command="{Binding SaveJsonCommand}" Header="JSON" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -122,6 +123,7 @@
                             <MenuFlyout Placement="BottomEdgeAlignedLeft">
                                 <MenuItem Command="{Binding CopySvgCommand}" Header="SVG" />
                                 <MenuItem Command="{Binding CopyAbcCommand}" Header="ABC Notation" />
+                                <MenuItem Command="{Binding CopyJsonCommand}" Header="JSON" />
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>

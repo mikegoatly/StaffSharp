@@ -1,10 +1,9 @@
 using StaffSharp.Abc.Importing;
 using StaffSharp.Audio;
-using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.Demo.ViewModels;
-using StaffSharp.MachineLearning;
+using StaffSharp.Json;
 using StaffSharp.Midi;
 using StaffSharp.MusicXml;
 using StaffSharp.Notation;
@@ -52,7 +51,8 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
         var exporters = new IScoreExporter[]
         {
             new MidiScoreExporter(),
-            new SvgScoreExporter()
+            new SvgScoreExporter(),
+            new JsonScoreExporter()
         };
 
         var dict = new Dictionary<string, IScoreExporter>(StringComparer.OrdinalIgnoreCase);
@@ -143,7 +143,7 @@ internal sealed class ConversionService : IConversionService, IProgress<ImportPr
         }
     }
 
-    
+
 
     public async Task ExportAsync(
         string fileName,

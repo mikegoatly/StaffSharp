@@ -2,6 +2,7 @@ namespace StaffSharp.Cli;
 
 using StaffSharp;
 using StaffSharp.Abc.Importing;
+using StaffSharp.Json;
 using StaffSharp.Midi;
 using StaffSharp.MusicXml;
 
@@ -38,7 +39,8 @@ internal static class FormatRegistry
         var exporters = new IScoreExporter[]
         {
             new MidiScoreExporter(),
-            new SvgScoreExporter()
+            new SvgScoreExporter(),
+            new JsonScoreExporter()
         };
 
         var dict = new Dictionary<string, IScoreExporter>(StringComparer.OrdinalIgnoreCase);
@@ -49,6 +51,7 @@ internal static class FormatRegistry
                 dict[ext] = exporter;
             }
         }
+
         return dict;
     }
 
