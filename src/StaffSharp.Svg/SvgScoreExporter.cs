@@ -23,7 +23,8 @@ public class SvgScoreExporter : IScoreExporter
         new("maxWidth", "Maximum width of a system in pixels before line break", "1024"),
         new("scale", "Global scale multiplier for staff-space units to pixels", "1.0"),
         new("margins", "Margins in pixels: left,right,top,bottom", "40,40,40,40"),
-        new("staffSpace", "Pixels between staff lines", "10")
+        new("staffSpace", "Pixels between staff lines", "10"),
+        new("renderDebugArtifacts", "Render debug artifacts (true/false)", "false")
     ];
 
     /// <inheritdoc />
@@ -51,6 +52,7 @@ public class SvgScoreExporter : IScoreExporter
         var margins = marginsStr.Split(',').Select(s => int.Parse(s, CultureInfo.InvariantCulture)).ToArray();
         var staffSpace = int.Parse(options?.GetValueOrDefault("staffSpace") ?? "10", CultureInfo.InvariantCulture);
         var bailAfterPass = options?.GetValueOrDefault("bailAfterPass");
+        var renderDebugArtifacts = bool.Parse(options?.GetValueOrDefault("renderDebugArtifacts") ?? "false");
 
         return new SvgContext
         {
@@ -59,6 +61,7 @@ public class SvgScoreExporter : IScoreExporter
             Margins = new Margins(margins[0], margins[1], margins[2], margins[3]),
             StaffSpace = staffSpace,
             BailAfterPass = bailAfterPass,
+            RenderDebugArtifacts = renderDebugArtifacts,
             NoteHeadWholeWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadWhole, staffSpace),
             NoteHeadHalfWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadHalf, staffSpace),
             NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, staffSpace)

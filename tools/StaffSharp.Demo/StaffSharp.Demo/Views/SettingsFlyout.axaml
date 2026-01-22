@@ -123,15 +123,18 @@
 
             <StackPanel Spacing="8">
                 <TextBlock Classes="subheading" Text="Rendering" />
-                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
                     <TextBlock VerticalAlignment="Center" Text="SVG Width" />
                     <NumericUpDown
                         Grid.Column="1"
-
                         Increment="100"
                         Maximum="3000"
                         Minimum="400"
                         Value="{Binding Options.ExportOptions.MaxWidth}" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                    <TextBlock VerticalAlignment="Center" Text="Render Debug Artifacts" />
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding Options.ExportOptions.RenderDebugArtifacts}" />
                 </Grid>
             </StackPanel>
         </StackPanel>
