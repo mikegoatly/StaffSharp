@@ -10,15 +10,7 @@ namespace StaffSharp.Cli;
 /// </summary>
 internal sealed class AudioScoreImporter : IScoreImporter
 {
-    private string? _modelPath;
-    private float? _onsetThreshold;
-    private float? _frameThreshold;
-    private float? _offsetThreshold;
-    private float? _minNoteLength;
-    private float? _minGapSeconds;
-    private float? _minVelocity;
-    private float? _minFrameForOnset;
-    private bool _useMl;
+    private MLTranscriptionOptions? _mlOptions;
 
     public string FormatName => "Audio (WAV)";
 
@@ -37,15 +29,46 @@ internal sealed class AudioScoreImporter : IScoreImporter
         float? minVelocity,
         float? minFrameForOnset)
     {
-        _useMl = true;
-        _modelPath = modelPath;
-        _onsetThreshold = onsetThreshold;
-        _frameThreshold = frameThreshold;
-        _offsetThreshold = offsetThreshold;
-        _minNoteLength = minNoteLength;
-        _minGapSeconds = minGapSeconds;
-        _minVelocity = minVelocity;
-        _minFrameForOnset = minFrameForOnset;
+        _mlOptions = new MLTranscriptionOptions
+        {
+            ModelPath = modelPath,
+        };
+
+        // Don't override the default options unless specified
+        if (onsetThreshold is not null)
+        {
+            _mlOptions = _mlOptions with { OnsetThreshold = onsetThreshold.GetValueOrDefault() };
+        }
+
+        if (frameThreshold is not null)
+        {
+            _mlOptions = _mlOptions with { FrameThreshold = frameThreshold.GetValueOrDefault() };
+        }
+
+        if (offsetThreshold is not null)
+        {
+            _mlOptions = _mlOptions with { OffsetThreshold = offsetThreshold.GetValueOrDefault() };
+        }
+
+        if (minNoteLength is not null)
+        {
+            _mlOptions = _mlOptions with { MinNoteLengthSeconds = minNoteLength.GetValueOrDefault() };
+        }
+
+        if (minGapSeconds is not null)
+        {
+            _mlOptions = _mlOptions with { MinGapSeconds = minGapSeconds.GetValueOrDefault() };
+        }
+
+        if (minVelocity is not null)
+        {
+            _mlOptions = _mlOptions with { MinVelocity = minVelocity.GetValueOrDefault() };
+        }
+
+        if (minFrameForOnset is not null)
+        {
+            _mlOptions = _mlOptions with { MinFrameForOnset = minFrameForOnset.GetValueOrDefault() };
+        }
     }
 
     public async Task<NotationScore> ImportAsync(
@@ -56,54 +79,13 @@ internal sealed class AudioScoreImporter : IScoreImporter
         var options = new AudioPipelineOptions
         {
             Progress = progress,
-            DiagnosticsCollector = progress is not null ? new CliDiagnosticsCollector() : null,
+            DiagnosticsCollector = progress is not null ? CliDiagnosticsCollector.Instance : null,
         };
 
         // Configure ML note detector if requested
-        if (_useMl)
+        if (_mlOptions is not null)
         {
-            var mlOptions = new MLTranscriptionOptions
-            { 
-                ModelPath = _modelPath,
-            };
-
-            // Don't override the default options unless specified
-            if (_onsetThreshold is { } onsetThreshold)
-            {
-                mlOptions = mlOptions with { OnsetThreshold = onsetThreshold };
-            }
-
-            if (_frameThreshold is { } frameThreshold)
-            {
-                mlOptions = mlOptions with { FrameThreshold = frameThreshold };
-            }
-
-            if (_offsetThreshold is { } offsetThreshold)
-            {
-                mlOptions = mlOptions with { OffsetThreshold = offsetThreshold };
-            }
-
-            if (_minNoteLength is { } minNoteLength)
-            {
-                mlOptions = mlOptions with { MinNoteLengthSeconds = minNoteLength };
-            }
-
-            if (_minGapSeconds is { } minGapSeconds)
-            {
-                mlOptions = mlOptions with { MinGapSeconds = minGapSeconds };
-            }
-
-            if (_minVelocity is { } minVelocity)
-            {
-                mlOptions = mlOptions with { MinVelocity = minVelocity };
-            }
-
-            if (_minFrameForOnset is { } minFrameForOnset)
-            {
-                mlOptions = mlOptions with { MinFrameForOnset = minFrameForOnset };
-            }
-
-            options.NoteDetector = MLNoteDetector.Create(mlOptions);
+            options.NoteDetector = MLNoteDetector.Create(_mlOptions);
         }
 
         return await AudioPipeline.FromWavAsync(stream, options, cancellationToken);

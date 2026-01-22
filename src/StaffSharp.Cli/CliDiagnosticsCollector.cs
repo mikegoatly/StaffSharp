@@ -6,18 +6,38 @@ namespace StaffSharp.Cli;
 
 internal sealed class CliDiagnosticsCollector : IDiagnosticsCollector
 {
+    internal static CliDiagnosticsCollector Instance { get; } = new();
+
+    public int MaxArrayLengthForDisplay { get; set; } = 20;
+    public Dictionary<string, (int offset, int length)> ArrayOffsetsByKey { get; } = [];
+    public HashSet<string> Filters { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public void Collect<T>(string stageName, string key, T value)
     {
+        if (Filters.Count > 0 && !Filters.Contains(key))
+        {
+            return;
+        }
+
         // Format arrays nicely
         string formattedValue;
         if (value is Array array)
         {
-            var items = new List<string>();
-            foreach (var item in array)
+            int offset = 0;
+            int length = MaxArrayLengthForDisplay;
+            if (ArrayOffsetsByKey.TryGetValue(key, out var explicitItemConfig))
+            {
+                offset = explicitItemConfig.offset;
+                length = explicitItemConfig.length;
+            }
+
+            var items = new List<string>(); 
+            foreach (var item in array.Cast<object?>().Skip(offset).Take(length))
             {
                 items.Add(item?.ToString() ?? "null");
             }
-            formattedValue = $"[{string.Join(", ", items)}]";
+
+            formattedValue = $"[{(offset > 0 ? $"{{{offset} omitted}} " : "" )}{string.Join(", ", items)}{(array.Length > offset + length ? $" {{... {array.Length - (offset + length)} omitted}}" : "")}]";
         }
         else
         {

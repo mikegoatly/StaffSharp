@@ -31,6 +31,7 @@ internal static class FormatRegistry
                 dict[ext] = importer;
             }
         }
+
         return dict;
     }
 
