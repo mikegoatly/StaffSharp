@@ -5,15 +5,14 @@ using StaffSharp.Performance;
 namespace StaffSharp.Audio.Analysis.Tempo;
 
 /// <summary>
-/// Tempo detector based on inter-onset intervals (IOI).
+/// Tempo detector based on inter-onset intervals (IOI). Assumes steady tempo throughout piece.
 /// Analyzes the time gaps between note onsets to estimate BPM.
-/// Returns a TempoMap with a single tempo at beat 0.
+/// Returns a single tempo at beat 0.
 /// </summary>
 public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
 {
     private readonly double _minBpm;
     private readonly double _maxBpm;
-    private readonly TimeSignature _defaultTimeSignature;
 
     public InterOnsetIntervalTempoDetector(TempoDetectionOptions? options = null)
     {
@@ -22,10 +21,11 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
 
         _minBpm = options.MinBpm;
         _maxBpm = options.MaxBpm;
-        _defaultTimeSignature = options.DefaultTimeSignature ?? TimeSignature.CommonTime; // 4/4
     }
 
-    public TempoMap DetectTempo(PipelineProgress progress, ReadOnlySpan<double> onsetTimes)
+    public IReadOnlyList<TempoChange> DetectTempo(
+        PipelineProgress progress,
+        ReadOnlySpan<double> onsetTimes)
     {
         ArgumentNullException.ThrowIfNull(progress);
         if (onsetTimes.Length < 2)
@@ -63,11 +63,8 @@ public sealed class InterOnsetIntervalTempoDetector : ITempoDetector
         // Step 4: Convert to BPM
         var bpm = 60.0 / predominantInterval;
 
-        // Step 5: Create TempoMap with single tempo at beat 0
-        var tempoChanges = new[] { new TempoChange(Rational.Zero, bpm) };
-        var timeSignatures = new[] { new TimeSignatureChange(Rational.Zero, _defaultTimeSignature) };
-
-        return new TempoMap(tempoChanges, timeSignatures);
+        // Return single tempo at beat 0
+        return [new TempoChange(Rational.Zero, bpm)];
     }
 
     /// <summary>

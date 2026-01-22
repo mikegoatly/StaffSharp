@@ -106,25 +106,27 @@ public sealed class MLNoteDetector(
 
         // Step 4: Detect time signature and tempo
         var timeSignatures = timeSignatureDetector.DetectTimeSignatures(progress, onsetTimes);
-        var estimatedTempo = tempoDetector.DetectTempo(progress, onsetTimes);
 
-        // Validate detectors returned non-null results
+        // Validate time signatures
         if (timeSignatures == null || timeSignatures.Count == 0)
         {
             timeSignatures = [new TimeSignatureChange(Rational.Zero, Notation.TimeSignature.CommonTime)];
         }
 
-        if (estimatedTempo == null || estimatedTempo.TempoChanges.Count == 0)
+        // Detect tempo
+        var tempoChanges = tempoDetector.DetectTempo(progress, onsetTimes);
+
+        if (tempoChanges == null || tempoChanges.Count == 0)
         {
-            throw new InvalidOperationException("Tempo detection failed - detector returned null or empty tempo map.");
+            throw new InvalidOperationException("Tempo detection failed - detector returned null or empty tempo changes.");
         }
 
-        var detectedTempo = estimatedTempo.TempoChanges[0].BeatsPerMinute;
+        var detectedTempo = tempoChanges[0].BeatsPerMinute;
         progress.EmitDiagnostics("Estimated tempo (BPM)", detectedTempo);
         progress.EmitDiagnostics("Time signatures", timeSignatures.Count);
 
         // Combine detected tempo and time signatures into a single TempoMap
-        var finalTempoMap = new TempoMap(estimatedTempo.TempoChanges, timeSignatures);
+        var finalTempoMap = new TempoMap(tempoChanges, timeSignatures);
 
         progress.ReportProgress("Quantizing note events");
 
