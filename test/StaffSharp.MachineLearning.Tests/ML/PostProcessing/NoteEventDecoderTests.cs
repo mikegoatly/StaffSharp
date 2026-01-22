@@ -1,6 +1,5 @@
 namespace StaffSharp.MachineLearning.Tests.ML.PostProcessing;
 
-using StaffSharp;
 using StaffSharp.MachineLearning.ML.Models;
 using StaffSharp.MachineLearning.ML.PostProcessing;
 using StaffSharp.MachineLearning.Options;
@@ -10,6 +9,16 @@ public sealed class NoteEventDecoderTests
     private const int SampleRate = 16000;
     private const int HopSize = 512;
     private const int FrameRate = SampleRate / HopSize; // 31.25 fps
+    private static readonly MLTranscriptionOptions _options = new()
+    {
+        OnsetThreshold = 0.5f,
+        OffsetThreshold = 0.5f,
+        FrameThreshold = 0.5f,
+        MinNoteLengthSeconds = 0.05f,
+        MinGapSeconds = 0.05f,
+        MinVelocity = 0.1f,
+        MinFrameForOnset = 0.3f,
+    };
 
     // Helper method to create test results with correct signature
     private static PolyphonicTranscriptionResult CreateResult(
@@ -22,7 +31,7 @@ public sealed class NoteEventDecoderTests
     {
         var numFrames = pianoRoll.GetLength(0);
         var numKeys = pianoRoll.GetLength(1);
-        
+
         return new PolyphonicTranscriptionResult(
             PianoRoll: pianoRoll,
             OnsetRoll: onsetRoll,
@@ -37,7 +46,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithNullResult_ThrowsArgumentNullException()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => decoder.Decode(null!));
@@ -47,7 +56,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithInvalidPianoRollSize_ThrowsArgumentException()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         var result = CreateResult(
             pianoRoll: new float[10, 80], // Wrong key count
             onsetRoll: new float[10, 88]
@@ -62,7 +71,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithInvalidOnsetRollSize_ThrowsArgumentException()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         var result = CreateResult(
             pianoRoll: new float[10, 88],
             onsetRoll: new float[10, 80] // Wrong key count
@@ -77,7 +86,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithInvalidVelocityRollSize_ThrowsArgumentException()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         var result = new PolyphonicTranscriptionResult(
             PianoRoll: new float[10, 88],
             OnsetRoll: new float[10, 88],
@@ -96,7 +105,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithZeroFrameRate_ThrowsArgumentException()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         var result = CreateResult(
             pianoRoll: new float[10, 88],
             onsetRoll: new float[10, 88],
@@ -112,7 +121,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithEmptyResult_ReturnsEmptyList()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         var result = CreateResult(
             pianoRoll: new float[0, 88],
             onsetRoll: new float[0, 88]
@@ -129,7 +138,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithSingleNote_ReturnsOneNoteEvent()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
 
         // Create a simple test: C4 (middle C, MIDI 60 = key index 39) plays for 10 frames
         const int numFrames = 20;
@@ -170,7 +179,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithMultipleNotesOnSameKey_ReturnsAllNotes()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 50;
         const int keyIndex = 39; // C4
 
@@ -213,7 +222,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithChord_ReturnsMultipleSimultaneousNotes()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 20;
 
         // C major chord: C4 (39), E4 (43), G4 (46)
@@ -255,7 +264,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithReArticulation_EndsFirstNoteAndStartsSecond()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 30;
         const int keyIndex = 39; // C4
 
@@ -299,11 +308,12 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithThresholdOptions_RespectsOnsetThreshold()
     {
         // Arrange
-        var options = new MLTranscriptionOptions
+        var options = _options with
         {
             OnsetThreshold = 0.7f, // High threshold
             FrameThreshold = 0.5f
         };
+
         var decoder = new NoteEventDecoder(options);
 
         const int numFrames = 20;
@@ -334,7 +344,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithThresholdOptions_RespectsFrameThreshold()
     {
         // Arrange
-        var options = new MLTranscriptionOptions
+        var options = _options with
         {
             OnsetThreshold = 0.5f,
             FrameThreshold = 0.8f // High threshold
@@ -376,7 +386,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithMinNoteLengthFilter_FiltersShortNotes()
     {
         // Arrange
-        var options = new MLTranscriptionOptions
+        var options = _options with
         {
             MinNoteLengthSeconds = 0.1f // 100ms minimum
         };
@@ -410,7 +420,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithZeroVelocity_FiltersNote()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 20;
         const int keyIndex = 39;
 
@@ -439,7 +449,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithNoteActiveAtEnd_CreatesNoteToEndOfAudio()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 20;
         const int keyIndex = 39;
 
@@ -470,7 +480,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_ReturnsNotesSortedByOnset()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 40;
 
         var pianoRoll = new float[numFrames, 88];
@@ -513,7 +523,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithVelocityOutOfRange_ClampsToValidRange()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 20;
         const int keyIndex = 39;
 
@@ -543,7 +553,7 @@ public sealed class NoteEventDecoderTests
     public void Decode_WithAllPianoKeys_HandlesFullRange()
     {
         // Arrange
-        var decoder = new NoteEventDecoder();
+        var decoder = new NoteEventDecoder(_options);
         const int numFrames = 20;
 
         var pianoRoll = new float[numFrames, 88];

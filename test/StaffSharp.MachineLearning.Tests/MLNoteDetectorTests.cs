@@ -7,11 +7,23 @@ using StaffSharp.TestHelpers.Builders;
 
 public sealed class MLNoteDetectorTests
 {
+    // Use lenient thresholds for testing with synthetic audio
+    private static readonly MLTranscriptionOptions _options = new()
+    {
+        OnsetThreshold = 0.5f,
+        OffsetThreshold = 0.5f,
+        FrameThreshold = 0.5f,
+        MinNoteLengthSeconds = 0.05f,
+        MinGapSeconds = 0.05f,
+        MinVelocity = 0.1f,
+        MinFrameForOnset = 0.3f,
+    };
+
     [Fact]
     public async Task DetectAsync_WithLeadingSilence_TrimsFromNoteOnsets()
     {
         // Arrange
-        using var detector = MLNoteDetector.Create();
+        using var detector = new MLNoteDetector(_options);
 
         const int sampleRate = 16000;
         const double leadingSilenceDuration = 2.0; // 2 seconds of silence
@@ -52,7 +64,7 @@ public sealed class MLNoteDetectorTests
     public async Task DetectAsync_WithoutLeadingSilence_PreservesOnsets()
     {
         // Arrange
-        using var detector = MLNoteDetector.Create();
+        using var detector = new MLNoteDetector(_options);
 
         const int sampleRate = 16000;
         const double noteDuration = 0.25; // quarter note
@@ -92,7 +104,7 @@ public sealed class MLNoteDetectorTests
     public async Task DetectAsync_WithNullAudio_ThrowsArgumentNullException()
     {
         // Arrange
-        using var detector = MLNoteDetector.Create();
+        using var detector = new MLNoteDetector(_options);
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(

@@ -8,6 +8,12 @@ namespace StaffSharp.Audio.Analysis.Tempo;
 public record TempoDetectionOptions
 {
     /// <summary>
+    /// Gets or initializes the tempo detection algorithm to use.
+    /// Default: <see cref="TempoDetectorType.CombFilter"/>.
+    /// </summary>
+    public TempoDetectorType DetectorType { get; init; } = TempoDetectorType.CombFilter;
+
+    /// <summary>
     /// Gets or initializes the minimum detectable tempo in BPM.
     /// Default: 40.0 BPM.
     /// </summary>

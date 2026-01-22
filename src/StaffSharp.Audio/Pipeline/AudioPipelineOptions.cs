@@ -39,7 +39,7 @@ public sealed record AudioPipelineOptions
     /// </summary>
     private static AlgorithmicNoteDetector CreateDefaultNoteDetector()
     {
-        return AlgorithmicNoteDetector.Create();
+        return new AlgorithmicNoteDetector();
     }
 
     /// <summary>

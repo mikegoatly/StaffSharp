@@ -51,7 +51,7 @@ internal record SvgContext
     /// <remarks>Enable this property to display additional visual elements or overlays that assist in
     /// debugging or development. These artifacts are not intended for production use and may affect performance or
     /// output appearance.</remarks>
-    public bool RenderDebugArtifacts { get; set; } = true;
+    public bool RenderDebugArtifacts { get; set; }
 
     /// <summary>
     /// Registers a glyph as used during rendering.

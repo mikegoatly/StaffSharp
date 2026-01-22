@@ -47,6 +47,9 @@ internal static partial class ConvertCommand
     private static readonly Option<float?> minVelocityOption = new("--min-velocity") { Description = "Minimum velocity threshold for onset detection (0.0-1.0, default: 0.1)" };
     private static readonly Option<float?> minFrameForOnsetOption = new("--min-frame-for-onset") { Description = "Minimum frame probability required for onset validation (0.0-1.0, default: 0.3)" };
 
+    // Tempo detection options
+    private static readonly Option<string?> tempoDetectorOption = new("--tempo-detector") { Description = "Tempo detection algorithm: 'comb-filter' (default, robust) or 'inter-onset' (simple, faster)" };
+
     // Diagnostic options
     private static readonly Option<int> maxDiagnosticArrayLengthOption = new("--max-diagnostic-array-length")
     {
@@ -86,6 +89,7 @@ internal static partial class ConvertCommand
         command.Options.Add(minGapSecondsOption);
         command.Options.Add(minVelocityOption);
         command.Options.Add(minFrameForOnsetOption);
+        command.Options.Add(tempoDetectorOption);
 
         command.Options.Add(maxDiagnosticArrayLengthOption);
         command.Options.Add(explicitDiagnosticsRangeExtractionOption);
@@ -320,6 +324,14 @@ internal static partial class ConvertCommand
 
     private static void ConfigureAudioScoreImporter(ParseResult parseResult, AudioScoreImporter audioImporter)
     {
+        // Configure tempo detector
+        var tempoDetector = parseResult.GetValue(tempoDetectorOption);
+        if (!string.IsNullOrEmpty(tempoDetector))
+        {
+            audioImporter.ConfigureTempoDetector(tempoDetector);
+        }
+
+        // Configure ML note detection if requested
         var useMl = parseResult.GetValue(useMlOption);
         if (useMl)
         {

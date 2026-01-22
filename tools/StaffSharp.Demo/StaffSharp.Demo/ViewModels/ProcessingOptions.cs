@@ -67,8 +67,8 @@ public partial class ProcessingOptions : ObservableObject
     public AudioPipelineOptions CreateAudioPipelineOptions(IDiagnosticsCollector diagnosticsCollector)
     {
         INoteDetector noteDetector = UseMachineLearning
-            ? MLNoteDetector.Create(CreateMLTranscriptionOptions())
-            : AlgorithmicNoteDetector.Create(); // TODO pass options as AlgorithmicNoteDetectorOptions when available
+            ? new MLNoteDetector(CreateMLTranscriptionOptions())
+            : new AlgorithmicNoteDetector();
 
         return new AudioPipelineOptions
         {

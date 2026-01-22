@@ -48,7 +48,7 @@ public class MLPipelineIntegrationTests(ITestOutputHelper outputHelper)
 
         options = (options ?? new AudioPipelineOptions()) with
         {
-            NoteDetector = MLNoteDetector.Create(),
+            NoteDetector = new MLNoteDetector(),
             DiagnosticsCollector = new XUnitDiagnosticsCollector(outputHelper)
         };
 

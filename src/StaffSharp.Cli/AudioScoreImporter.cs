@@ -1,3 +1,5 @@
+using StaffSharp.Audio.Analysis;
+using StaffSharp.Audio.Analysis.Tempo;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning;
 using StaffSharp.MachineLearning.Options;
@@ -11,10 +13,27 @@ namespace StaffSharp.Cli;
 internal sealed class AudioScoreImporter : IScoreImporter
 {
     private MLTranscriptionOptions? _mlOptions;
+    private TempoDetectionOptions? _tempoOptions;
 
     public string FormatName => "Audio (WAV)";
 
     public IReadOnlyList<string> SupportedExtensions => [".wav"];
+
+    /// <summary>
+    /// Configures the tempo detection algorithm.
+    /// </summary>
+    /// <param name="detectorType">Detector type: 'comb-filter' or 'inter-onset'.</param>
+    public void ConfigureTempoDetector(string detectorType)
+    {
+        var type = detectorType.ToUpperInvariant() switch
+        {
+            "COMB-FILTER" or "COMB" => TempoDetectorType.CombFilter,
+            "INTER-ONSET" or "IOI" => TempoDetectorType.InterOnsetInterval,
+            _ => throw new ArgumentException($"Unknown tempo detector type: {detectorType}. Use 'comb-filter' or 'inter-onset'.")
+        };
+
+        _tempoOptions = new TempoDetectionOptions { DetectorType = type };
+    }
 
     /// <summary>
     /// Configures ML-based note detection options.
@@ -82,11 +101,21 @@ internal sealed class AudioScoreImporter : IScoreImporter
             DiagnosticsCollector = progress is not null ? CliDiagnosticsCollector.Instance : null,
         };
 
-        // Configure ML note detector if requested
+        // Configure note detector
         if (_mlOptions is not null)
         {
-            options.NoteDetector = MLNoteDetector.Create(_mlOptions);
+            // Use ML note detector
+            options.NoteDetector = new MLNoteDetector(_mlOptions);
         }
+        else if (_tempoOptions is not null)
+        {
+            // Use algorithmic note detector with custom tempo options
+            options.NoteDetector = new AlgorithmicNoteDetector(new AlgorithmicNoteDetectorOptions
+            {
+                TempoOptions = _tempoOptions
+            });
+        }
+        // else: use default (new AlgorithmicNoteDetector() with all defaults)
 
         return await AudioPipeline.FromWavAsync(stream, options, cancellationToken);
     }
