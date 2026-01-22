@@ -25,6 +25,47 @@ public record TempoDetectionOptions
     /// </summary>
     public TimeSignature? DefaultTimeSignature { get; init; }
 
+    // ========================================================================
+    // Comb Filter Tempo Detector Options
+    // ========================================================================
+
+    /// <summary>
+    /// Target BPM for perceptual weighting (center of log-Gaussian distribution).
+    /// Used by <see cref="CombFilterTempoDetector"/> to favor "human" tempos.
+    /// Default: 110.0 BPM (typical pop/rock tempo).
+    /// </summary>
+    public double TargetBpm { get; init; } = 110.0;
+
+    /// <summary>
+    /// Width of perceptual weighting distribution in BPM (FWHM).
+    /// Used by <see cref="CombFilterTempoDetector"/>.
+    /// Default: 30.0 BPM.
+    /// </summary>
+    public double WidthBpm { get; init; } = 30.0;
+
+    /// <summary>
+    /// Number of future onsets to consider when computing all-pairs intervals.
+    /// Higher values handle longer rests but increase computation time.
+    /// Used by <see cref="CombFilterTempoDetector"/>.
+    /// Default: 10.
+    /// </summary>
+    public int PairwiseWindow { get; init; } = 10;
+
+    /// <summary>
+    /// Tolerance for comb filter scoring as a fraction of beat duration.
+    /// E.g., 0.05 = 5% of the beat duration. Tighter for fast tempos.
+    /// Used by <see cref="CombFilterTempoDetector"/>.
+    /// Default: 0.05.
+    /// </summary>
+    public double ToleranceRatio { get; init; } = 0.05;
+
+    /// <summary>
+    /// Tolerance for interval clustering in seconds.
+    /// Intervals within this distance are grouped together.
+    /// Used by <see cref="CombFilterTempoDetector"/>.
+    /// Default: 0.015 seconds (15ms).
+    /// </summary>
+    public double ClusterToleranceSeconds { get; init; } = 0.015;
 
     /// <summary>
     /// Validates the options.
@@ -35,6 +76,26 @@ public record TempoDetectionOptions
         if (MinBpm <= 0 || MaxBpm <= MinBpm)
         {
             throw new ArgumentException("Invalid BPM range: MinBpm must be positive and less than MaxBpm");
+        }
+
+        if (TargetBpm <= 0 || WidthBpm <= 0)
+        {
+            throw new ArgumentException("TargetBpm and WidthBpm must be positive");
+        }
+
+        if (PairwiseWindow < 1)
+        {
+            throw new ArgumentException("PairwiseWindow must be at least 1");
+        }
+
+        if (ToleranceRatio <= 0 || ToleranceRatio >= 1)
+        {
+            throw new ArgumentException("ToleranceRatio must be between 0 and 1");
+        }
+
+        if (ClusterToleranceSeconds <= 0)
+        {
+            throw new ArgumentException("ClusterToleranceSeconds must be positive");
         }
     }
 }
