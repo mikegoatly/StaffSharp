@@ -42,7 +42,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, returnedTempoMap) = quantizer.Quantize(
             ReadOnlySpan<double>.Empty,
             ReadOnlySpan<int>.Empty,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Empty(notes);
@@ -61,7 +60,6 @@ public class SimpleMonophonicQuantizerTests
             quantizer.Quantize(
                 onsets,
                 pitches,
-                new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
                 tempoMap));
     }
 
@@ -81,7 +79,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(notes);
@@ -111,7 +108,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(4, notes.Count);
@@ -150,7 +146,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(4, notes.Count);
@@ -183,7 +178,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(3, notes.Count);
@@ -212,7 +206,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(2, notes.Count);
@@ -234,7 +227,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(3, notes.Count);
@@ -261,7 +253,6 @@ public class SimpleMonophonicQuantizerTests
         var (notes, _) = quantizer.Quantize(
             onsets,
             pitches,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(notes);

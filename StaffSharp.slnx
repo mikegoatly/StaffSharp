@@ -30,11 +30,14 @@
   <Folder Name="/tools/">
     <File Path="tools/.editorconfig" />
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.Android/StaffSharp.Demo.Android.csproj" Id="be264ba1-6df5-4887-b362-e93fc4309bd7">
+      <Build Project="false" />
       <Deploy Solution="Debug|*" />
     </Project>
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.Browser/StaffSharp.Demo.Browser.csproj" Id="4947a212-ba59-4e06-968d-ffe99d407f42" />
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.Desktop/StaffSharp.Demo.Desktop.csproj" Id="d477d948-50bc-40a5-b2c6-738202d4aac5" />
-    <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.iOS/StaffSharp.Demo.iOS.csproj" Id="e35492ea-c149-4748-9fe6-3fa02704ad70" />
+    <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.iOS/StaffSharp.Demo.iOS.csproj" Id="e35492ea-c149-4748-9fe6-3fa02704ad70">
+      <Build Project="false" />
+    </Project>
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo/StaffSharp.Demo.csproj" Id="d3c5287f-637c-42ba-802d-f977896fbb9b" />
     <Project Path="tools/StaffSharp.SvgRenderDebug/StaffSharp.SvgRenderDebug.csproj" Id="ef879355-bdfd-43ad-b817-c068e79de1ef" />
   </Folder>

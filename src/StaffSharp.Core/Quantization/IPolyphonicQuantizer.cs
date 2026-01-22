@@ -13,11 +13,9 @@ public interface IPolyphonicQuantizer
     /// Snaps both onsets and offsets to musical time, preserving polyphony.
     /// </summary>
     /// <param name="notes">Note events with onset, duration, pitch, and velocity.</param>
-    /// <param name="timeSignatures">Detected time signature changes.</param>
-    /// <param name="estimatedTempo">Estimated tempo from onset analysis.</param>
+    /// <param name="tempoMap">Tempo map containing tempo changes and time signatures.</param>
     /// <returns>Quantized note events and refined tempo map.</returns>
     (IReadOnlyList<QuantizedNoteEvent> Notes, TempoMap TempoMap) Quantize(
         IReadOnlyList<NoteEvent> notes,
-        IReadOnlyList<TimeSignatureChange> timeSignatures,
-        TempoMap estimatedTempo);
+        TempoMap tempoMap);
 }

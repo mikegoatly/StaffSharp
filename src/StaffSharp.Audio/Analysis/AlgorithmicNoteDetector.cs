@@ -102,13 +102,15 @@ public sealed class AlgorithmicNoteDetector(
             .ExecuteAsync(onsets, pitches, ct).ConfigureAwait(false);
 
         // Detect tempo
-        var tempoMap = tempoDetector.DetectTempo(progress with { StageName = "Detect tempo" }, filteredOnsets);
+        var estimatedTempo = tempoDetector.DetectTempo(progress with { StageName = "Detect tempo" }, filteredOnsets);
+
+        // Combine detected tempo and time signatures into a single TempoMap
+        var tempoMap = new TempoMap(estimatedTempo.TempoChanges, timeSignatures);
 
         // Quantize (infers durations from onset spacing)
         var (quantizedNotes, refinedTempoMap) = quantizer.Quantize(
             filteredOnsets,
             filteredPitches,
-            timeSignatures,
             tempoMap);
 
         return new PerformanceTimeline(refinedTempoMap, quantizedNotes);

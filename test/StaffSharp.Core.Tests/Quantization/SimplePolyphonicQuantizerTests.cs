@@ -32,7 +32,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (notes, returnedTempoMap) = quantizer.Quantize(
             Array.Empty<NoteEvent>(),
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Empty(notes);
@@ -63,7 +62,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -107,7 +105,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(3, quantizedNotes.Count);
@@ -158,7 +155,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(2, quantizedNotes.Count);
@@ -194,7 +190,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -229,7 +224,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -260,7 +254,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -291,7 +284,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -324,7 +316,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Single(quantizedNotes);
@@ -365,7 +356,6 @@ public class SimplePolyphonicQuantizerTests
 
         var (quantizedNotes, _) = quantizer.Quantize(
             notes,
-            new[] { new TimeSignatureChange(Rational.Zero, TimeSignature.CommonTime) },
             tempoMap);
 
         Assert.Equal(4, quantizedNotes.Count);

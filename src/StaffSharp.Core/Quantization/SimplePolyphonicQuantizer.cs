@@ -23,25 +23,23 @@ public sealed class SimplePolyphonicQuantizer : IPolyphonicQuantizer
 
     public (IReadOnlyList<QuantizedNoteEvent> Notes, TempoMap TempoMap) Quantize(
         IReadOnlyList<NoteEvent> notes,
-        IReadOnlyList<TimeSignatureChange> timeSignatures,
-        TempoMap estimatedTempo)
+        TempoMap tempoMap)
     {
         ArgumentNullException.ThrowIfNull(notes);
-        ArgumentNullException.ThrowIfNull(timeSignatures);
-        ArgumentNullException.ThrowIfNull(estimatedTempo);
+        ArgumentNullException.ThrowIfNull(tempoMap);
 
         if (notes.Count == 0)
         {
-            return (Array.Empty<QuantizedNoteEvent>(), estimatedTempo);
+            return (Array.Empty<QuantizedNoteEvent>(), tempoMap);
         }
 
-        if (estimatedTempo.TempoChanges.Count == 0)
+        if (tempoMap.TempoChanges.Count == 0)
         {
             throw new ArgumentException("TempoMap must have at least one tempo");
         }
 
         // Assume single tempo for the simple quantizer
-        var bpm = estimatedTempo.TempoChanges[0].BeatsPerMinute;
+        var bpm = tempoMap.TempoChanges[0].BeatsPerMinute;
         var secondsPerBeat = 60.0 / bpm;
 
         var quantizedNotes = new List<QuantizedNoteEvent>(notes.Count);
@@ -86,7 +84,7 @@ public sealed class SimplePolyphonicQuantizer : IPolyphonicQuantizer
             ));
         }
 
-        return (quantizedNotes, estimatedTempo);
+        return (quantizedNotes, tempoMap);
     }
 
     /// <summary>

@@ -123,13 +123,13 @@ public sealed class MLNoteDetector(
         progress.EmitDiagnostics("Estimated tempo (BPM)", detectedTempo);
         progress.EmitDiagnostics("Time signatures", timeSignatures.Count);
 
+        // Combine detected tempo and time signatures into a single TempoMap
+        var finalTempoMap = new TempoMap(estimatedTempo.TempoChanges, timeSignatures);
+
         progress.ReportProgress("Quantizing note events");
 
         // Step 5: Quantize note events (snap to rhythmic grid)
-        var (quantizedNotes, refinedTempoMap) = quantizer.Quantize(
-            noteEvents,
-            timeSignatures,
-            estimatedTempo);
+        var (quantizedNotes, refinedTempoMap) = quantizer.Quantize(noteEvents, finalTempoMap);
 
         progress.EmitDiagnostics("Quantized note count", quantizedNotes.Count);
 

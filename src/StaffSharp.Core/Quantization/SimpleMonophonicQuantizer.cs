@@ -26,15 +26,13 @@ public sealed class SimpleMonophonicQuantizer : IMonophonicQuantizer
     public (IReadOnlyList<QuantizedNoteEvent> Notes, TempoMap TempoMap) Quantize(
         ReadOnlySpan<double> onsets,
         ReadOnlySpan<int> pitches,
-        IReadOnlyList<TimeSignatureChange> timeSignatures,
-        TempoMap estimatedTempo)
+        TempoMap tempoMap)
     {
-        ArgumentNullException.ThrowIfNull(timeSignatures);
-        ArgumentNullException.ThrowIfNull(estimatedTempo);
+        ArgumentNullException.ThrowIfNull(tempoMap);
 
         if (onsets.Length == 0)
         {
-            return (Array.Empty<QuantizedNoteEvent>(), estimatedTempo);
+            return (Array.Empty<QuantizedNoteEvent>(), tempoMap);
         }
 
         if (onsets.Length != pitches.Length)
@@ -42,13 +40,13 @@ public sealed class SimpleMonophonicQuantizer : IMonophonicQuantizer
             throw new ArgumentException("Onset times and pitches must have same length");
         }
 
-        if (estimatedTempo.TempoChanges.Count == 0)
+        if (tempoMap.TempoChanges.Count == 0)
         {
             throw new ArgumentException("TempoMap must have at least one tempo");
         }
 
         // Assume single tempo for the simple quantizer
-        var bpm = estimatedTempo.TempoChanges[0].BeatsPerMinute;
+        var bpm = tempoMap.TempoChanges[0].BeatsPerMinute;
         var secondsPerBeat = 60.0 / bpm;
 
         var notes = new List<QuantizedNoteEvent>(onsets.Length);
@@ -120,7 +118,7 @@ public sealed class SimpleMonophonicQuantizer : IMonophonicQuantizer
             ));
         }
 
-        return (notes, estimatedTempo);
+        return (notes, tempoMap);
     }
 
     /// <summary>
