@@ -35,6 +35,11 @@ internal record SvgContext
     internal double NoteHeadBlackWidth { get; set; }
 
     /// <summary>
+    /// Gets or sets the amount of space taken by <see cref="StaffSpace"/> divided by 2.
+    /// </summary>
+    internal double HalfStaffSpace { get; set; }
+
+    /// <summary>
     /// Horizontal spacing between notes in staff spaces.
     /// </summary>
     public double NoteSpacing { get; set; } = 2;

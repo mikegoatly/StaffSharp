@@ -64,7 +64,8 @@ public class SvgScoreExporter : IScoreExporter
             RenderDebugArtifacts = renderDebugArtifacts,
             NoteHeadWholeWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadWhole, staffSpace),
             NoteHeadHalfWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadHalf, staffSpace),
-            NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, staffSpace)
+            NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, staffSpace),
+            HalfStaffSpace = staffSpace / 2D,
         };
     }
 

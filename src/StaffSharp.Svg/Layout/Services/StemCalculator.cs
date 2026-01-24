@@ -51,29 +51,6 @@ internal static class StemCalculator
         // Set stem info
         symbol.Stem = new StemInfo(stemX, stemY1, stemY2, stemUp);
         symbol.Beam = BeamInfo.None;
-
-        // Set note head bounds
-        var noteWidth = context.GetNoteheadWidth(symbol.Duration.Base);
-        if (symbol is NoteLayoutSymbol note)
-        {
-            symbol.NoteHeadBounds = new Bounds(
-                symbol.Bounds.X,
-                symbol.Bounds.Y,
-                noteWidth,
-                context.StaffSpace
-            );
-        }
-        else if (symbol is ChordLayoutSymbol chord && chord.NoteheadYPositions.Count > 0)
-        {
-            var minY = chord.NoteheadYPositions.Min();
-            var maxY = chord.NoteheadYPositions.Max();
-            symbol.NoteHeadBounds = new Bounds(
-                symbol.Bounds.X,
-                minY,
-                noteWidth,
-                maxY - minY + context.StaffSpace
-            );
-        }
     }
 
     private static double GetStemX(IStemmedSymbol symbol, SvgContext context, bool stemUp)
@@ -121,29 +98,6 @@ internal static class StemCalculator
             var stemX = GetStemX(stemmedSymbol, context, stemUp);
             stemmedSymbol.Stem = new StemInfo(stemX, stemY1, stemY1, stemUp); // Y2 will be updated
             stemmedSymbol.Beam = new BeamInfo(beamGroupId, i == 0, i == layoutGroup.Count - 1, beamCount, false, 0);
-
-            // Set note head bounds
-            var noteWidth = context.GetNoteheadWidth(stemmedSymbol.Duration.Base);
-            if (stemmedSymbol is NoteLayoutSymbol note)
-            {
-                stemmedSymbol.NoteHeadBounds = new Bounds(
-                    stemmedSymbol.Bounds.X,
-                    stemmedSymbol.Bounds.Y,
-                    noteWidth,
-                    context.StaffSpace
-                );
-            }
-            else if (stemmedSymbol is ChordLayoutSymbol chord && chord.NoteheadYPositions.Count > 0)
-            {
-                var minY = chord.NoteheadYPositions.Min();
-                var maxY = chord.NoteheadYPositions.Max();
-                stemmedSymbol.NoteHeadBounds = new Bounds(
-                    stemmedSymbol.Bounds.X,
-                    minY,
-                    noteWidth,
-                    maxY - minY + context.StaffSpace
-                );
-            }
         }
 
         // Calculate slanted beam position based on melodic contour

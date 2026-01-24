@@ -50,11 +50,6 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         // Render decorations/articulations
         RenderDecorations(group, symbol, context);
 
-        if (context.RenderDebugArtifacts)
-        {
-            AddBoundsRectangle(group, symbol.Bounds.AtZero(), "green");
-        }
-
         return group;
     }
 }

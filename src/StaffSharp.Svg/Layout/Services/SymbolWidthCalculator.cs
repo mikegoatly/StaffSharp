@@ -154,7 +154,7 @@ internal static class SymbolWidthCalculator
     {
         return barlineType switch
         {
-            BarlineType.Normal => 0.5 * context.StaffSpace,
+            BarlineType.Normal => context.HalfStaffSpace,
             BarlineType.DoubleBar => 0.6 * context.StaffSpace,
             BarlineType.Final => 0.8 * context.StaffSpace,
             BarlineType.RepeatStart => 1.5 * context.StaffSpace,  // Needs space for dots

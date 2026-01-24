@@ -6,27 +6,51 @@ using StaffSharp.Layout.Model;
 using StaffSharp.Layout.Services;
 
 /// <summary>
-/// Shifts noteheads in chords to avoid collisions when notes are a second apart.
+/// Calculates bounds for noteheads of all stemmed symbols, and position noteheads in chords to 
+/// avoid collisions when notes are a second apart.
 /// </summary>
-internal class HeadShiftPass : ILayoutPass
+internal class NoteHeadPass : ILayoutPass
 {
     public void Run(LayoutModel model, SvgContext context)
     {
         foreach (var staff in model.Systems.SelectMany(s => s.Staves))
         {
-            foreach (var symbol in staff.Measures.SelectMany(m => m.Symbols.OfType<ChordLayoutSymbol>()))
+            foreach (var symbol in staff.Measures.SelectMany(m => m.Symbols.OfType<IStemmedSymbol>()))
             {
+                // Set note head bounds
+                var noteWidth = context.GetNoteheadWidth(symbol.Duration.Base);
 
-                ProcessChord(symbol, staff, context);
+                if (symbol is ChordLayoutSymbol chordSymbol)
+                {
+                    var hasHeadShifts = ProcessChord(chordSymbol, staff, context);
+
+                    var minY = chordSymbol.NoteheadYPositions.Min();
+                    var maxY = chordSymbol.NoteheadYPositions.Max();
+                    symbol.NoteHeadBounds = new Bounds(
+                        symbol.Bounds.X,
+                        minY - context.HalfStaffSpace,
+                        noteWidth + (hasHeadShifts ? noteWidth * 0.5 : 0D),
+                        maxY - minY + context.StaffSpace
+                    );
+                }
+                else if (symbol is NoteLayoutSymbol note)
+                {
+                    symbol.NoteHeadBounds = new Bounds(
+                        symbol.Bounds.X,
+                        symbol.Bounds.Y - context.HalfStaffSpace,
+                        noteWidth,
+                        context.StaffSpace
+                    );
+                }
             }
         }
     }
 
-    private static void ProcessChord(ChordLayoutSymbol chordSymbol, LayoutStaff staff, SvgContext context)
+    private static bool ProcessChord(ChordLayoutSymbol chordSymbol, LayoutStaff staff, SvgContext context)
     {
         if (chordSymbol.NoteheadYPositions.Count < 2)
         {
-            return; // No collision possible
+            return false; // No collision possible
         }
 
         // Get the actual notehead width for this chord's duration
@@ -48,6 +72,7 @@ internal class HeadShiftPass : ILayoutPass
         // In traditional notation:
         // - For stem-up chords: shift upper note right (higher staff position = later in array)
         // - For stem-down chords: shift lower note right (lower staff position = earlier in array)
+        var hasHeadShifts = false;
         for (int i = 0; i < pitchesWithPositions.Count - 1; i++)
         {
             var pitch1 = pitchesWithPositions[i].Pitch;
@@ -71,11 +96,15 @@ internal class HeadShiftPass : ILayoutPass
                     // Shift lower note right (earlier in array = lower staff position)
                     headShifts[i] = shiftDistance;
                 }
+
+                hasHeadShifts = true;
             }
         }
 
         // Store the shifts in the chord symbol for rendering
         chordSymbol.NoteheadXShifts.Clear();
         chordSymbol.NoteheadXShifts.AddRange(headShifts);
+
+        return hasHeadShifts;
     }
 }

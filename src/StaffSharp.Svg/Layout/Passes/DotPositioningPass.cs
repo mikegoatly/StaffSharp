@@ -62,7 +62,7 @@ internal class DotPositioningPass : ILayoutPass
         // Y position: if note is on a line, move dot to the space above
         var symbolY = noteSymbol.Bounds.Y;
         var dotY = IsOnStaffLine(symbolY, context)
-            ? symbolY - (context.StaffSpace * 0.5)
+            ? symbolY - context.HalfStaffSpace
             : symbolY;
 
         PositionAugmentationDots(noteSymbol, context, baseX, dotY);
@@ -111,7 +111,7 @@ internal class DotPositioningPass : ILayoutPass
         {
             var topNoteY = chordSymbol.NoteheadYPositions.Min(); // Min Y is topmost note
             dotY = IsOnStaffLine(topNoteY, context)
-                ? topNoteY - (context.StaffSpace * 0.5)
+                ? topNoteY - context.HalfStaffSpace
                 : topNoteY;
         }
         else

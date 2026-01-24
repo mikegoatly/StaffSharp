@@ -46,7 +46,7 @@ internal class HorizontalPositionPass : ILayoutPass
                         // All symbols at this time get the same X position
                         foreach (var symbol in timeGroup)
                         {
-                            symbol.Bounds = symbol.Bounds with { X = symbolX };
+                            symbol.Offset(symbolX, 0D);
                         }
 
                         // Advance by total width: left padding + symbol width + right padding

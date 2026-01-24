@@ -19,7 +19,7 @@ internal sealed class BeamRenderer : LayoutElementRenderer<IGrouping<int, IStemm
         if (symbols.Count < 2) return group;
 
         var stemUp = symbols[0].Stem.Up;
-        var beamThickness = 0.5 * context.StaffSpace;
+        var beamThickness = context.HalfStaffSpace;
         var beamGap = 0.25 * context.StaffSpace;
 
         // Use pre-calculated beam positions from layout (stored in StemY2 and StemX)

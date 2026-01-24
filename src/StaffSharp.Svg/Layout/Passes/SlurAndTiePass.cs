@@ -123,7 +123,7 @@ internal sealed class SlurAndTiePass : ILayoutPass
             else
             {
                 // Case 2: Starts here, continues to next system
-                var endX = startSystem.Bounds.X2 - (context.StaffSpace * 0.5);
+                var endX = startSystem.Bounds.X2 - context.HalfStaffSpace;
                 var endY = startSymbol.Stem.Up
                     ? startSymbol.Bounds.Y + (context.StaffSpace * 2.0)
                     : startSymbol.Bounds.Y - (context.StaffSpace * 2.0);
@@ -145,7 +145,7 @@ internal sealed class SlurAndTiePass : ILayoutPass
         else if (endSymbolInfo is { Symbol: { } endSymbol, System: { } endSystem, Measure: { } endMeasure })
         {
             // Case 3: Ends here, started in previous system
-            var startX = endSystem.Bounds.X + (context.StaffSpace * 0.5);
+            var startX = endSystem.Bounds.X + context.HalfStaffSpace;
             var startY = endSymbol.Stem.Up
                 ? endSymbol.Bounds.Y + (context.StaffSpace * 2.0)
                 : endSymbol.Bounds.Y - (context.StaffSpace * 2.0);

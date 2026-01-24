@@ -85,12 +85,12 @@ internal class VerticalPositionPass : ILayoutPass
                         // Store individual notehead positions
                         foreach (var pos in positions)
                         {
-                            var y = staffBaseline - (pos * 0.5 * context.StaffSpace);
+                            var y = staffBaseline - (pos * context.HalfStaffSpace);
                             chordSymbol.NoteheadYPositions.Add(y);
                         }
 
                         // Symbol Y is positioned at the bottom note
-                        symbol.Bounds = symbol.Bounds with { Y = staffBaseline - (lowestPosition * 0.5 * context.StaffSpace) };
+                        symbol.Bounds = symbol.Bounds with { Y = staffBaseline - (lowestPosition * context.HalfStaffSpace) };
 
                         // Calculate ledger lines
                         if (highestPosition > 5)
@@ -99,7 +99,7 @@ internal class VerticalPositionPass : ILayoutPass
                             symbol.LedgerLinesAbove = true;
                             // Offset is relative to the chord's Y (bottom note), so we need to calculate
                             // the offset from the highest note position
-                            var highNoteY = staffBaseline - (highestPosition * 0.5 * context.StaffSpace);
+                            var highNoteY = staffBaseline - (highestPosition * context.HalfStaffSpace);
                             var offsetAtHighNote = CalculateSpaceNoteOffset(highestPosition, context.StaffSpace);
                             symbol.FirstLedgerLineOffsetY = (highNoteY - symbol.Bounds.Y) + offsetAtHighNote;
                         }

@@ -26,7 +26,7 @@ internal sealed class CurveRenderer : LayoutElementRenderer<LayoutCurve>
 
         // Determine curve bulge direction: curves above bulge up (negative Y), curves below bulge down (positive Y)
         var curveDirection = curve.CurveAbove ? -1 : 1;
-        var splitCurveBulge = curveDirection * 0.5 * context.StaffSpace;
+        var splitCurveBulge = curveDirection * context.HalfStaffSpace;
 
         if (curve.EndTaper == CurveEndTaper.Both)
         {

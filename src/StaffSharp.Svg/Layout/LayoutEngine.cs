@@ -15,7 +15,7 @@ internal static class LayoutEngine
     [
         new VerticalPositionPass(),                 // Y positions relative to staff
         new AccidentalPlacementPass(),              // Which accidentals to show
-        new HeadShiftPass(),                        // Chord notehead shifts
+        new NoteHeadPass(),                         // Notehead position and chord notehead shifts
         new MeasureWidthCalculationPass(),          // Calculate measure widths (for breaking decisions)
         new UnifiedMeasureWidthPass(),              // Unify measure widths across staves for aligned barlines
         new SystemBreakingPass(),                   // Breaks systems and inserts system symbols (clefs, keys, etc.)

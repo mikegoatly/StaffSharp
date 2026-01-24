@@ -10,7 +10,7 @@ internal sealed class SymbolRenderer : LayoutElementRenderer<LayoutSymbol>
     public static SymbolRenderer Instance { get; } = new();
     public override XElement Render(LayoutSymbol symbol, SvgContext context)
     {
-        return symbol switch
+        var result = symbol switch
         {
             NoteLayoutSymbol noteSymbol => NoteRenderer.Instance.Render(noteSymbol, context),
             RestLayoutSymbol restSymbol => RestRenderer.Instance.Render(restSymbol, context),
@@ -21,5 +21,12 @@ internal sealed class SymbolRenderer : LayoutElementRenderer<LayoutSymbol>
             BarlineLayoutSymbol barlineSymbol => BarlineRenderer.Instance.Render(barlineSymbol, context),
             _ => throw new NotImplementedException()
         };
+
+        if (context.RenderDebugArtifacts && symbol is IStemmedSymbol stemmedSymbol)
+        {
+            AddBoundsRectangle(result, stemmedSymbol.NoteHeadBounds.RelativeTo(symbol.Bounds), "purple");
+        }
+
+        return result;
     }
 }
