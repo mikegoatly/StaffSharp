@@ -4,30 +4,30 @@ using StaffSharp.Quantization;
 
 namespace StaffSharp.Core.Tests.Quantization;
 
-public class SimplePolyphonicQuantizerTests
+public class PolyphonicQuantizerTests
 {
     [Fact]
     public void Constructor_InvalidQuantizationGrid_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimplePolyphonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Zero }));
+            new PolyphonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimplePolyphonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(-1, 4) }));
+            new PolyphonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(-1, 4) }));
     }
 
     [Fact]
     public void Constructor_InvalidMinDuration_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimplePolyphonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Zero }));
+            new PolyphonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimplePolyphonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Create(-1, 8) }));
+            new PolyphonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Create(-1, 8) }));
     }
 
     [Fact]
     public void Quantize_EmptyNotes_ReturnsEmptyList()
     {
-        var quantizer = new SimplePolyphonicQuantizer();
+        var quantizer = new PolyphonicQuantizer();
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         var (notes, returnedTempoMap) = quantizer.Quantize(
@@ -41,7 +41,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_SingleNote_QuantizesOnsetAndDuration()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4), // 16th notes
             MinNoteDuration = Rational.Create(1, 8)
@@ -76,7 +76,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_MultipleSimultaneousNotes_PreservesPolyphony()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -129,7 +129,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_OverlappingNotes_HandlesCorrectly()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -171,7 +171,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_SlightlyOffGrid_SnapsOnsetToGrid()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 2) // 8th note grid
         });
@@ -204,7 +204,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_VeryShortDuration_EnforcesMinimumDuration()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4),
             MinNoteDuration = Rational.Create(1, 8) // Min duration: 1/8 beat
@@ -235,7 +235,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_DottedNoteDuration_QuantizesCorrectly()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -265,7 +265,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_DifferentTempo_ConvertsCorrectly()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -295,7 +295,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_PreservesRawEventData()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -337,7 +337,7 @@ public class SimplePolyphonicQuantizerTests
     [Fact]
     public void Quantize_MixedDurations_HandlesCorrectly()
     {
-        var quantizer = new SimplePolyphonicQuantizer(new QuantizationOptions
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4)
         });
@@ -368,6 +368,52 @@ public class SimplePolyphonicQuantizerTests
         Assert.Equal(Rational.Create(2, 1), quantizedNotes[1].DurationBeats); // Half
         Assert.Equal(Rational.Create(1, 1), quantizedNotes[2].DurationBeats); // Quarter
         Assert.Equal(Rational.Create(1, 2), quantizedNotes[3].DurationBeats); // Eighth
+    }
+
+    [Fact]
+    public void Quantize_OnsetAndOffsetSnapToSamePoint_EnforcesMinimumDuration()
+    {
+        // Edge case: when both onset and offset snap to the same grid point,
+        // the minimum duration enforcement should prevent zero-duration notes
+        var quantizer = new PolyphonicQuantizer(new QuantizationOptions
+        {
+            QuantizationGrid = Rational.Create(1, 4), // Quarter note grid
+            MinNoteDuration = Rational.Create(1, 8)   // Min duration: 1/8 beat
+        });
+
+        var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
+
+        // At 120 BPM: 1 beat = 0.5 seconds
+        // Note near beat 1.0 with very short duration
+        // Onset at 0.48s (~0.96 beats) snaps to 1.0
+        // Offset at 0.49s (~0.98 beats) also snaps to 1.0
+        // Result: would be zero duration without min duration enforcement
+        var notes = new[]
+        {
+            new NoteEvent(
+                Pitch: new MidiNote(60),
+                Onset: TimeSpan.FromSeconds(0.48),  // ~0.96 beats
+                Duration: TimeSpan.FromSeconds(0.01), // Very short
+                Velocity: new Velocity(0.8f))
+        };
+
+        var (quantizedNotes, _) = quantizer.Quantize(
+            notes,
+            tempoMap);
+
+        Assert.Single(quantizedNotes);
+
+        var quantized = quantizedNotes[0];
+
+        // Onset should snap to beat 1.0
+        Assert.Equal(Rational.Create(1, 1), quantized.OnsetBeats);
+
+        // Duration should be enforced to minimum (1/8 beat), not zero
+        Assert.Equal(Rational.Create(1, 8), quantized.DurationBeats);
+
+        // Offset should be at beat 1.125 (1 + 1/8)
+        var expectedOffset = Rational.Create(9, 8); // 1 + 1/8 = 9/8
+        Assert.Equal(expectedOffset, quantized.OnsetBeats + quantized.DurationBeats);
     }
 
     private static TempoMap CreateTempoMap(double bpm, TimeSignature timeSignature)

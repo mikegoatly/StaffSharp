@@ -4,45 +4,42 @@ using StaffSharp.Quantization;
 
 namespace StaffSharp.Core.Tests.Quantization;
 
-public class SimpleMonophonicQuantizerTests
+public class MonophonicQuantizerTests
 {
     [Fact]
     public void Constructor_InvalidQuantizationGrid_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Zero }));
+            new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(-1, 4) }));
+            new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(-1, 4) }));
     }
 
     [Fact]
     public void Constructor_InvalidDefaultDuration_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Zero }));
+            new MonophonicQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Create(-1, 1) }));
+            new MonophonicQuantizer(new QuantizationOptions { DefaultLastNoteDuration = Rational.Create(-1, 1) }));
     }
 
     [Fact]
     public void Constructor_InvalidMinDuration_ThrowsException()
     {
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Zero }));
+            new MonophonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Zero }));
         Assert.Throws<ArgumentException>(() =>
-            new SimpleMonophonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Create(-1, 8) }));
+            new MonophonicQuantizer(new QuantizationOptions { MinNoteDuration = Rational.Create(-1, 8) }));
     }
 
     [Fact]
     public void Quantize_EmptyOnsets_ReturnsEmptyList()
     {
-        var quantizer = new SimpleMonophonicQuantizer();
+        var quantizer = new MonophonicQuantizer();
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
-        var (notes, returnedTempoMap) = quantizer.Quantize(
-            ReadOnlySpan<double>.Empty,
-            ReadOnlySpan<int>.Empty,
-            tempoMap);
+        var (notes, returnedTempoMap) = quantizer.Quantize([], [], tempoMap);
 
         Assert.Empty(notes);
         Assert.Same(tempoMap, returnedTempoMap);
@@ -51,7 +48,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_MismatchedLengths_ThrowsException()
     {
-        var quantizer = new SimpleMonophonicQuantizer();
+        var quantizer = new MonophonicQuantizer();
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
         var onsets = new[] { 0.0, 0.5, 1.0 };
         var pitches = new[] { 60, 62 }; // Mismatched length
@@ -66,7 +63,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_SingleNote_CreatesNoteWithDefaultDuration()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4), // 16th notes
             DefaultLastNoteDuration = Rational.Create(1, 1) // Quarter note
@@ -97,7 +94,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_PerfectQuarterNotes_QuantizesCorrectly()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds
@@ -136,7 +133,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_SixteenthNotes_QuantizesCorrectly()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) }); // 16th note grid
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) }); // 16th note grid
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds, 16th note = 0.125 seconds
@@ -167,7 +164,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_SlightlyOffGrid_SnapsToGrid()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 2) }); // 8th note grid
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 2) }); // 8th note grid
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // At 120 BPM: 1 beat = 0.5 seconds
@@ -191,7 +188,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_VeryShortNote_EnforcesMinimumDuration()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions
         {
             QuantizationGrid = Rational.Create(1, 4),
             MinNoteDuration = Rational.Create(1, 8) // Min duration: 1/8 beat
@@ -217,7 +214,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_DifferentTempo_ConvertsCorrectly()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(60.0, TimeSignature.CommonTime); // Slower: 60 BPM
 
         // At 60 BPM: 1 beat = 1.0 second
@@ -243,7 +240,7 @@ public class SimpleMonophonicQuantizerTests
     [Fact]
     public void Quantize_PreservesRawEventTiming()
     {
-        var quantizer = new SimpleMonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
+        var quantizer = new MonophonicQuantizer(new QuantizationOptions { QuantizationGrid = Rational.Create(1, 4) });
         var tempoMap = CreateTempoMap(120.0, TimeSignature.CommonTime);
 
         // Slightly off-grid note

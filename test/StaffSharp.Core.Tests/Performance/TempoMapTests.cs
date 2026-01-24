@@ -11,9 +11,9 @@ public class TempoMapTests
         var timeSigs = new[] { new TimeSignatureChange(Rational.Zero, new TimeSignature(4, 4)) };
 
         var exception = Assert.Throws<ArgumentException>(() =>
-            new TempoMap(Array.Empty<TempoChange>(), timeSigs));
+            new TempoMap([], timeSigs));
 
-        Assert.Contains("at least one tempo change", exception.Message);
+        Assert.Contains("at least one tempo and time signature", exception.Message);
     }
 
     [Fact]
@@ -22,9 +22,9 @@ public class TempoMapTests
         var tempos = new[] { new TempoChange(Rational.Zero, 120) };
 
         var exception = Assert.Throws<ArgumentException>(() =>
-            new TempoMap(tempos, Array.Empty<TimeSignatureChange>()));
+            new TempoMap(tempos, []));
 
-        Assert.Contains("at least one time signature", exception.Message);
+        Assert.Contains("at least one tempo and time signature", exception.Message);
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class TempoMapTests
         var exception = Assert.Throws<ArgumentException>(() =>
             new TempoMap(tempos, timeSigs));
 
-        Assert.Contains("First tempo change must be at beat 0", exception.Message);
+        Assert.Contains("First tempo must be at beat 0", exception.Message);
     }
 
     [Fact]

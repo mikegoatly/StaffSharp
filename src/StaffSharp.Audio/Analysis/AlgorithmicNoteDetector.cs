@@ -21,7 +21,7 @@ public sealed class AlgorithmicNoteDetector : INoteDetector
     private readonly PyinPitchDetector _pitchDetector;
     private readonly SimpleTimeSignatureDetector _timeSignatureDetector;
     private readonly ITempoDetector _tempoDetector;
-    private readonly SimpleMonophonicQuantizer _quantizer;
+    private readonly MonophonicQuantizer _quantizer;
     private readonly EnergyBasedBoundaryDetector _boundaryDetector;
 
     /// <summary>
@@ -38,7 +38,7 @@ public sealed class AlgorithmicNoteDetector : INoteDetector
         _pitchDetector = new PyinPitchDetector(options.PitchOptions);
         _timeSignatureDetector = new SimpleTimeSignatureDetector();
         _tempoDetector = TempoDetectorFactory.Create(options.TempoOptions);
-        _quantizer = new SimpleMonophonicQuantizer();
+        _quantizer = new MonophonicQuantizer();
         _boundaryDetector = new EnergyBasedBoundaryDetector(options.BoundaryOptions);
     }
 

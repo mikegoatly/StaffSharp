@@ -58,9 +58,7 @@ public sealed class NotationEngine : INotationEngine
             TimeSignature: timeline.TempoMap.TimeSignatures.Count > 0
                 ? timeline.TempoMap.TimeSignatures[0].TimeSignature
                 : TimeSignature.CommonTime,
-            Tempo: (int)Math.Round(timeline.TempoMap.TempoChanges.Count > 0
-                ? timeline.TempoMap.TempoChanges[0].BeatsPerMinute
-                : 120.0)
+            Tempo: (int)Math.Round(timeline.TempoMap.GetTempoAtTime(0))
         );
 
         return new NotationScore(metadata, [part]);

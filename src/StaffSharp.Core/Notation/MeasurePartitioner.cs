@@ -249,11 +249,11 @@ public sealed class MeasurePartitioner
         return measureStartBeat + measureTimeSig.BeatsPerMeasure;
     }
 
-    private Measure CreateMeasure(int measureNumber, List<INotationEvent> events)
+    private static Measure CreateMeasure(int measureNumber, List<INotationEvent> events)
     {
         // Calculate the start beat of this measure to get the correct time signature
-        var measureStartBeat = GetMeasureStartBeat(measureNumber);
-        var timeSignature = _tempoMap.GetTimeSignatureAt(measureStartBeat);
+        //var measureStartBeat = GetMeasureStartBeat(measureNumber);
+        //var timeSignature = _tempoMap.GetTimeSignatureAt(measureStartBeat);
 
         return new Measure(
             number: measureNumber,

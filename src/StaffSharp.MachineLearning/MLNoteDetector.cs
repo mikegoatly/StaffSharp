@@ -19,7 +19,7 @@ public sealed class MLNoteDetector : INoteDetector
     private readonly OnnxTranscriber _transcriber;
     private readonly SimpleTimeSignatureDetector _timeSignatureDetector;
     private readonly ITempoDetector _tempoDetector;
-    private readonly SimplePolyphonicQuantizer _quantizer;
+    private readonly PolyphonicQuantizer _quantizer;
     private readonly NoteEventDecoder _decoder;
 
     /// <summary>
@@ -36,7 +36,7 @@ public sealed class MLNoteDetector : INoteDetector
 #pragma warning restore CA2000 // Dispose objects before losing scope
         _timeSignatureDetector = new SimpleTimeSignatureDetector();
         _tempoDetector = TempoDetectorFactory.Create(options.TempoOptions);
-        _quantizer = new SimplePolyphonicQuantizer();
+        _quantizer = new PolyphonicQuantizer();
         _decoder = new NoteEventDecoder(options);
     }
 

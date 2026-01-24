@@ -8,7 +8,7 @@ namespace StaffSharp.Performance;
 /// </summary>
 public sealed class TempoMap
 {
-    private readonly List<TempoChange> _tempoChanges;
+    private readonly List<TempoMapSegment> _segments;
     private readonly List<TimeSignatureChange> _timeSignatures;
 
     /// <summary>
@@ -20,143 +20,81 @@ public sealed class TempoMap
         IEnumerable<TempoChange> tempoChanges,
         IEnumerable<TimeSignatureChange> timeSignatures)
     {
-        _tempoChanges = tempoChanges.OrderBy(tc => tc.TimeInBeats).ToList();
+        var sortedTempos = tempoChanges.OrderBy(tc => tc.TimeInBeats).ToList();
+
         _timeSignatures = timeSignatures.OrderBy(ts => ts.TimeInBeats).ToList();
 
-        if (_tempoChanges.Count == 0)
-        {
-            throw new ArgumentException(
-                "TempoMap must have at least one tempo change",
-                nameof(tempoChanges));
-        }
+        ValidateInputs(sortedTempos, _timeSignatures);
 
-        if (_timeSignatures.Count == 0)
-        {
-            throw new ArgumentException(
-                "TempoMap must have at least one time signature",
-                nameof(timeSignatures));
-        }
+        // Pre-calculate the Real Time (seconds) for every tempo change.
+        // This effectively "renders" the time map once, so lookups are instant.
+        _segments = new List<TempoMapSegment>(sortedTempos.Count);
 
-        if (_tempoChanges[0].TimeInBeats != Rational.Zero)
-        {
-            throw new ArgumentException(
-                "First tempo change must be at beat 0",
-                nameof(tempoChanges));
-        }
-
-        if (_timeSignatures[0].TimeInBeats != Rational.Zero)
-        {
-            throw new ArgumentException(
-                "First time signature must be at beat 0",
-                nameof(timeSignatures));
-        }
-    }
-
-    /// <summary>
-    /// Gets all tempo changes in the piece, sorted by time.
-    /// </summary>
-    public IReadOnlyList<TempoChange> TempoChanges => _tempoChanges;
-
-    /// <summary>
-    /// Gets all time signature changes in the piece, sorted by time.
-    /// </summary>
-    public IReadOnlyList<TimeSignatureChange> TimeSignatures => _timeSignatures;
-
-    /// <summary>
-    /// Converts musical time (beats) to real time (seconds).
-    /// </summary>
-    /// <param name="beats">Musical time in beats from the start of the piece.</param>
-    /// <returns>Real time in seconds.</returns>
-    public double BeatsToSeconds(Rational beats)
-    {
-        double seconds = 0.0;
-        Rational currentBeat = Rational.Zero;
-
-        for (int i = 0; i < _tempoChanges.Count; i++)
-        {
-            var change = _tempoChanges[i];
-            var nextChange = i + 1 < _tempoChanges.Count
-                ? _tempoChanges[i + 1]
-                : null;
-
-            var segmentStart = change.TimeInBeats;
-            var segmentEnd = nextChange?.TimeInBeats ?? beats;
-
-            if (beats <= segmentStart)
-            {
-                break;
-            }
-
-            // Calculate how many beats in this tempo segment
-            var beatsInSegment = beats < segmentEnd
-                ? beats - segmentStart
-                : segmentEnd - segmentStart;
-
-            // Convert beats to seconds: seconds = beats / (BPM / 60)
-            var secondsInSegment = (beatsInSegment.ToDouble() / change.BeatsPerMinute) * 60.0;
-            seconds += secondsInSegment;
-
-            currentBeat = segmentEnd;
-            if (beats <= segmentEnd)
-            {
-                break;
-            }
-        }
-
-        return seconds;
-    }
-
-    /// <summary>
-    /// Converts real time (seconds) to musical time (beats).
-    /// </summary>
-    /// <param name="seconds">Real time in seconds from the start of the piece.</param>
-    /// <returns>Musical time in beats.</returns>
-    public Rational SecondsToBeats(double seconds)
-    {
         double currentSeconds = 0.0;
-        Rational currentBeats = Rational.Zero;
 
-        for (int i = 0; i < _tempoChanges.Count; i++)
+        for (int i = 0; i < sortedTempos.Count; i++)
         {
-            var change = _tempoChanges[i];
-            var nextChange = i + 1 < _tempoChanges.Count
-                ? _tempoChanges[i + 1]
-                : null;
+            var current = sortedTempos[i];
 
-            // Calculate how many seconds this tempo segment lasts
-            double segmentSeconds;
-            if (nextChange != null)
+            // Calculate duration of THIS segment (until the next one starts)
+            if (i > 0)
             {
-                var beatsInSegment = nextChange.TimeInBeats - change.TimeInBeats;
-                segmentSeconds = (beatsInSegment.ToDouble() / change.BeatsPerMinute) * 60.0;
-            }
-            else
-            {
-                // Last tempo segment extends to the requested time
-                segmentSeconds = seconds - currentSeconds;
+                var prev = sortedTempos[i - 1];
+                var beatsInPrevSegment = current.TimeInBeats - prev.TimeInBeats;
+                var secondsInPrevSegment = (beatsInPrevSegment.ToDouble() / prev.BeatsPerMinute) * 60.0;
+                currentSeconds += secondsInPrevSegment;
             }
 
-            if (currentSeconds + segmentSeconds >= seconds)
-            {
-                // The requested time is within this segment
-                var remainingSeconds = seconds - currentSeconds;
-                var beatsPerSecond = change.BeatsPerMinute / 60.0;
-                var remainingBeats = remainingSeconds * beatsPerSecond;
-
-                return currentBeats + Rational.FromDouble(remainingBeats);
-            }
-
-            // Move to next segment
-            currentSeconds += segmentSeconds;
-            if (nextChange != null)
-            {
-                currentBeats = nextChange.TimeInBeats;
-            }
+            _segments.Add(new TempoMapSegment(
+                StartBeat: current.TimeInBeats,
+                StartTime: currentSeconds,
+                Bpm: current.BeatsPerMinute
+            ));
         }
 
-        // Should not reach here, but return currentBeats as fallback
-        return currentBeats;
     }
+
+    /// <summary>
+    /// Gets the beat position for a specific time in seconds.
+    /// (Previously SecondsToBeats)
+    /// </summary>
+    public double GetBeatAtTime(double seconds)
+    {
+        var segment = FindSegmentAtTime(seconds);
+
+        var timeOffset = seconds - segment.StartTime;
+        var beatOffset = timeOffset * (segment.Bpm / 60.0);
+
+        return segment.StartBeat.ToDouble() + beatOffset;
+    }
+
+    /// <summary>
+    /// Gets the time in seconds for a specific beat position.
+    /// (Previously BeatsToSeconds)
+    /// </summary>
+    public double GetTimeAtBeat(double beats)
+    {
+        var segment = FindSegmentAtBeat(beats);
+
+        var beatOffset = beats - segment.StartBeat.ToDouble();
+        var timeOffset = beatOffset * (60.0 / segment.Bpm);
+
+        return segment.StartTime + timeOffset;
+    }
+
+    /// <summary>
+    /// Gets the Tempo (BPM) effective at the given time in seconds.
+    /// </summary>
+    public double GetTempoAtTime(double seconds)
+    {
+        return FindSegmentAtTime(seconds).Bpm;
+    }
+
+    // Legacy support wrappers if you still use them elsewhere
+    public Rational SecondsToBeats(double seconds) => Rational.FromDouble(GetBeatAtTime(seconds));
+    public double BeatsToSeconds(Rational beats) => GetTimeAtBeat(beats.ToDouble());
+
+    public IReadOnlyList<TimeSignatureChange> TimeSignatures => _timeSignatures;
 
     /// <summary>
     /// Gets the measure number and beat within that measure for a given beat position.
@@ -181,7 +119,7 @@ public sealed class TempoMap
             {
                 var beatsInPreviousSection = timeSig.TimeInBeats - currentBeat;
                 var beatsPerMeasure = currentTimeSig.TimeSignature.BeatsPerMeasure;
-                var measuresInSection = (int)((beatsInPreviousSection / beatsPerMeasure).ToDouble());
+                var measuresInSection = (int)(beatsInPreviousSection / beatsPerMeasure).ToDouble();
 
                 measureNumber += measuresInSection;
                 currentBeat = timeSig.TimeInBeats;
@@ -193,7 +131,7 @@ public sealed class TempoMap
         // Calculate position in current time signature
         var beatsFromLastTimeSig = beats - currentBeat;
         var beatsPerMeasureNow = currentTimeSig.TimeSignature.BeatsPerMeasure;
-        var additionalMeasures = (int)((beatsFromLastTimeSig / beatsPerMeasureNow).ToDouble());
+        var additionalMeasures = (int)(beatsFromLastTimeSig / beatsPerMeasureNow).ToDouble();
 
         measureNumber += additionalMeasures;
 
@@ -210,19 +148,7 @@ public sealed class TempoMap
     /// <returns>The tempo in beats per minute at that time.</returns>
     public double GetTempoAt(Rational beats)
     {
-        // Find the most recent tempo change before or at this beat
-        TempoChange currentTempo = _tempoChanges[0];
-
-        foreach (var change in _tempoChanges)
-        {
-            if (change.TimeInBeats > beats)
-            {
-                break;
-            }
-            currentTempo = change;
-        }
-
-        return currentTempo.BeatsPerMinute;
+        return FindSegmentAtBeat(beats.ToDouble()).Bpm;
     }
 
     /// <summary>
@@ -245,5 +171,52 @@ public sealed class TempoMap
         }
 
         return currentTimeSig.TimeSignature;
+    }
+
+    private TempoMapSegment FindSegmentAtTime(double seconds)
+    {
+        // Binary search could be used here for optimization, 
+        for (int i = _segments.Count - 1; i >= 0; i--)
+        {
+            if (seconds >= _segments[i].StartTime)
+            {
+                return _segments[i];
+            }
+        }
+
+        return _segments[0];
+    }
+
+    private TempoMapSegment FindSegmentAtBeat(double beats)
+    {
+        for (int i = _segments.Count - 1; i >= 0; i--)
+        {
+            if (beats >= _segments[i].StartBeat.ToDouble())
+            {
+                return _segments[i];
+            }
+        }
+
+        return _segments[0];
+    }
+
+    private sealed record TempoMapSegment(Rational StartBeat, double StartTime, double Bpm);
+
+    private static void ValidateInputs(List<TempoChange> tempos, List<TimeSignatureChange> sigs)
+    {
+        if (tempos.Count == 0 || sigs.Count == 0)
+        {
+            throw new ArgumentException("Must have at least one tempo and time signature.");
+        }
+
+        if (tempos[0].TimeInBeats != Rational.Zero)
+        {
+            throw new ArgumentException("First tempo must be at beat 0.");
+        }
+
+        if (sigs[0].TimeInBeats != Rational.Zero)
+        {
+            throw new ArgumentException("First time signature must be at beat 0.");
+        }
     }
 }

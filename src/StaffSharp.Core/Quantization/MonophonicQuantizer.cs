@@ -7,13 +7,13 @@ namespace StaffSharp.Quantization;
 /// Snaps onsets to a quantization grid and infers durations from inter-onset intervals.
 /// Assumes single tempo and time signature.
 /// </summary>
-public sealed class SimpleMonophonicQuantizer : IMonophonicQuantizer
+public sealed class MonophonicQuantizer : IMonophonicQuantizer
 {
     private readonly Rational _quantizationGrid;
     private readonly Rational _defaultLastNoteDuration;
     private readonly Rational _minNoteDuration;
 
-    public SimpleMonophonicQuantizer(QuantizationOptions? options = null)
+    public MonophonicQuantizer(QuantizationOptions? options = null)
     {
         options ??= new QuantizationOptions();
         options.Validate();
@@ -40,13 +40,8 @@ public sealed class SimpleMonophonicQuantizer : IMonophonicQuantizer
             throw new ArgumentException("Onset times and pitches must have same length");
         }
 
-        if (tempoMap.TempoChanges.Count == 0)
-        {
-            throw new ArgumentException("TempoMap must have at least one tempo");
-        }
-
         // Assume single tempo for the simple quantizer
-        var bpm = tempoMap.TempoChanges[0].BeatsPerMinute;
+        var bpm = tempoMap.GetTempoAtTime(0D);
         var secondsPerBeat = 60.0 / bpm;
 
         var notes = new List<QuantizedNoteEvent>(onsets.Length);
