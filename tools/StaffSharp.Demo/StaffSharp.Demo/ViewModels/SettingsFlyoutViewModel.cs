@@ -36,29 +36,12 @@ public partial class SettingsFlyoutViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Opens the flyout.
-    /// </summary>
-    public void Open()
-    {
-        IsOpen = true;
-    }
-
-    /// <summary>
-    /// Closes the flyout.
-    /// </summary>
-    public void Close()
-    {
-        IsOpen = false;
-    }
-
-    /// <summary>
     /// Applies the current settings and notifies listeners.
     /// </summary>
     [RelayCommand]
     private void ApplySettings()
     {
         SettingsApplied?.Invoke(Options);
-        Close();
     }
 
     /// <summary>

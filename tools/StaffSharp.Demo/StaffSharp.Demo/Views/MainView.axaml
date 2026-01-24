@@ -15,291 +15,284 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Panel>
-        <Grid RowDefinitions="Auto,*,Auto">
-            <!--  Toolbar  -->
+    <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,*,Auto,*,Auto">
+        <!--  Toolbar  -->
+        <Border
+            Grid.Row="0"
+            Padding="8"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <StackPanel.Styles>
+                    <Style Selector="Button">
+                        <Setter Property="FontSize" Value="11" />
+                    </Style>
+                    <Style Selector="Rectangle">
+                        <Setter Property="VerticalAlignment" Value="Stretch" />
+                        <Setter Property="Width" Value="1" />
+                        <Setter Property="Fill" Value="DarkGray" />
+                    </Style>
+                </StackPanel.Styles>
+                <Button
+                    Classes="accent"
+                    Command="{Binding OpenFileCommand}"
+                    Content="📂 Open" />
+
+                <Rectangle Classes="Separator" />
+
+                <Button Command="{Binding PlayAudioCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock IsVisible="{Binding !IsPlaying}" Text="▶" />
+                        <TextBlock IsVisible="{Binding IsPlaying}" Text="⏸" />
+                        <TextBlock IsVisible="{Binding !IsPlaying}" Text="Play" />
+                        <TextBlock IsVisible="{Binding IsPlaying}" Text="Pause" />
+                    </StackPanel>
+                </Button>
+
+                <Button Command="{Binding StopPlaybackCommand}" Content="⏹ Stop" />
+
+                <Rectangle Classes="Separator" />
+
+                <Button
+                    Command="{Binding PlayScoreCommand}"
+                    Content="🎵 Play Score"
+                    ToolTip.Tip="Synthesize and play the detected score" />
+
+                <Rectangle Classes="Separator" />
+
+                <Button
+                    Classes="accent"
+                    Command="{Binding RecordCommand}"
+                    IsVisible="{Binding !IsRecording}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Foreground="Red" Text="🔴" />
+                        <TextBlock Text="Record" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Classes="accent"
+                    Command="{Binding StopRecordingCommand}"
+                    IsVisible="{Binding IsRecording}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="⏹" />
+                        <TextBlock Text="Stop Recording" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Command="{Binding SaveRecordingCommand}"
+                    Content="💾 Save"
+                    IsEnabled="{Binding HasRecording}" />
+
+                <Rectangle Classes="Separator" />
+
+                <Button IsEnabled="{Binding HasResult}">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="💾 Save as" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="8"
+                                Text="▼" />
+                        </StackPanel>
+                    </Button.Content>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Command="{Binding SaveSvgCommand}" Header="SVG" />
+                            <MenuItem Command="{Binding SaveAbcCommand}" Header="ABC Notation" />
+                            <MenuItem Command="{Binding SaveMidiCommand}" Header="MIDI" />
+                            <MenuItem Command="{Binding SaveJsonCommand}" Header="JSON" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Button IsEnabled="{Binding HasResult}">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="📋 Copy as" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="8"
+                                Text="▼" />
+                        </StackPanel>
+                    </Button.Content>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuItem Command="{Binding CopySvgCommand}" Header="SVG" />
+                            <MenuItem Command="{Binding CopyAbcCommand}" Header="ABC Notation" />
+                            <MenuItem Command="{Binding CopyJsonCommand}" Header="JSON" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                <Rectangle Classes="Separator" />
+
+                <Button
+                    Command="{Binding SettingsFlyout.ToggleFlyoutCommand}"
+                    Content="⚙ Settings"
+                    ToolTip.Tip="Configure processing options" />
+            </StackPanel>
+        </Border>
+
+        <!--  Main Content Area  -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!--  Left Panel: ABC Notation  -->
             <Border
-                Grid.Row="0"
-                Padding="8"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                BorderThickness="0,0,0,1">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <StackPanel.Styles>
-                        <Style Selector="Button">
-                            <Setter Property="FontSize" Value="11" />
-                        </Style>
-                        <Style Selector="Rectangle">
-                            <Setter Property="VerticalAlignment" Value="Stretch" />
-                            <Setter Property="Width" Value="1" />
-                            <Setter Property="Fill" Value="DarkGray" />
-                        </Style>
-                    </StackPanel.Styles>
-                    <Button
-                        Classes="accent"
-                        Command="{Binding OpenFileCommand}"
-                        Content="📂 Open" />
-
-                    <Rectangle Classes="Separator" />
-
-                    <Button Command="{Binding PlayAudioCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock IsVisible="{Binding !IsPlaying}" Text="▶" />
-                            <TextBlock IsVisible="{Binding IsPlaying}" Text="⏸" />
-                            <TextBlock IsVisible="{Binding !IsPlaying}" Text="Play" />
-                            <TextBlock IsVisible="{Binding IsPlaying}" Text="Pause" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Command="{Binding StopPlaybackCommand}" Content="⏹ Stop" />
-
-                    <Rectangle Classes="Separator" />
-
-                    <Button
-                        Command="{Binding PlayScoreCommand}"
-                        Content="🎵 Play Score"
-                        ToolTip.Tip="Synthesize and play the detected score" />
-
-                    <Rectangle Classes="Separator" />
-
-                    <Button
-                        Classes="accent"
-                        Command="{Binding RecordCommand}"
-                        IsVisible="{Binding !IsRecording}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Foreground="Red" Text="🔴" />
-                            <TextBlock Text="Record" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button
-                        Classes="accent"
-                        Command="{Binding StopRecordingCommand}"
-                        IsVisible="{Binding IsRecording}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="⏹" />
-                            <TextBlock Text="Stop Recording" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button
-                        Command="{Binding SaveRecordingCommand}"
-                        Content="💾 Save"
-                        IsEnabled="{Binding HasRecording}" />
-
-                    <Rectangle Classes="Separator" />
-
-                    <Button IsEnabled="{Binding HasResult}">
-                        <Button.Content>
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="💾 Save as" />
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontSize="8"
-                                    Text="▼" />
-                            </StackPanel>
-                        </Button.Content>
-                        <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                                <MenuItem Command="{Binding SaveSvgCommand}" Header="SVG" />
-                                <MenuItem Command="{Binding SaveAbcCommand}" Header="ABC Notation" />
-                                <MenuItem Command="{Binding SaveMidiCommand}" Header="MIDI" />
-                                <MenuItem Command="{Binding SaveJsonCommand}" Header="JSON" />
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <Button IsEnabled="{Binding HasResult}">
-                        <Button.Content>
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="📋 Copy as" />
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    FontSize="8"
-                                    Text="▼" />
-                            </StackPanel>
-                        </Button.Content>
-                        <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                                <MenuItem Command="{Binding CopySvgCommand}" Header="SVG" />
-                                <MenuItem Command="{Binding CopyAbcCommand}" Header="ABC Notation" />
-                                <MenuItem Command="{Binding CopyJsonCommand}" Header="JSON" />
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <Rectangle Classes="Separator" />
-
-                    <Button
-                        Command="{Binding SettingsFlyout.ToggleFlyoutCommand}"
-                        Content="⚙ Settings"
-                        ToolTip.Tip="Configure processing options" />
-                </StackPanel>
+                Grid.Column="0"
+                Margin="8,8,4,8"
+                Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                CornerRadius="4">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock
+                        Grid.Row="0"
+                        Padding="12,8"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        FontWeight="SemiBold"
+                        Text="ABC Notation" />
+                    <ScrollViewer Grid.Row="1">
+                        <SelectableTextBlock
+                            Margin="16"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            FontFamily="Consolas,Courier New,monospace"
+                            IsVisible="{Binding HasResult}"
+                            Text="{Binding AbcText}"
+                            TextAlignment="Left" />
+                    </ScrollViewer>
+                </Grid>
             </Border>
 
-            <!--  Main Content  -->
-            <Grid Grid.Row="1" RowDefinitions="*,Auto,300">
-                <!--  Top: SVG Notation  -->
-                <Border
-                    Grid.Row="0"
-                    Margin="8,8,8,4"
-                    Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
-                    ClipToBounds="True"
-                    CornerRadius="4">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock
-                            Grid.Row="0"
-                            Padding="12,8"
-                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                            FontWeight="SemiBold"
-                            Text="Musical Notation (SVG)" />
+            <!--  Vertical Splitter  -->
+            <GridSplitter
+                Grid.Column="1"
+                Width="4"
+                Background="Transparent"
+                ResizeDirection="Columns" />
 
-                        <ScrollViewer
-                            Grid.Row="1"
-                            HorizontalScrollBarVisibility="Auto"
-                            VerticalScrollBarVisibility="Auto">
-                            <Panel>
-                                <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
-
-                                <!--  Loading indicator  -->
-                                <StackPanel
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding IsProcessing}"
-                                    Spacing="8">
-                                    <ProgressBar Width="200" IsIndeterminate="True" />
-                                    <TextBlock HorizontalAlignment="Center" Text="{Binding StatusMessage}" />
-                                </StackPanel>
-                            </Panel>
-                        </ScrollViewer>
-                    </Grid>
-                </Border>
-
-                <!--  Horizontal Splitter  -->
-                <GridSplitter
-                    Grid.Row="1"
-                    Height="4"
-                    Background="Transparent"
-                    ResizeDirection="Rows" />
-
-                <!--  Bottom: Tabbed Diagnostics Panel  -->
-                <Border
-                    Grid.Row="2"
-                    Margin="8,4,8,8"
-                    Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
-                    CornerRadius="4">
-                    <TabControl IsVisible="{Binding HasResult}">
-                        <!--  Waveforms Tab  -->
-                        <TabItem Header="Waveforms">
-                            <Panel Margin="8">
-                                <controls:StackedWaveformVisualizationControl
-                                    NormalizedWaveform="{Binding NormalizedWaveform}"
-                                    OriginalWaveform="{Binding WaveformSamples}"
-                                    PlaybackPosition="{Binding PlaybackPosition}"
-                                    ResampledSampleRate="16000"
-                                    ResampledWaveform="{Binding ResampledWaveform}" />
-
-                                <TextBlock
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                                    IsVisible="{Binding WaveformSamples, Converter={x:Static ObjectConverters.IsNull}}"
-                                    Text="No audio loaded" />
-                            </Panel>
-                        </TabItem>
-
-                        <!--  Mel Spectrogram Tab (ML only)  -->
-                        <TabItem
-                            Header="Mel Spectrogram"
-                            IsVisible="{Binding MelSpectrogram, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <controls:HeatmapVisualizationControl
-                                Margin="8"
-                                FrameRate="{Binding MlFrameRate}"
-                                HeatmapData="{Binding MelSpectrogram}"
-                                PlaybackPosition="{Binding PlaybackPosition}"
-                                Title="Mel Spectrogram (Log-compressed)"
-                                YLabel="Mel Bin" />
-                        </TabItem>
-
-                        <!--  ML Pipeline Tab (ML only)  -->
-                        <TabItem
-                            Header="ML Pipeline"
-                            IsVisible="{Binding OnsetProbabilities, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <controls:StackedHeatmapVisualizationControl
-                                Margin="8"
-                                FrameData="{Binding FrameProbabilities}"
-                                FrameRate="{Binding MlFrameRate}"
-                                NoteEvents="{Binding DecodedNoteEvents}"
-                                OffsetData="{Binding OffsetProbabilities}"
-                                OnsetData="{Binding OnsetProbabilities}"
-                                PlaybackPosition="{Binding PlaybackPosition}"
-                                ShowVelocity="True" />
-                        </TabItem>
-
-                        <!--  ABC Notation Tab (always shown)  -->
-                        <TabItem Header="ABC Notation">
-                            <ScrollViewer>
-                                <SelectableTextBlock
-                                    Margin="16"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Top"
-                                    FontFamily="Consolas,Courier New,monospace"
-                                    IsVisible="{Binding HasResult}"
-                                    Text="{Binding AbcText}"
-                                    TextAlignment="Left" />
-                            </ScrollViewer>
-                        </TabItem>
-                    </TabControl>
-                </Border>
-            </Grid>
-
-            <!--  Status Bar  -->
+            <!--  Center: SVG Notation  -->
             <Border
-                Grid.Row="2"
-                Padding="12,6"
-                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                BorderThickness="0,1,0,0">
-                <Grid ColumnDefinitions="*,Auto,Auto">
+                Grid.Column="2"
+                Margin="8,8,8,4"
+                Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                ClipToBounds="True"
+                CornerRadius="4">
+                <Grid RowDefinitions="Auto,*">
                     <TextBlock
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        Text="{Binding StatusMessage}" />
+                        Grid.Row="0"
+                        Padding="12,8"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        FontWeight="SemiBold"
+                        Text="Musical Notation (SVG)" />
 
-                    <TextBlock
-                        Grid.Column="1"
-                        Margin="16,0"
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                        IsVisible="{Binding InputFilePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                        Text="{Binding InputFilePath, StringFormat='File: {0}'}" />
+                    <ScrollViewer
+                        Grid.Row="1"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto">
+                        <Panel>
+                            <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
 
-                    <TextBlock
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
-                        IsVisible="{Binding HasResult}"
-                        Text="{Binding DetectedTempo, StringFormat='Tempo: {0} BPM'}" />
+                            <!--  Loading indicator  -->
+                            <StackPanel
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding IsProcessing}"
+                                Spacing="8">
+                                <ProgressBar Width="200" IsIndeterminate="True" />
+                                <TextBlock HorizontalAlignment="Center" Text="{Binding StatusMessage}" />
+                            </StackPanel>
+                        </Panel>
+                    </ScrollViewer>
                 </Grid>
             </Border>
         </Grid>
 
-        <!--  Settings Flyout  -->
+        <!--  Audio processing graph area  -->
+        <!--  Horizontal Splitter  -->
+        <GridSplitter
+            Grid.Row="2"
+            Height="4"
+            Background="Transparent"
+            ResizeDirection="Rows" />
+
+        <!--  Bottom: Tabbed Diagnostics Panel  -->
         <Border
-            HorizontalAlignment="Right"
-            VerticalAlignment="Stretch"
+            Grid.Row="3"
+            Margin="8,4,8,8"
+            Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+            CornerRadius="4">
+            <TabControl IsVisible="{Binding HasResult}">
+                <!--  Waveforms Tab  -->
+                <TabItem Header="Waveforms">
+                    <Panel Margin="8">
+                        <controls:StackedWaveformVisualizationControl
+                            NormalizedWaveform="{Binding NormalizedWaveform}"
+                            OriginalWaveform="{Binding WaveformSamples}"
+                            PlaybackPosition="{Binding PlaybackPosition}"
+                            ResampledSampleRate="16000"
+                            ResampledWaveform="{Binding ResampledWaveform}" />
+
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                            IsVisible="{Binding WaveformSamples, Converter={x:Static ObjectConverters.IsNull}}"
+                            Text="No audio loaded" />
+                    </Panel>
+                </TabItem>
+
+                <!--  Mel Spectrogram Tab (ML only)  -->
+                <TabItem Header="Mel Spectrogram" IsVisible="{Binding MelSpectrogram, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <controls:HeatmapVisualizationControl
+                        Title="Mel Spectrogram (Log-compressed)"
+                        Margin="8"
+                        FrameRate="{Binding MlFrameRate}"
+                        HeatmapData="{Binding MelSpectrogram}"
+                        PlaybackPosition="{Binding PlaybackPosition}"
+                        YLabel="Mel Bin" />
+                </TabItem>
+
+                <!--  ML Pipeline Tab (ML only)  -->
+                <TabItem Header="ML Pipeline" IsVisible="{Binding OnsetProbabilities, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <controls:StackedHeatmapVisualizationControl
+                        Margin="8"
+                        FrameData="{Binding FrameProbabilities}"
+                        FrameRate="{Binding MlFrameRate}"
+                        NoteEvents="{Binding DecodedNoteEvents}"
+                        OffsetData="{Binding OffsetProbabilities}"
+                        OnsetData="{Binding OnsetProbabilities}"
+                        PlaybackPosition="{Binding PlaybackPosition}"
+                        ShowVelocity="True" />
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!--  Vertical Splitter for Settings  -->
+        <GridSplitter
+            Grid.RowSpan="4"
+            Grid.Column="2"
+            Width="4"
+            Background="Transparent"
+            IsVisible="{Binding SettingsFlyout.IsOpen}"
+            ResizeDirection="Columns" />
+
+        <!--  Right Panel: Settings  -->
+        <Border
+            Grid.RowSpan="4"
+            Grid.Column="3"
             Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
             BorderThickness="1,0,0,0"
-            IsVisible="{Binding SettingsFlyout.IsOpen}"
-            ZIndex="100">
-            <Border.Transitions>
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
-                </Transitions>
-            </Border.Transitions>
-            <Grid Width="400" RowDefinitions="Auto,*,Auto">
-                <!--  Flyout Header  -->
+            IsVisible="{Binding SettingsFlyout.IsOpen}">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!--  Settings Header  -->
                 <Border
                     Grid.Row="0"
                     Padding="16,12"
@@ -324,7 +317,7 @@
                 <!--  Settings Content  -->
                 <views:SettingsFlyout Grid.Row="1" DataContext="{Binding SettingsFlyout}" />
 
-                <!--  Flyout Footer  -->
+                <!--  Settings Footer  -->
                 <Border
                     Grid.Row="2"
                     Padding="16"
@@ -341,5 +334,36 @@
                 </Border>
             </Grid>
         </Border>
-    </Panel>
+
+        <!--  Status Bar  -->
+        <Border
+            Grid.Row="4"
+            Grid.ColumnSpan="3"
+            Padding="12,6"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    Text="{Binding StatusMessage}" />
+
+                <TextBlock
+                    Grid.Column="1"
+                    Margin="16,0"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                    IsVisible="{Binding InputFilePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Text="{Binding InputFilePath, StringFormat='File: {0}'}" />
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                    IsVisible="{Binding HasResult}"
+                    Text="{Binding DetectedTempo, StringFormat='Tempo: {0} BPM'}" />
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>
