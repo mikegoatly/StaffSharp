@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using StaffSharp.Abc.Exporting;
+using StaffSharp.Abc.Importing;
 using StaffSharp.Audio;
 using StaffSharp.Audio.Diagnostics;
 using StaffSharp.Demo.Services;
@@ -18,12 +19,15 @@ namespace StaffSharp.Demo.ViewModels;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1001:Types that own disposable fields should be disposable", Justification = "Cleanup method is called explicitly")]
 public partial class MainViewModel : ViewModelBase
 {
+    private static readonly SvgScoreExporter _svgExporter = new();
+
     private const int RecordingSampleRate = 44100;
 
     private readonly ConversionService _conversionService;
     private readonly IAudioService _audioService;
     private readonly ClipboardService _clipboardService;
     private CancellationTokenSource? _conversionCts;
+    private CancellationTokenSource? _abcParseCts;
 
     [ObservableProperty]
     public partial SettingsFlyoutViewModel SettingsFlyout { get; set; }
@@ -74,6 +78,9 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial bool HasResult { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasProcessedAudio { get; set; }
 
     [ObservableProperty]
     public partial string? AbcText { get; set; }
@@ -223,14 +230,73 @@ public partial class MainViewModel : ViewModelBase
         await ConvertAsync(ct => _conversionService.ConvertAsync(InputFilePath, SettingsFlyout.Options, ct));
     }
 
-    private void BeginAudioProcessing()
+    async partial void OnAbcTextChanged(string? value)
     {
-        IsProcessing = true;
-        HasResult = false;
+        // Cancel any previous parse operation
+        _abcParseCts?.Cancel();
+        _abcParseCts?.Dispose();
+        _abcParseCts = new CancellationTokenSource();
+        var ct = _abcParseCts.Token;
+
+        if (IsProcessing || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        ClearCurrentResult();
+
+        // Convert the ABC text to a score
+        try
+        {
+            // Debounce: small delay to avoid parsing on every keystroke
+            await Task.Delay(250, ct);
+
+            ct.ThrowIfCancellationRequested();
+
+            Score = AbcParser.Parse(value);
+            ScoreTitle = Score.Metadata.Title ?? "Untitled";
+
+            SvgContent = await _svgExporter.ExportToStringAsync(
+                Score,
+                SettingsFlyout.Options.ExportOptions.ToDictionary(),
+                ct);
+
+            HasResult = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore cancelled parse
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error parsing ABC text: {ex.Message}";
+            Score = null;
+            HasResult = false;
+        }
+    }
+
+    private void ClearCurrentResult()
+    {
         Score = null;
         WaveformSamples = null;
-        AbcText = null;
         SvgContent = null;
+        HasResult = false;
+        HasProcessedAudio = false;
+    }
+
+    private async Task AnalyzeRecordingAsync(AudioBuffer samples)
+    {
+        // Set the waveform samples for display
+        WaveformSamples = samples;
+
+        await ConvertAsync(ct => _conversionService.ConvertAsync(samples, SettingsFlyout.Options, ct));
+    }
+
+    private async Task ConvertAsync(Func<CancellationToken, Task<ConversionResult>> convertAsync)
+    {
+        var cts = await CreateNewCancellationTokenAsync();
+        IsProcessing = true;
+        ClearCurrentResult();
 
         // Clear ML diagnostics
         NormalizedWaveform = null;
@@ -241,21 +307,6 @@ public partial class MainViewModel : ViewModelBase
         OffsetProbabilities = null;
         DecodedNoteEvents = null;
         MlFrameRate = 0;
-    }
-
-    private async Task AnalyzeRecordingAsync(AudioBuffer samples)
-    {
-        // Set the waveform samples for display
-        WaveformSamples = samples;
-
-        await ConvertAsync(ct => _conversionService.ConvertAsync(samples, SettingsFlyout.Options, ct));
-
-    }
-
-    private async Task ConvertAsync(Func<CancellationToken, Task<ConversionResult>> convertAsync)
-    {
-        var cts = await CreateNewCancellationTokenAsync();
-        BeginAudioProcessing();
 
         try
         {
@@ -277,8 +328,7 @@ public partial class MainViewModel : ViewModelBase
                 HasResult = true;
                 var svg = Task.Run(() =>
                 {
-                    var svgExporter = new SvgScoreExporter();
-                    return svgExporter.ExportToStringAsync(
+                    return _svgExporter.ExportToStringAsync(
                         result.Score,
                         SettingsFlyout.Options.ExportOptions.ToDictionary());
                 });
@@ -291,6 +341,7 @@ public partial class MainViewModel : ViewModelBase
                         SettingsFlyout.Options.ExportOptions.ToDictionary());
                 });
 
+                HasProcessedAudio = true;
                 SvgContent = await svg;
                 AbcText = await abc;
 
@@ -587,8 +638,7 @@ public partial class MainViewModel : ViewModelBase
 
             // Generate SVG to memory stream
             using var memoryStream = new MemoryStream();
-            var svgExporter = new SvgScoreExporter();
-            await svgExporter.ExportAsync(Score, memoryStream, SettingsFlyout.Options.ExportOptions.ToDictionary());
+            await _svgExporter.ExportAsync(Score, memoryStream, SettingsFlyout.Options.ExportOptions.ToDictionary());
 
             memoryStream.Position = 0;
             using var reader = new StreamReader(memoryStream);

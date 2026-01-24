@@ -15,7 +15,7 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,*,Auto,*,Auto">
+    <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,*,Auto,Auto,Auto">
         <!--  Toolbar  -->
         <Border
             Grid.Row="0"
@@ -157,16 +157,14 @@
                         Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
                         FontWeight="SemiBold"
                         Text="ABC Notation" />
-                    <ScrollViewer Grid.Row="1">
-                        <SelectableTextBlock
-                            Margin="16"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            FontFamily="Consolas,Courier New,monospace"
-                            IsVisible="{Binding HasResult}"
-                            Text="{Binding AbcText}"
-                            TextAlignment="Left" />
-                    </ScrollViewer>
+                    <TextBox
+                        Grid.Row="1"
+                        Margin="0,8,0,0"
+                        VerticalAlignment="Stretch"
+                        AcceptsReturn="True"
+                        FontFamily="Consolas,Courier New,monospace"
+                        Text="{Binding AbcText}"
+                        TextAlignment="Left" />
                 </Grid>
             </Border>
 
@@ -177,11 +175,11 @@
                 Background="Transparent"
                 ResizeDirection="Columns" />
 
-            <!--  Center: SVG Notation  -->
+            <!--  SVG Score  -->
             <Border
                 Grid.Column="2"
                 Margin="8,8,8,4"
-                Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
+                Background="White"
                 ClipToBounds="True"
                 CornerRadius="4">
                 <Grid RowDefinitions="Auto,*">
@@ -215,20 +213,20 @@
         </Grid>
 
         <!--  Audio processing graph area  -->
-        <!--  Horizontal Splitter  -->
         <GridSplitter
             Grid.Row="2"
             Height="4"
             Background="Transparent"
             ResizeDirection="Rows" />
 
-        <!--  Bottom: Tabbed Diagnostics Panel  -->
         <Border
             Grid.Row="3"
+            MinHeight="250"
             Margin="8,4,8,8"
             Background="{DynamicResource SystemControlBackgroundAltMediumHighBrush}"
-            CornerRadius="4">
-            <TabControl IsVisible="{Binding HasResult}">
+            CornerRadius="4"
+            IsVisible="{Binding HasProcessedAudio}">
+            <TabControl>
                 <!--  Waveforms Tab  -->
                 <TabItem Header="Waveforms">
                     <Panel Margin="8">
