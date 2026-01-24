@@ -27,6 +27,7 @@ internal interface IStemmedSymbol : ILayoutSymbol
     /// The symbolic duration of the stemmed symbol.
     /// </summary>
     SymbolicDuration Duration { get; }
+    List<(Decoration Type, Bounds Bounds)> Decorations { get; }
 
     /// <summary>
     /// Gets the effective top Y position accounting for stem, beam, and flags.

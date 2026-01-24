@@ -8,7 +8,6 @@ namespace StaffSharp.Render;
 /// <param name="MinY">Minimum Y coordinate of the bounding box.</param>
 /// <param name="MaxX">Maximum X coordinate of the bounding box.</param>
 /// <param name="MaxY">Maximum Y coordinate of the bounding box.</param>
-/// <param name="AdvanceWidth">The advance width (horizontal spacing) for the glyph.</param>
 /// <param name="Id">Unique identifier for glyph deduplication in SVG.</param>
 public readonly record struct GlyphInfo(
     string Path,
@@ -16,7 +15,6 @@ public readonly record struct GlyphInfo(
     double MinY,
     double MaxX,
     double MaxY,
-    double AdvanceWidth,
     string Id)
 {
     /// <summary>

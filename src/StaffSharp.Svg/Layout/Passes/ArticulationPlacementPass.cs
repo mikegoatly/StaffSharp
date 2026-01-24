@@ -16,36 +16,41 @@ internal class ArticulationPlacementPass : ILayoutPass
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(context);
 
-        foreach (var system in model.Systems)
+        foreach (var staff in model.Systems.SelectMany(s => s.Staves))
         {
-            foreach (var staff in system.Staves)
+            foreach (var measure in staff.Measures)
             {
-                foreach (var measure in staff.Measures)
-                {
-                    ProcessMeasure(measure, context);
-                }
+                ProcessMeasure(measure, staff, context);
             }
         }
     }
 
-    private static void ProcessMeasure(LayoutMeasure measure, SvgContext context)
+    private static void ProcessMeasure(LayoutMeasure measure, LayoutStaff staff, SvgContext context)
     {
+        // Calculate staff baseline once for the measure
+        double staffBaseline = staff.Bounds.Y + (2.0 * context.StaffSpace);
+        double staffTopY = staff.Bounds.Y;
+
         foreach (var symbol in measure.Symbols)
         {
             switch (symbol)
             {
                 case NoteLayoutSymbol noteSymbol:
-                    ProcessNote(noteSymbol, context);
+                    ProcessNote(noteSymbol, staffBaseline, staffTopY, context);
                     break;
 
                 case ChordLayoutSymbol chordSymbol:
-                    ProcessChord(chordSymbol, context);
+                    ProcessChord(chordSymbol, staffBaseline, staffTopY, context);
                     break;
             }
         }
     }
 
-    private static void ProcessNote(NoteLayoutSymbol noteSymbol, SvgContext context)
+    private static void ProcessNote(
+        NoteLayoutSymbol noteSymbol,
+        double staffBaseline,
+        double staffTopY,
+        SvgContext context)
     {
         var decorations = noteSymbol.Note.Decorations;
         if (decorations.Count == 0)
@@ -56,15 +61,21 @@ internal class ArticulationPlacementPass : ILayoutPass
         var positionedDecorations = ArticulationCalculator.CalculateArticulations(
             noteSymbol,
             decorations,
-            context);
+            context,
+            staffBaseline,
+            staffTopY);
 
         foreach (var positioned in positionedDecorations)
         {
-            noteSymbol.PositionedDecorations.Add(positioned);
+            noteSymbol.Decorations.Add(positioned);
         }
     }
 
-    private static void ProcessChord(ChordLayoutSymbol chordSymbol, SvgContext context)
+    private static void ProcessChord(
+        ChordLayoutSymbol chordSymbol,
+        double staffBaseline,
+        double staffTopY,
+        SvgContext context)
     {
         var decorations = chordSymbol.Chord.Decorations;
 
@@ -76,11 +87,13 @@ internal class ArticulationPlacementPass : ILayoutPass
         var positionedDecorations = ArticulationCalculator.CalculateArticulations(
             chordSymbol,
             decorations,
-            context);
+            context,
+            staffBaseline,
+            staffTopY);
 
         foreach (var positioned in positionedDecorations)
         {
-            chordSymbol.PositionedDecorations.Add(positioned);
+            chordSymbol.Decorations.Add(positioned);
         }
     }
 }

@@ -1,12 +1,11 @@
 namespace StaffSharp.Layout.Model;
 
-using StaffSharp.Layout;
 using StaffSharp.Notation;
 
 /// <summary>
 /// Represents a positioned chord.
 /// </summary>
-internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
+internal sealed class ChordLayoutSymbol : StemmedSymbol
 {
     public required Chord Chord { get; init; }
     public List<double> NoteheadYPositions { get; } = [];
@@ -16,21 +15,13 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
     public List<double> AccidentalXOffsets { get; } = [];
     public List<double> AccidentalYPositions { get; } = [];
 
-    public SymbolicDuration Duration => Chord.Duration;
-
-    // Stem and beam information (IStemmedSymbol implementation)
-    public StemInfo Stem { get; set; }
-    public BeamInfo Beam { get; set; }
-    public Bounds NoteHeadBounds { get; set; }
-
-    // Positioned decorations/articulations
-    public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
+    public override SymbolicDuration Duration => Chord.Duration;
 
     /// <summary>
     /// Gets the effective top Y position accounting for stem, beam, and flags.
     /// For chords, this is either the topmost notehead (stem up) or stem endpoint (stem down).
     /// </summary>
-    public double GetEffectiveTopY()
+    public override double GetEffectiveTopY()
     {
         if (Stem.Up)
         {
@@ -48,7 +39,7 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
     /// Gets the effective bottom Y position accounting for stem, beam, and flags.
     /// For chords, this is either the bottommost notehead (stem down) or stem endpoint (stem up).
     /// </summary>
-    public double GetEffectiveBottomY()
+    public override double GetEffectiveBottomY()
     {
         if (Stem.Up)
         {
@@ -76,19 +67,6 @@ internal sealed class ChordLayoutSymbol : AugmentationDottedLayoutSymbol, IStemm
         for (int i = 0; i < AccidentalYPositions.Count; i++)
         {
             AccidentalYPositions[i] += dy;
-        }
-
-        // Offset stem positions
-        Stem = Stem with { Y1 = Stem.Y1 + dy, Y2 = Stem.Y2 + dy };
-
-        // Offset note head bounds
-        NoteHeadBounds = NoteHeadBounds.Offset(dx, dy);
-
-        // Offset positioned decorations
-        for (int i = 0; i < PositionedDecorations.Count; i++)
-        {
-            var (type, x, y) = PositionedDecorations[i];
-            PositionedDecorations[i] = (type, x + dx, y + dy);
         }
     }
 }

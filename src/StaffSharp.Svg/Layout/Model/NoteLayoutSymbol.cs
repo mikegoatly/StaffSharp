@@ -1,12 +1,11 @@
 namespace StaffSharp.Layout.Model;
 
-using StaffSharp.Layout;
 using StaffSharp.Notation;
 
 /// <summary>
 /// Represents a positioned note.
 /// </summary>
-internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemmedSymbol
+internal sealed class NoteLayoutSymbol : StemmedSymbol
 {
     public required NotationNote Note { get; init; }
 
@@ -14,20 +13,12 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     public double AccidentalX { get; set; }
     public double AccidentalY { get; set; }
 
-    // Stem and beam information (IStemmedSymbol implementation)
-    public StemInfo Stem { get; set; }
-    public BeamInfo Beam { get; set; }
-    public Bounds NoteHeadBounds { get; set; }
-
-    public SymbolicDuration Duration => Note.Duration;
-
-    // Positioned decorations/articulations
-    public List<(Decoration Type, double X, double Y)> PositionedDecorations { get; } = [];
+    public override SymbolicDuration Duration => Note.Duration;
 
     /// <summary>
     /// Gets the effective top Y position accounting for stem, beam, and flags.
     /// </summary>
-    public double GetEffectiveTopY()
+    public override double GetEffectiveTopY()
     {
         // If stem goes up, top is at the notehead
         // If stem goes down, top is at the stem end (which extends above)
@@ -37,7 +28,7 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
     /// <summary>
     /// Gets the effective bottom Y position accounting for stem, beam, and flags.
     /// </summary>
-    public double GetEffectiveBottomY()
+    public override double GetEffectiveBottomY()
     {
         // If stem goes up, bottom is at the stem end (which extends below)
         // If stem goes down, bottom is at the notehead
@@ -50,18 +41,5 @@ internal sealed class NoteLayoutSymbol : AugmentationDottedLayoutSymbol, IStemme
 
         // Offset accidental position
         AccidentalY += dy;
-
-        // Offset stem positions
-        Stem = Stem with { Y1 = Stem.Y1 + dy, Y2 = Stem.Y2 + dy };
-
-        // Offset note head bounds
-        NoteHeadBounds = NoteHeadBounds.Offset(dx, dy);
-
-        // Offset positioned decorations
-        for (int i = 0; i < PositionedDecorations.Count; i++)
-        {
-            var (type, x, y) = PositionedDecorations[i];
-            PositionedDecorations[i] = (type, x + dx, y + dy);
-        }
     }
 }

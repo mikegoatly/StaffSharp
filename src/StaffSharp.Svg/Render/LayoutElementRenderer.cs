@@ -4,6 +4,7 @@ using System.Xml.Linq;
 
 using StaffSharp;
 using StaffSharp.Layout.Model;
+using StaffSharp.Layout.Services;
 using StaffSharp.Notation;
 
 internal abstract class LayoutElementRenderer<T>
@@ -36,7 +37,7 @@ internal abstract class LayoutElementRenderer<T>
             new XAttribute("height", bounds.Height),
             new XAttribute("fill", "none"),
             new XAttribute("stroke", color),
-            new XAttribute("stroke-width", 0.5),
+            new XAttribute("stroke-width", 1),
             new XAttribute("stroke-dasharray", "4,1")
         );
 
@@ -71,11 +72,27 @@ internal abstract class LayoutElementRenderer<T>
             return null;
         }
 
-        // Register this glyph for deduplication
-        context.RegisterGlyph(glyph);
-
         var targetHeight = targetHeightInStaffSpaces * context.StaffSpace;
         var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
+
+        return RenderGlyph(glyph, transform, context, scale);
+    }
+
+    protected static XElement? RenderGlyph(GlyphInfo glyph, Bounds bounds, string? transform, SvgContext context)
+    {
+        if (glyph.Path == null)
+        {
+            return null;
+        }
+
+        var scale = glyph.Height > 0 ? bounds.Height / glyph.Height : 1.0;
+        return RenderGlyph(glyph, transform, context, scale);
+    }
+
+    private static XElement RenderGlyph(GlyphInfo glyph, string? transform, SvgContext context, double scale)
+    {
+        // Register this glyph for deduplication
+        context.RegisterGlyph(glyph);
 
         var scaleTransform = $"scale({scale:F2})";
         var finalTransform = string.IsNullOrEmpty(transform)
@@ -175,22 +192,11 @@ internal abstract class LayoutElementRenderer<T>
     /// </summary>
     protected static void RenderDecorations(XElement group, AugmentationDottedLayoutSymbol symbol, SvgContext context)
     {
-        if (symbol is NoteLayoutSymbol noteSymbol)
+        if (symbol is StemmedSymbol stemmedSymbol)
         {
-            foreach (var (type, x, y) in noteSymbol.PositionedDecorations)
+            foreach (var (type, decorationBounds) in stemmedSymbol.Decorations)
             {
-                var decorationElement = RenderDecoration(type, x - symbol.Bounds.X, y - symbol.Bounds.Y, context);
-                if (decorationElement != null)
-                {
-                    group.Add(decorationElement);
-                }
-            }
-        }
-        else if (symbol is ChordLayoutSymbol chordSymbol)
-        {
-            foreach (var (type, x, y) in chordSymbol.PositionedDecorations)
-            {
-                var decorationElement = RenderDecoration(type, x - symbol.Bounds.X, y - symbol.Bounds.Y, context);
+                var decorationElement = RenderDecoration(type, decorationBounds.RelativeTo(symbol.Bounds), context);
                 if (decorationElement != null)
                 {
                     group.Add(decorationElement);
@@ -202,107 +208,16 @@ internal abstract class LayoutElementRenderer<T>
     /// <summary>
     /// Renders a single decoration glyph.
     /// </summary>
-    protected static XElement? RenderDecoration(Decoration decoration, double x, double y, SvgContext context)
+    protected static XElement? RenderDecoration(Decoration decoration, Bounds bounds, SvgContext context)
     {
-        var glyph = GetDecorationGlyph(decoration);
+        var glyph = ArticulationCalculator.GetDecorationGlyph(decoration);
         if (glyph.Path == null)
         {
             return null;
         }
 
-        // Get articulation-specific scaling and horizontal offset
-        var targetHeight = GetDecorationTargetHeight(decoration);
-        var xOffset = GetDecorationXOffset(decoration, glyph, targetHeight, context);
-
-        var transform = CreateTranslate(x + xOffset, y);
-        return RenderGlyph(glyph, targetHeight, transform, context);
-    }
-
-    /// <summary>
-    /// Gets the target height in staff spaces for a decoration glyph.
-    /// </summary>
-    protected static double GetDecorationTargetHeight(Decoration decoration)
-    {
-        return decoration switch
-        {
-            // Small articulations
-            Decoration.Staccato => 0.4,
-
-            // Medium articulations
-            Decoration.Tenuto => 0.5,
-            Decoration.Accent => 0.7,
-            Decoration.Marcato => 0.7,
-            Decoration.UpBow => 0.6,
-            Decoration.DownBow => 0.6,
-
-            // Large ornaments
-            Decoration.Trill => 0.8,
-            Decoration.Turn => 0.8,
-            Decoration.UpperMordent => 0.8,
-            Decoration.LowerMordent => 0.8,
-            Decoration.Mordent => 0.8,
-            Decoration.InvertedTurn => 0.8,
-
-            // Fermata and breath marks
-            Decoration.Fermata => 1.0,
-            Decoration.Breath => 0.6,
-
-            // Default for unspecified
-            _ => 0.7
-        };
-    }
-
-    /// <summary>
-    /// Gets the horizontal offset to center wide glyphs over the notehead.
-    /// </summary>
-    protected static double GetDecorationXOffset(Decoration decoration, GlyphInfo glyph, double targetHeight, SvgContext context)
-    {
-        // Calculate the rendered width of the glyph
-        var targetHeightPixels = targetHeight * context.StaffSpace;
-        var scale = glyph.Height > 0 ? targetHeightPixels / glyph.Height : 1.0;
-        var renderedWidth = glyph.Width * scale;
-
-        // For wide glyphs, offset left to center them
-        // Use black notehead width as the standard (most common)
-        var noteheadWidth = context.NoteHeadBlackWidth;
-
-        return decoration switch
-        {
-            // Wide ornaments need centering adjustment
-            Decoration.Trill => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.Fermata => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.Turn => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.UpperMordent => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.LowerMordent => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.Mordent => -(renderedWidth - noteheadWidth) / 2,
-            Decoration.InvertedTurn => -(renderedWidth - noteheadWidth) / 2,
-
-            // Other articulations are narrow enough to not need offset
-            _ => 0
-        };
-    }
-
-    /// <summary>
-    /// Maps a Decoration enum to its corresponding SMuFL glyph.
-    /// </summary>
-    protected static GlyphInfo GetDecorationGlyph(Decoration decoration)
-    {
-        return decoration switch
-        {
-            Decoration.Staccato => MusicGlyphs.Staccato,
-            Decoration.Tenuto => MusicGlyphs.Tenuto,
-            Decoration.Accent => MusicGlyphs.Accent,
-            Decoration.Marcato => MusicGlyphs.Marcato,
-            Decoration.Fermata => MusicGlyphs.Hold,
-            Decoration.Breath => MusicGlyphs.BreathMark,
-            Decoration.Trill => MusicGlyphs.Trill,
-            Decoration.Turn => MusicGlyphs.Turn,
-            Decoration.UpperMordent => MusicGlyphs.MordentUpper,
-            Decoration.LowerMordent => MusicGlyphs.MordentLower,
-            Decoration.UpBow => MusicGlyphs.Upbow,
-            // Note: Some decorations don't have glyphs yet or aren't rendered as symbols
-            _ => default
-        };
+        var transform = CreateTranslate(bounds.X, bounds.Y);
+        return RenderGlyph(glyph, bounds, transform, context);
     }
 
     /// <summary>

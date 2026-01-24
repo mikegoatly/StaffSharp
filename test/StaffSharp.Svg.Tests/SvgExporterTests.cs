@@ -395,16 +395,34 @@ public class SvgExporterTests : VisualSnapshotTestBase
     [Fact]
     public async Task Export_VariousArticulations_RendersCorrectly()
     {
+        // Comprehensive articulation test covering all four fixes:
+        // 1. AlwaysAbove: Marcato, Trill, UpBow, DownBow always render above
+        // 2. Collision detection: Staccato/articulations avoid staff lines
+        // 3. Horizontal alignment: All centered on noteheads
+        // 4. Vertical spacing: Multiple articulations stack correctly
         var notes = NotationEventBuilder.Create()
             .C(4, SymbolicDuration.Quarter, decorations: [Decoration.Staccato])
             .D(4, SymbolicDuration.Quarter, decorations: [Decoration.Accent])
             .E(4, SymbolicDuration.Quarter, decorations: [Decoration.Tenuto])
             .F(4, SymbolicDuration.Quarter, decorations: [Decoration.Marcato])
-            .G(4, SymbolicDuration.Quarter, decorations: [Decoration.Fermata])
+
+            // Stem-up notes
+            .G(4, SymbolicDuration.Quarter, decorations: [Decoration.Trill])
+            .A(4, SymbolicDuration.Quarter, decorations: [Decoration.UpBow])
+            .B(4, SymbolicDuration.Quarter, decorations: [Decoration.DownBow])
+            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.Fermata])
+
+            // Stem down notes
+            .D(5, SymbolicDuration.Quarter, decorations: [Decoration.Marcato])
+            .E(5, SymbolicDuration.Quarter, decorations: [Decoration.Trill])
+            .F(5, SymbolicDuration.Quarter, decorations: [Decoration.UpBow])
+            .G(5, SymbolicDuration.Quarter, decorations: [Decoration.DownBow])
+
+            // Multiple articulations stacking
             .A(4, SymbolicDuration.Quarter, decorations: [Decoration.Staccato, Decoration.Accent])
-            .B(4, SymbolicDuration.Quarter, decorations: [Decoration.Trill])
-            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.UpBow])
-            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.DownBow])
+            .B(4, SymbolicDuration.Quarter, decorations: [Decoration.Marcato, Decoration.Trill])
+            .C(5, SymbolicDuration.Quarter, decorations: [Decoration.Staccato, Decoration.Tenuto])
+            .D(5, SymbolicDuration.Quarter, decorations: [Decoration.Accent, Decoration.Fermata])
             .Build();
 
         var score = CreateScore(notes, Clef.Treble, KeySignature.C, TimeSignature.CommonTime);
