@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\StaffSharp.Avalonia\StaffSharp.Avalonia.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.Core\StaffSharp.Core.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.Audio\StaffSharp.Audio.csproj" />
     <ProjectReference Include="..\..\..\src\StaffSharp.MachineLearning\StaffSharp.MachineLearning.csproj" />

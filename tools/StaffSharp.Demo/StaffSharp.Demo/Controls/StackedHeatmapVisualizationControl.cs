@@ -3,6 +3,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 
 using ScottPlot;
 using ScottPlot.Avalonia;
@@ -38,8 +39,8 @@ public class StackedHeatmapVisualizationControl : UserControl
     public static readonly StyledProperty<bool> ShowVelocityProperty =
         AvaloniaProperty.Register<StackedHeatmapVisualizationControl, bool>(nameof(ShowVelocity), true);
 
-    public static readonly StyledProperty<double> PlaybackPositionProperty =
-        AvaloniaProperty.Register<StackedHeatmapVisualizationControl, double>(nameof(PlaybackPosition), 0.0);
+    public static readonly StyledProperty<double> PlaybackPercentageProperty =
+        AvaloniaProperty.Register<StackedHeatmapVisualizationControl, double>(nameof(PlaybackPercentage), 0.0);
 
     private readonly AvaPlot _onsetPlot;
     private readonly AvaPlot _framePlot;
@@ -92,10 +93,10 @@ public class StackedHeatmapVisualizationControl : UserControl
         set => SetValue(ShowVelocityProperty, value);
     }
 
-    public double PlaybackPosition
+    public double PlaybackPercentage
     {
-        get => GetValue(PlaybackPositionProperty);
-        set => SetValue(PlaybackPositionProperty, value);
+        get => GetValue(PlaybackPercentageProperty);
+        set => SetValue(PlaybackPercentageProperty, value);
     }
 
     public StackedHeatmapVisualizationControl()
@@ -126,7 +127,7 @@ public class StackedHeatmapVisualizationControl : UserControl
         FrameRateProperty.Changed.AddClassHandler<StackedHeatmapVisualizationControl>((x, _) => x.UpdatePlots());
         NoteEventsProperty.Changed.AddClassHandler<StackedHeatmapVisualizationControl>((x, _) => x.UpdatePlots());
         ShowVelocityProperty.Changed.AddClassHandler<StackedHeatmapVisualizationControl>((x, _) => x.UpdatePlots());
-        PlaybackPositionProperty.Changed.AddClassHandler<StackedHeatmapVisualizationControl>((x, _) => x.UpdatePlaybackMarkers());
+        PlaybackPercentageProperty.Changed.AddClassHandler<StackedHeatmapVisualizationControl>((x, _) => x.UpdatePlaybackMarkers());
     }
 
     private void UpdatePlots()
@@ -271,7 +272,7 @@ public class StackedHeatmapVisualizationControl : UserControl
         }
     }
 
-    private void OnPlotPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    private void OnPlotPointerMoved(object? sender, PointerEventArgs e)
     {
         if (sender is not AvaPlot plot || _onsetCrosshair is null)
         {
@@ -338,19 +339,19 @@ public class StackedHeatmapVisualizationControl : UserControl
 
         var timeFrames = OnsetData.GetLength(0);
         var duration = timeFrames / FrameRate;
-        var currentTime = PlaybackPosition * duration;
+        var currentTime = PlaybackPercentage * duration;
 
         _onsetPlaybackMarker.X = currentTime;
-        _onsetPlaybackMarker.IsVisible = PlaybackPosition > 0;
+        _onsetPlaybackMarker.IsVisible = PlaybackPercentage > 0;
 
         _framePlaybackMarker!.X = currentTime;
-        _framePlaybackMarker.IsVisible = PlaybackPosition > 0;
+        _framePlaybackMarker.IsVisible = PlaybackPercentage > 0;
 
         _offsetPlaybackMarker!.X = currentTime;
-        _offsetPlaybackMarker.IsVisible = PlaybackPosition > 0;
+        _offsetPlaybackMarker.IsVisible = PlaybackPercentage > 0;
 
         _pianoRollPlaybackMarker!.X = currentTime;
-        _pianoRollPlaybackMarker.IsVisible = PlaybackPosition > 0;
+        _pianoRollPlaybackMarker.IsVisible = PlaybackPercentage > 0;
 
         _onsetPlot.Refresh();
         _framePlot.Refresh();

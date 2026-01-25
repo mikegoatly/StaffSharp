@@ -19,6 +19,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\src\StaffSharp.Avalonia\StaffSharp.Avalonia.csproj" />
 	  <ProjectReference Include="..\..\src\StaffSharp.Svg\StaffSharp.Svg.csproj" />
 	  <ProjectReference Include="..\..\src\StaffSharp.Abc\StaffSharp.Abc.csproj" />
 	</ItemGroup>

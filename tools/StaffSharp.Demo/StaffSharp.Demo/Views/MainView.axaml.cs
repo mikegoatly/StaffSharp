@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 
@@ -13,7 +14,7 @@ public partial class MainView : UserControl
         InitializeComponent();
     }
 
-    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
 
@@ -27,7 +28,7 @@ public partial class MainView : UserControl
         }
     }
 
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
 

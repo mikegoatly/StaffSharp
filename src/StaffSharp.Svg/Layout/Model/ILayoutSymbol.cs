@@ -2,6 +2,7 @@
 {
     internal interface ILayoutSymbol : ILayoutElement
     {
+        string Id { get; set; }
         int LedgerLineCount { get; set; }
         bool LedgerLinesAbove { get; set; }
         double FirstLedgerLineOffsetY { get; set; }

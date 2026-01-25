@@ -59,7 +59,10 @@ public partial class MainViewModel : ViewModelBase
     public partial AudioBuffer? SynthesizedSamples { get; set; }
 
     [ObservableProperty]
-    public partial double PlaybackPosition { get; set; }
+    public partial double PlaybackPercentage { get; set; }
+
+    [ObservableProperty]
+    public partial TimeSpan? PlaybackPosition { get; set; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlayAudioCommand))]
@@ -169,7 +172,10 @@ public partial class MainViewModel : ViewModelBase
         if (_audioService.Duration.TotalSeconds > 0)
         {
             Dispatcher.UIThread.Post(() =>
-                PlaybackPosition = position.TotalSeconds / _audioService.Duration.TotalSeconds);
+            {
+                PlaybackPosition = position;
+                PlaybackPercentage = position.TotalSeconds / _audioService.Duration.TotalSeconds;
+            });
         }
     }
 
@@ -282,6 +288,8 @@ public partial class MainViewModel : ViewModelBase
         SvgContent = null;
         HasResult = false;
         HasProcessedAudio = false;
+        PlaybackPercentage = 0;
+        PlaybackPosition = null;
     }
 
     private async Task AnalyzeRecordingAsync(AudioBuffer samples)

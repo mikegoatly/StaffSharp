@@ -19,7 +19,7 @@ internal sealed class RestRenderer : LayoutElementRenderer<RestLayoutSymbol>
 
         var restGlyph = GetRestGlyph(symbol.Rest.Duration);
         var targetHeight = GetRestTargetHeight(symbol.Rest.Duration);
-        var restElement = RenderGlyph(restGlyph, targetHeight, null, context);
+        var restElement = RenderGlyph(restGlyph, targetHeight, null, context, symbol.Id);
         if (restElement != null)
         {
             group.Add(restElement);

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>StaffSharp.Avalonia</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Avalonia" />
+		<PackageReference Include="Avalonia.Skia" />
+		<PackageReference Include="Svg.Skia" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\StaffSharp.Core\StaffSharp.Core.csproj" />
+		<ProjectReference Include="..\StaffSharp.Svg\StaffSharp.Svg.csproj" />
+	</ItemGroup>
+
+</Project>

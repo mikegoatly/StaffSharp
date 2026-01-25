@@ -24,8 +24,8 @@ public class HeatmapVisualizationControl : UserControl
     public static readonly StyledProperty<string?> YLabelProperty =
         AvaloniaProperty.Register<HeatmapVisualizationControl, string?>(nameof(YLabel), "Frequency Bin");
 
-    public static readonly StyledProperty<double> PlaybackPositionProperty =
-        AvaloniaProperty.Register<HeatmapVisualizationControl, double>(nameof(PlaybackPosition), 0.0);
+    public static readonly StyledProperty<double> PlaybackPercentageProperty =
+        AvaloniaProperty.Register<HeatmapVisualizationControl, double>(nameof(PlaybackPercentage), 0.0);
 
     private readonly AvaPlot _plot;
     private ScottPlot.Plottables.VerticalLine? _playbackMarker;
@@ -54,10 +54,10 @@ public class HeatmapVisualizationControl : UserControl
         set => SetValue(YLabelProperty, value);
     }
 
-    public double PlaybackPosition
+    public double PlaybackPercentage
     {
-        get => GetValue(PlaybackPositionProperty);
-        set => SetValue(PlaybackPositionProperty, value);
+        get => GetValue(PlaybackPercentageProperty);
+        set => SetValue(PlaybackPercentageProperty, value);
     }
 
     public HeatmapVisualizationControl()
@@ -72,7 +72,7 @@ public class HeatmapVisualizationControl : UserControl
         FrameRateProperty.Changed.AddClassHandler<HeatmapVisualizationControl>((x, _) => x.UpdatePlot());
         TitleProperty.Changed.AddClassHandler<HeatmapVisualizationControl>((x, _) => x.UpdatePlot());
         YLabelProperty.Changed.AddClassHandler<HeatmapVisualizationControl>((x, _) => x.UpdatePlot());
-        PlaybackPositionProperty.Changed.AddClassHandler<HeatmapVisualizationControl>((x, _) => x.UpdatePlaybackMarker());
+        PlaybackPercentageProperty.Changed.AddClassHandler<HeatmapVisualizationControl>((x, _) => x.UpdatePlaybackMarker());
     }
 
     private void UpdatePlot()
@@ -134,10 +134,10 @@ public class HeatmapVisualizationControl : UserControl
 
         var timeFrames = HeatmapData.GetLength(0);
         var duration = timeFrames / FrameRate;
-        var currentTime = PlaybackPosition * duration;
+        var currentTime = PlaybackPercentage * duration;
 
         _playbackMarker.X = currentTime;
-        _playbackMarker.IsVisible = PlaybackPosition > 0;
+        _playbackMarker.IsVisible = PlaybackPercentage > 0;
 
         _plot.Refresh();
     }

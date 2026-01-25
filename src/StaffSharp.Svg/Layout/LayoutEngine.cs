@@ -85,6 +85,9 @@ internal static class LayoutEngine
         // Get measure count from first voice (all voices should have same number of measures)
         var measureCount = staff.Voices[0].Measures.Count;
 
+        // Track cumulative beat position for time-based highlighting
+        double cumulativeBeat = 0.0;
+
         for (int measureIndex = 0; measureIndex < measureCount; measureIndex++)
         {
             var layoutMeasure = new LayoutMeasure();
@@ -95,6 +98,9 @@ internal static class LayoutEngine
 
             // Set time signature (use measure-specific or fall back to score default)
             layoutMeasure.TimeSignature = firstMeasure.TimeSignature ?? metadata.TimeSignature;
+
+            // Set the absolute beat position where this measure starts
+            layoutMeasure.StartBeat = cumulativeBeat;
 
             // Note: Slurs are now handled at part level via SlurSpanPass, not measure level
 
@@ -174,6 +180,10 @@ internal static class LayoutEngine
             layoutMeasure.Symbols.Add(barlineSymbol);
 
             layoutStaff.Measures.Add(layoutMeasure);
+
+            // Advance cumulative beat by the measure duration (based on time signature)
+            var measureDuration = layoutMeasure.TimeSignature!.BeatsPerMeasure;
+            cumulativeBeat += (double)measureDuration.Numerator / measureDuration.Denominator;
         }
 
         return layoutStaff;

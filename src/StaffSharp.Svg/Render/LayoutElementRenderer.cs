@@ -16,16 +16,18 @@ internal abstract class LayoutElementRenderer<T>
     /// </summary>
     public abstract XElement Render(T symbol, SvgContext context);
 
-    protected static XElement CreateLine(double x1, double y1, double x2, double y2, string stroke = "black", double strokeWidth = 1D)
+    protected static XElement CreateLine(double x1, double y1, double x2, double y2, string stroke = "black", double strokeWidth = 1D, string? symbolId = null)
     {
-        return new XElement(SvgNamespace + "line",
-            new XAttribute("x1", $"{x1:F2}"),
-            new XAttribute("y1", $"{y1:F2}"),
-            new XAttribute("x2", $"{x2:F2}"),
-            new XAttribute("y2", $"{y2:F2}"),
-            new XAttribute("stroke", stroke),
-            new XAttribute("stroke-width", $"{strokeWidth:F2}")
-        );
+        return AddId(
+            symbolId,
+            new XElement(SvgNamespace + "line",
+                new XAttribute("x1", $"{x1:F2}"),
+                new XAttribute("y1", $"{y1:F2}"),
+                new XAttribute("x2", $"{x2:F2}"),
+                new XAttribute("y2", $"{y2:F2}"),
+                new XAttribute("stroke", stroke),
+                new XAttribute("stroke-width", $"{strokeWidth:F2}")
+            ));
     }
 
     protected static void AddBoundsRectangle(XElement group, Bounds bounds, string color)
@@ -47,7 +49,7 @@ internal abstract class LayoutElementRenderer<T>
     /// <summary>
     /// Renders an accidental glyph at the specified position.
     /// </summary>
-    protected static XElement RenderAccidental(Accidental accidental, double x, double y, SvgContext context)
+    protected static XElement RenderAccidental(Accidental accidental, double x, double y, SvgContext context, string? symbolId = null)
     {
         var accidentalGlyph = accidental switch
         {
@@ -58,14 +60,14 @@ internal abstract class LayoutElementRenderer<T>
         };
 
         var transform = CreateTranslate(x, y);
-        var accidentalElement = RenderGlyph(accidentalGlyph, 2.0, transform, context);
+        var accidentalElement = RenderGlyph(accidentalGlyph, 2.0, transform, context, symbolId);
         return accidentalElement!;
     }
 
     /// <summary>
     /// Renders a glyph as an SVG use element referencing a shared definition.
     /// </summary>
-    protected static XElement? RenderGlyph(GlyphInfo glyph, double targetHeightInStaffSpaces, string? transform, SvgContext context)
+    protected static XElement? RenderGlyph(GlyphInfo glyph, double targetHeightInStaffSpaces, string? transform, SvgContext context, string? symbolId = null)
     {
         if (glyph.Path == null)
         {
@@ -75,10 +77,10 @@ internal abstract class LayoutElementRenderer<T>
         var targetHeight = targetHeightInStaffSpaces * context.StaffSpace;
         var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
 
-        return RenderGlyph(glyph, transform, context, scale);
+        return RenderGlyph(glyph, transform, context, scale, symbolId);
     }
 
-    protected static XElement? RenderGlyph(GlyphInfo glyph, Bounds bounds, string? transform, SvgContext context)
+    protected static XElement? RenderGlyph(GlyphInfo glyph, Bounds bounds, string? transform, SvgContext context, string? symbolId = null)
     {
         if (glyph.Path == null)
         {
@@ -86,10 +88,10 @@ internal abstract class LayoutElementRenderer<T>
         }
 
         var scale = glyph.Height > 0 ? bounds.Height / glyph.Height : 1.0;
-        return RenderGlyph(glyph, transform, context, scale);
+        return RenderGlyph(glyph, transform, context, scale, symbolId);
     }
 
-    private static XElement RenderGlyph(GlyphInfo glyph, string? transform, SvgContext context, double scale)
+    private static XElement RenderGlyph(GlyphInfo glyph, string? transform, SvgContext context, double scale, string? symbolId = null)
     {
         // Register this glyph for deduplication
         context.RegisterGlyph(glyph);
@@ -99,11 +101,24 @@ internal abstract class LayoutElementRenderer<T>
             ? scaleTransform
             : $"{transform} {scaleTransform}";
 
-        return new XElement(SvgNamespace + "use",
+        var useElement = new XElement(SvgNamespace + "use",
             new XAttribute("href", $"#{glyph.Id}"),
-            new XAttribute("fill", "black"),
+            new XAttribute("fill", context.Foreground),
             new XAttribute("transform", finalTransform)
         );
+
+        // Add data-symbol-id for dynamic highlighting support
+        return AddId(symbolId, useElement);
+    }
+
+    private static XElement AddId(string? symbolId, XElement element)
+    {
+        if (symbolId != null)
+        {
+            element.Add(new XAttribute("data-symbol-id", symbolId));
+        }
+
+        return element;
     }
 
     /// <summary>
@@ -122,7 +137,8 @@ internal abstract class LayoutElementRenderer<T>
                 symbol.Stem.Y1 - symbolCenter,
                 stemX,
                 symbol.Stem.Y2 - symbolCenter,
-                strokeWidth: 1.5));
+                strokeWidth: 1.5,
+                symbolId: symbol.Id));
     }
 
     /// <summary>
@@ -158,7 +174,7 @@ internal abstract class LayoutElementRenderer<T>
             new XAttribute("transform", CreateTranslate(flagX, flagY))
         );
 
-        group.Add(flagElement);
+        group.Add(AddId(symbol.Id, flagElement));
     }
 
     /// <summary>
@@ -199,7 +215,7 @@ internal abstract class LayoutElementRenderer<T>
                 var decorationElement = RenderDecoration(type, decorationBounds.RelativeTo(symbol.Bounds), context);
                 if (decorationElement != null)
                 {
-                    group.Add(decorationElement);
+                    group.Add(AddId(symbol.Id, decorationElement));
                 }
             }
         }
@@ -323,7 +339,7 @@ internal abstract class LayoutElementRenderer<T>
 
             if (dotElement != null)
             {
-                group.Add(dotElement);
+                group.Add(AddId(symbol.Id, dotElement));
             }
         }
     }

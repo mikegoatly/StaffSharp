@@ -34,8 +34,8 @@ public class StackedWaveformVisualizationControl : UserControl
     public static readonly StyledProperty<int> ResampledSampleRateProperty =
         AvaloniaProperty.Register<StackedWaveformVisualizationControl, int>(nameof(ResampledSampleRate), 16000);
 
-    public static readonly StyledProperty<double> PlaybackPositionProperty =
-        AvaloniaProperty.Register<StackedWaveformVisualizationControl, double>(nameof(PlaybackPosition), 0.0);
+    public static readonly StyledProperty<double> PlaybackPercentageProperty =
+        AvaloniaProperty.Register<StackedWaveformVisualizationControl, double>(nameof(PlaybackPercentage), 0.0);
 
     private readonly AvaPlot _originalPlot;
     private readonly AvaPlot _normalizedPlot;
@@ -70,10 +70,10 @@ public class StackedWaveformVisualizationControl : UserControl
         set => SetValue(ResampledSampleRateProperty, value);
     }
 
-    public double PlaybackPosition
+    public double PlaybackPercentage
     {
-        get => GetValue(PlaybackPositionProperty);
-        set => SetValue(PlaybackPositionProperty, value);
+        get => GetValue(PlaybackPercentageProperty);
+        set => SetValue(PlaybackPercentageProperty, value);
     }
 
     public StackedWaveformVisualizationControl()
@@ -98,7 +98,7 @@ public class StackedWaveformVisualizationControl : UserControl
         NormalizedWaveformProperty.Changed.AddClassHandler<StackedWaveformVisualizationControl>((x, _) => x.UpdatePlots());
         ResampledWaveformProperty.Changed.AddClassHandler<StackedWaveformVisualizationControl>((x, _) => x.UpdatePlots());
         ResampledSampleRateProperty.Changed.AddClassHandler<StackedWaveformVisualizationControl>((x, _) => x.UpdatePlots());
-        PlaybackPositionProperty.Changed.AddClassHandler<StackedWaveformVisualizationControl>((x, _) => x.UpdatePlaybackMarkers());
+        PlaybackPercentageProperty.Changed.AddClassHandler<StackedWaveformVisualizationControl>((x, _) => x.UpdatePlaybackMarkers());
     }
 
     private void UpdatePlots()
@@ -262,21 +262,21 @@ public class StackedWaveformVisualizationControl : UserControl
             return;
         }
 
-        var currentTime = PlaybackPosition * OriginalWaveform.DurationSeconds;
+        var currentTime = PlaybackPercentage * OriginalWaveform.DurationSeconds;
 
         _originalPlaybackMarker.X = currentTime;
-        _originalPlaybackMarker.IsVisible = PlaybackPosition > 0;
+        _originalPlaybackMarker.IsVisible = PlaybackPercentage > 0;
 
         if (_normalizedPlaybackMarker != null)
         {
             _normalizedPlaybackMarker.X = currentTime;
-            _normalizedPlaybackMarker.IsVisible = PlaybackPosition > 0;
+            _normalizedPlaybackMarker.IsVisible = PlaybackPercentage > 0;
         }
 
         if (_resampledPlaybackMarker != null)
         {
             _resampledPlaybackMarker.X = currentTime;
-            _resampledPlaybackMarker.IsVisible = PlaybackPosition > 0;
+            _resampledPlaybackMarker.IsVisible = PlaybackPercentage > 0;
         }
 
         _originalPlot.Refresh();

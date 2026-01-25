@@ -37,47 +37,73 @@ public class SvgScoreExporter : IScoreExporter
         ArgumentNullException.ThrowIfNull(score);
         ArgumentNullException.ThrowIfNull(stream);
 
-        var context = ParseOptions(options);
-        var layoutModel = LayoutEngine.Layout(score, context);
-        var svg = SvgRenderer.Render(layoutModel, context);
-
-        await stream.WriteAsync(Encoding.UTF8.GetBytes(svg.ToString()), cancellationToken).ConfigureAwait(false);
+        await ExportAsync(score, stream, ParseOptions(options), cancellationToken).ConfigureAwait(false);
     }
 
-    private static SvgContext ParseOptions(IReadOnlyDictionary<string, string>? options)
+    /// <summary>
+    /// Exports a notation score to SVG format.
+    /// </summary>
+    /// <param name="score">The score to export.</param>
+    /// <param name="stream">The stream to write to.</param>
+    /// <param name="options">Export options.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public static async Task ExportAsync(
+        NotationScore score,
+        Stream stream,
+        SvgRenderOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        var renderedScore = Export(score, options);
+
+        await stream.WriteAsync(Encoding.UTF8.GetBytes(renderedScore.ToString()), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Exports the specified musical score to a rendered SVG representation.
+    /// </summary>
+    /// <param name="score">The musical score to export. This parameter cannot be null.</param>
+    /// <param name="options">Optional rendering options that control the appearance and behavior of the SVG output. If not specified, default
+    /// options are used.</param>
+    /// <returns>A RenderedScore object that can be dynamically highlighted and converted to SVG string.</returns>
+    public static RenderedScore Export(NotationScore score, SvgRenderOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+
+        options ??= new();
+        var context = options.ToSvgContext();
+
+        // Layout first
+        var layoutModel = LayoutEngine.Layout(score, context);
+
+        // Render
+        var svgRoot = SvgRenderer.Render(layoutModel, context);
+
+        return new RenderedScore(svgRoot, layoutModel, score, context.Foreground);
+    }
+
+    private static SvgRenderOptions ParseOptions(IReadOnlyDictionary<string, string>? options)
     {
         var maxWidth = int.Parse(options?.GetValueOrDefault("maxWidth") ?? "1024", CultureInfo.InvariantCulture);
         var scale = double.Parse(options?.GetValueOrDefault("scale") ?? "1.0", CultureInfo.InvariantCulture);
         var marginsStr = options?.GetValueOrDefault("margins") ?? "40,40,40,40";
         var margins = marginsStr.Split(',').Select(s => int.Parse(s, CultureInfo.InvariantCulture)).ToArray();
         var staffSpace = int.Parse(options?.GetValueOrDefault("staffSpace") ?? "10", CultureInfo.InvariantCulture);
-        var bailAfterPass = options?.GetValueOrDefault("bailAfterPass");
         var renderDebugArtifacts = bool.Parse(options?.GetValueOrDefault("renderDebugArtifacts") ?? "false");
+        var background = options?.GetValueOrDefault("background") ?? SvgRenderOptions.Default.Background;
+        var foreground = options?.GetValueOrDefault("foreground") ?? SvgRenderOptions.Default.Foreground;
 
-        return new SvgContext
+        return new SvgRenderOptions
         {
             MaxWidth = maxWidth,
             Scale = scale,
-            Margins = new Margins(margins[0], margins[1], margins[2], margins[3]),
+            Margins = margins,
             StaffSpace = staffSpace,
-            BailAfterPass = bailAfterPass,
             RenderDebugArtifacts = renderDebugArtifacts,
-            NoteHeadWholeWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadWhole, staffSpace),
-            NoteHeadHalfWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadHalf, staffSpace),
-            NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, staffSpace),
-            HalfStaffSpace = staffSpace / 2D,
+            Background = background,
+            Foreground = foreground
         };
-    }
 
-    private static double CalculateNoteheadWidth(GlyphInfo glyph, int staffSpace)
-    {
-        // Noteheads are scaled to 1.0 staff space in height
-        var targetHeight = 1.0 * staffSpace;
-        var scale = glyph.Height > 0 ? targetHeight / glyph.Height : 1.0;
-
-        // Round scale to 2dp
-        // This ensures stem positions align with the actual rendered notehead width
-        var roundedScale = Math.Round(scale, 2);
-        return glyph.Width * roundedScale;
     }
 }

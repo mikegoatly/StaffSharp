@@ -29,11 +29,11 @@ internal static class SvgRenderer
             new XAttribute("height", viewBoxHeight)
         );
 
-        // Add white background
+        // Add background
         svg.Add(new XElement(SvgNamespace + "rect",
             new XAttribute("width", viewBoxWidth),
             new XAttribute("height", viewBoxHeight),
-            new XAttribute("fill", "white")
+            new XAttribute("fill", context.Background)
         ));
 
         // Render each system

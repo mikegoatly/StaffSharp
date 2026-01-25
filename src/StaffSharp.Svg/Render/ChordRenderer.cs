@@ -23,7 +23,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
             var accidental = symbol.Accidentals[i];
             var xOffset = symbol.AccidentalXOffsets[i];
             var yPos = symbol.AccidentalYPositions[i] - symbol.Bounds.Y;  // Make relative to chord Y
-            group.Add(RenderAccidental(accidental, xOffset, yPos, context));
+            group.Add(RenderAccidental(accidental, xOffset, yPos, context, symbol.Id));
         }
 
         var notehead = GetNoteheadGlyph(symbol.Chord.Duration);
@@ -35,7 +35,7 @@ internal sealed class ChordRenderer : LayoutElementRenderer<ChordLayoutSymbol>
             var xShift = symbol.NoteheadXShifts.Count > i ? symbol.NoteheadXShifts[i] : 0;
             var transform = CreateTranslate(xShift, y);
 
-            var noteheadElement = RenderGlyph(notehead, 1.0, transform, context);
+            var noteheadElement = RenderGlyph(notehead, 1.0, transform, context, symbol.Id);
             if (noteheadElement != null)
             {
                 group.Add(noteheadElement);

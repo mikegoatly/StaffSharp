@@ -20,12 +20,12 @@ internal sealed class NoteRenderer : LayoutElementRenderer<NoteLayoutSymbol>
         // Render accidental if present
         if (symbol.Accidental.HasValue)
         {
-            group.Add(RenderAccidental(symbol.Accidental.Value, symbol.AccidentalX, symbol.AccidentalY - symbol.Bounds.Y, context));
+            group.Add(RenderAccidental(symbol.Accidental.Value, symbol.AccidentalX, symbol.AccidentalY - symbol.Bounds.Y, context, symbol.Id));
         }
 
         // Choose notehead based on duration and render it
         var notehead = GetNoteheadGlyph(symbol.Note.Duration);
-        var noteheadElement = RenderGlyph(notehead, 1.0, null, context);
+        var noteheadElement = RenderGlyph(notehead, 1.0, null, context, symbol.Id);
         if (noteheadElement != null)
         {
             group.Add(noteheadElement);

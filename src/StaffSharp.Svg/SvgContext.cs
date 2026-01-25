@@ -72,6 +72,16 @@ internal record SvgContext
     /// </summary>
     internal IReadOnlyCollection<GlyphInfo> UsedGlyphs => _usedGlyphs.Values;
 
+    /// <summary>
+    /// Gets the foreground color used to render notation elements.
+    /// </summary>
+    public string Foreground { get; init; } = "black";
+
+    /// <summary>
+    /// Gets the background color for the score.
+    /// </summary>
+    public string Background { get; init; } = "white";
+
     internal double GetNoteheadWidth(NoteDurationBase duration)
     {
         return duration switch

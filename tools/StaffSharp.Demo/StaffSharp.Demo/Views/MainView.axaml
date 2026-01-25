@@ -5,6 +5,7 @@
     xmlns:controls="using:StaffSharp.Demo.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ssControls="using:StaffSharp.Avalonia.Controls"
     xmlns:views="using:StaffSharp.Demo.Views"
     xmlns:vm="using:StaffSharp.Demo.ViewModels"
     d:DesignHeight="800"
@@ -195,7 +196,7 @@
                         HorizontalScrollBarVisibility="Auto"
                         VerticalScrollBarVisibility="Auto">
                         <Panel>
-                            <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
+                            <ssControls:NotationScoreControl HighlightStartTime="{Binding PlaybackPosition}" Score="{Binding Score}" />
 
                             <!--  Loading indicator  -->
                             <StackPanel
@@ -233,7 +234,7 @@
                         <controls:StackedWaveformVisualizationControl
                             NormalizedWaveform="{Binding NormalizedWaveform}"
                             OriginalWaveform="{Binding WaveformSamples}"
-                            PlaybackPosition="{Binding PlaybackPosition}"
+                            PlaybackPercentage="{Binding PlaybackPercentage}"
                             ResampledSampleRate="16000"
                             ResampledWaveform="{Binding ResampledWaveform}" />
 
@@ -253,7 +254,7 @@
                         Margin="8"
                         FrameRate="{Binding MlFrameRate}"
                         HeatmapData="{Binding MelSpectrogram}"
-                        PlaybackPosition="{Binding PlaybackPosition}"
+                        PlaybackPercentage="{Binding PlaybackPercentage}"
                         YLabel="Mel Bin" />
                 </TabItem>
 
@@ -266,7 +267,7 @@
                         NoteEvents="{Binding DecodedNoteEvents}"
                         OffsetData="{Binding OffsetProbabilities}"
                         OnsetData="{Binding OnsetProbabilities}"
-                        PlaybackPosition="{Binding PlaybackPosition}"
+                        PlaybackPercentage="{Binding PlaybackPercentage}"
                         ShowVelocity="True" />
                 </TabItem>
             </TabControl>

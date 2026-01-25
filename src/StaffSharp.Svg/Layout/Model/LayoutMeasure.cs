@@ -16,6 +16,12 @@ internal class LayoutMeasure : LayoutElement
     public TimeSignature? TimeSignature { get; set; }
 
     /// <summary>
+    /// The absolute beat position where this measure starts in the score.
+    /// Used for time-based highlighting and playback.
+    /// </summary>
+    public double StartBeat { get; set; }
+
+    /// <summary>
     /// Determines whether the collection contains a symbol that references the specified notation event.
     /// </summary>
     /// <param name="notationEvent">The notation event to locate in the collection. This can be a note or chord event. Cannot be null.</param>
