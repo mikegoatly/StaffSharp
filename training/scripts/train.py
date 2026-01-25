@@ -31,6 +31,46 @@ from early_stopping import EarlyStopping
 from metrics import compute_all_metrics, print_metrics
 
 
+def spec_augment(mel_spec: np.ndarray,
+                 freq_mask_param: int = 27,
+                 time_mask_param: int = 100,
+                 num_freq_masks: int = 2,
+                 num_time_masks: int = 2) -> np.ndarray:
+    """
+    Apply SpecAugment to mel spectrogram.
+
+    SpecAugment: A Simple Data Augmentation Method for Automatic Speech Recognition
+    https://arxiv.org/abs/1904.08779
+
+    Args:
+        mel_spec: Mel spectrogram with shape (time, mel_bins)
+        freq_mask_param: Maximum width of frequency mask (default: 27 mel bins, ~12% of 229)
+        time_mask_param: Maximum width of time mask (default: 100 frames, ~5% of 2000)
+        num_freq_masks: Number of frequency masks to apply (default: 2)
+        num_time_masks: Number of time masks to apply (default: 2)
+
+    Returns:
+        Augmented mel spectrogram with same shape
+    """
+    augmented = mel_spec.copy()
+    time_steps, mel_bins = augmented.shape
+    mask_value = 0 # I'll float(augmented.mean()) if zero does work well
+
+    # Apply frequency masking
+    for _ in range(num_freq_masks):
+        f = np.random.randint(0, freq_mask_param)
+        f0 = np.random.randint(0, mel_bins - f)
+        augmented[:, f0:f0+f] = mask_value
+
+    # Apply time masking
+    for _ in range(num_time_masks):
+        t = np.random.randint(0, min(time_mask_param, time_steps))
+        t0 = np.random.randint(0, time_steps - t)
+        augmented[t0:t0+t, :] = mask_value
+
+    return augmented
+
+
 def load_npz_with_retry(file_path: Path, file_name: str) -> tuple:
     """
     Load NPZ file arrays with robust error handling.
@@ -90,7 +130,8 @@ def set_seed(seed: int = 42):
 class MaestroDataset(Dataset):
     """Dataset for preprocessed MAESTRO data."""
 
-    def __init__(self, data_dir: str, split: str = 'train', sequence_length: Optional[int] = None):
+    def __init__(self, data_dir: str, split: str = 'train', sequence_length: Optional[int] = None,
+                 use_spec_augment: bool = True):
         """
         Initialize dataset.
 
@@ -98,16 +139,20 @@ class MaestroDataset(Dataset):
             data_dir: Directory containing processed .npz files
             split: 'train', 'validation', or 'test'
             sequence_length: Maximum sequence length in frames. Longer sequences are cropped.
+            use_spec_augment: Apply SpecAugment during training (default: True)
         """
         self.data_dir = Path(data_dir) / split
         self.split = split
         self.sequence_length = sequence_length
+        self.use_spec_augment = use_spec_augment and (split == 'train')
         self.files = sorted(list(self.data_dir.glob('*.npz')))
 
         if len(self.files) == 0:
             raise ValueError(f"No .npz files found in {self.data_dir}")
 
         print(f"Loaded {len(self.files)} files for {split} split")
+        if self.use_spec_augment:
+            print(f"  ✓ SpecAugment enabled for {split} split")
 
     def __len__(self):
         return len(self.files)
@@ -152,6 +197,10 @@ class MaestroDataset(Dataset):
             off_roll = off_roll[start:end]
             p_roll = p_roll[start:end]
             v_roll = v_roll[start:end]
+
+        # Apply SpecAugment to mel spectrogram (training only)
+        if self.use_spec_augment:
+            mel_spec = spec_augment(mel_spec)
 
         mel_spec = torch.from_numpy(mel_spec)
         onset_roll = torch.from_numpy(on_roll)
@@ -262,6 +311,10 @@ class SlidingWindowDataset(Dataset):
             off_roll = off_roll[start_frame:end_frame]
             p_roll = p_roll[start_frame:end_frame]
             v_roll = v_roll[start_frame:end_frame]
+
+        # Apply SpecAugment to mel spectrogram (training only)
+        if self.base_dataset.use_spec_augment:
+            mel_spec = spec_augment(mel_spec)
 
         mel_spec = torch.from_numpy(mel_spec)
         onset_roll = torch.from_numpy(on_roll)
@@ -524,7 +577,7 @@ def validate(
 def save_checkpoint(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
-    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau,
+    scheduler: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
     epoch: int,
     metrics: Dict[str, float],
     output_dir: str,
@@ -548,9 +601,9 @@ def save_checkpoint(
 
 
 def load_checkpoint(
-    model: nn.Module, 
-    optimizer: torch.optim.Optimizer, 
-    scheduler: torch.optim.lr_scheduler.ReduceLROnPlateau,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
     checkpoint_path: str,
     resume_scheduler: bool = True
 ):
@@ -622,6 +675,8 @@ def main():
                         help='Positive class weight for offset detection, compensates for extreme class imbalance in MAESTRO (~412:1 ratio). (default: 100.0)')
     parser.add_argument('--frame-pos-weight', type=float, default=40.0,
                         help='Positive class weight for frame activation, compensates for class imbalance in MAESTRO (~33:1 ratio). (default: 40.0)')
+    parser.add_argument('--focal-gamma', type=float, default=2.0,
+                        help='Gamma parameter for Focal Loss on onset/offset. Higher values focus more on hard examples. (default: 2.0)')
     
     # Reproducibility
     parser.add_argument('--seed', type=int, default=42,
@@ -704,8 +759,10 @@ def main():
         velocity_weight=args.velocity_weight,
         onset_pos_weight=args.onset_pos_weight,
         offset_pos_weight=args.offset_pos_weight,
-        frame_pos_weight=args.frame_pos_weight
+        frame_pos_weight=args.frame_pos_weight,
+        focal_gamma=args.focal_gamma
     )
+    print(f"Using Focal Loss (gamma={args.focal_gamma}) for onset/offset detection")
 
     optimizer = torch.optim.Adam(
         model.parameters(),
@@ -713,13 +770,17 @@ def main():
         weight_decay=1e-5
     )
 
-    # Learning rate scheduler
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    # Learning rate scheduler - Cosine Annealing with Warm Restarts
+    # T_0: Number of epochs for the first restart (default: 10)
+    # T_mult: Factor to increase T_i after each restart (default: 2)
+    # eta_min: Minimum learning rate (default: 1e-7)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer,
-        mode='min',
-        factor=0.5,
-        patience=5
+        T_0=10,
+        T_mult=2,
+        eta_min=1e-7
     )
+    print(f"Using CosineAnnealingWarmRestarts scheduler (T_0=10, T_mult=2)")
 
     # Mixed precision scaler
     scaler = torch.cuda.amp.GradScaler() if args.device == 'cuda' else None
@@ -798,8 +859,11 @@ def main():
                     if isinstance(metric_value, (int, float)):
                         writer.add_scalar(f'val/{metric_name}', metric_value, epoch)
 
-            # Learning rate scheduling
-            scheduler.step(val_metrics['loss'])
+            # Learning rate scheduling (step every epoch)
+            scheduler.step()
+            current_lr = optimizer.param_groups[0]['lr']
+            writer.add_scalar('train/learning_rate', current_lr, epoch)
+            print(f"  Learning rate: {current_lr:.2e}")
 
             # Save checkpoint
             if epoch % args.save_interval == 0:

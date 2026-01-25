@@ -21,6 +21,74 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
+class FocalLoss(nn.Module):
+    """
+    Focal Loss for addressing class imbalance.
+
+    Focal Loss: https://arxiv.org/abs/1708.02002
+    FL(p_t) = -α_t * (1 - p_t)^γ * log(p_t)
+
+    The (1 - p_t)^γ term down-weights easy examples (high confidence)
+    and focuses learning on hard examples (low confidence).
+
+    This is particularly effective for extreme class imbalance like onset/offset detection
+    where positive examples are ~1/400 of the total.
+    """
+
+    def __init__(self, alpha: float = 1.0, gamma: float = 2.0, reduction: str = 'mean'):
+        """
+        Initialize Focal Loss.
+
+        Args:
+            alpha: Weighting factor for positive class (similar to pos_weight in BCE)
+            gamma: Focusing parameter (default: 2.0). Higher gamma => more focus on hard examples
+            reduction: 'mean', 'sum', or 'none'
+        """
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Compute focal loss.
+
+        Args:
+            inputs: Logits from model (before sigmoid) with shape (B, T, 88)
+            targets: Binary labels with shape (B, T, 88)
+
+        Returns:
+            torch.Tensor: Scalar tensor if reduction='mean' or 'sum', else tensor with the same
+            shape as inputs (per-element loss).
+        """
+        # Convert logits to probabilities
+        p = torch.sigmoid(inputs)
+
+        # Compute binary cross entropy (element-wise)
+        bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+
+        # Compute p_t: probability of the true class
+        # If target=1, use p. If target=0, use (1-p)
+        p_t = p * targets + (1 - p) * (1 - targets)
+
+        # Compute focal term: (1 - p_t)^gamma
+        focal_term = (1 - p_t) ** self.gamma
+
+        # Compute alpha term for class balancing
+        # If target=1, use alpha. If target=0, use 1.0
+        alpha_t = self.alpha * targets + (1 - targets)
+
+        # Final focal loss
+        loss = alpha_t * focal_term * bce_loss
+
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
+
 class OnsetsAndFramesModel(nn.Module):
     def __init__(
         self,
@@ -202,44 +270,47 @@ class OnsetsAndFramesLoss(nn.Module):
         velocity_weight: float = 1.0,
         onset_pos_weight: float = 5.0,
         offset_pos_weight: float = 5.0,
-        frame_pos_weight: float = 2.0
+        frame_pos_weight: float = 2.0,
+        focal_gamma: float = 2.0
     ):
         """
         Initialize loss function with configurable weights.
-        
+
         Args:
             onset_weight: Weight for onset loss in total loss computation
             offset_weight: Weight for offset loss in total loss computation
             frame_weight: Weight for frame loss in total loss computation
             velocity_weight: Weight for velocity loss in total loss computation
-            onset_pos_weight: Positive class weight for onset detection (handles class imbalance).
-                Higher values (e.g., 5.0) compensate for rare onset events.
-            offset_pos_weight: Positive class weight for offset detection.
-            frame_pos_weight: Positive class weight for frame activation.
-                Lower than onset (e.g., 2.0) since frames are less sparse.
+            onset_pos_weight: Alpha parameter for Focal Loss on onset detection.
+                Higher values (e.g., 100.0) compensate for extreme class imbalance (~410:1).
+            offset_pos_weight: Alpha parameter for Focal Loss on offset detection.
+            frame_pos_weight: Positive class weight for frame activation BCE.
+                Lower than onset (e.g., 40.0) since frames are less sparse (~33:1).
+            focal_gamma: Gamma parameter for Focal Loss (default: 2.0).
+                Higher values focus more on hard examples.
         """
         super().__init__()
         self.onset_weight = onset_weight
         self.offset_weight = offset_weight
         self.frame_weight = frame_weight
         self.velocity_weight = velocity_weight
-        
-        # Standard BCE With Logits but with positive weights to handle class imbalance
-        # Notes are rare events in the time-frequency space
-        self.onset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(onset_pos_weight))
-        self.offset_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(offset_pos_weight))
+
+        # Use Focal Loss for onset and offset (extreme class imbalance ~400:1)
+        self.onset_criterion = FocalLoss(alpha=onset_pos_weight, gamma=focal_gamma, reduction='none')
+        self.offset_criterion = FocalLoss(alpha=offset_pos_weight, gamma=focal_gamma, reduction='none')
+
+        # Keep BCE for frame loss (less extreme imbalance ~33:1)
         self.frame_bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(frame_pos_weight))
-        
+
         self.velocity_criterion = nn.MSELoss(reduction='none')
 
-    def forward(self, onsets, offsets, frames, velocities, 
+    def forward(self, onsets, offsets, frames, velocities,
                 onset_label, offset_label, frame_label, velocity_label, mask=None):
-        
-        # Ensure weights are on the correct device (only once, typically first forward pass)
+
         device = onsets.device
-        if self.onset_bce.pos_weight.device != device:
-            self.onset_bce.pos_weight = self.onset_bce.pos_weight.to(device)
-            self.offset_bce.pos_weight = self.offset_bce.pos_weight.to(device)
+
+        # Move frame BCE pos_weight to device if needed
+        if self.frame_bce.pos_weight.device != device:
             self.frame_bce.pos_weight = self.frame_bce.pos_weight.to(device)
 
         # Expand mask to (B, T, 88) if provided
@@ -249,17 +320,15 @@ class OnsetsAndFramesLoss(nn.Module):
             mask_expanded = torch.ones_like(onsets)
 
         # 1. Classification Losses with masking
-        # Use reduction='none' to get per-element loss, then apply mask
-        onset_loss_raw = torch.nn.functional.binary_cross_entropy_with_logits(
-            onsets, onset_label, pos_weight=self.onset_bce.pos_weight, reduction='none'
-        )
+        # Onset loss (using Focal Loss)
+        onset_loss_raw = self.onset_criterion(onsets, onset_label)
         onset_loss = (onset_loss_raw * mask_expanded).sum() / mask_expanded.sum()
-        
-        offset_loss_raw = torch.nn.functional.binary_cross_entropy_with_logits(
-            offsets, offset_label, pos_weight=self.offset_bce.pos_weight, reduction='none'
-        )
+
+        # Offset loss (using Focal Loss)
+        offset_loss_raw = self.offset_criterion(offsets, offset_label)
         offset_loss = (offset_loss_raw * mask_expanded).sum() / mask_expanded.sum()
-        
+
+        # Frame loss (using BCE)
         frame_loss_raw = torch.nn.functional.binary_cross_entropy_with_logits(
             frames, frame_label, pos_weight=self.frame_bce.pos_weight, reduction='none'
         )
