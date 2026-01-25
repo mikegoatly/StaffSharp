@@ -892,6 +892,10 @@ def main():
                     break
 
         print("\nTraining complete!")
+        
+        # Save final model after training completes
+        save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, f'final_model_epoch_{epoch}.pt')
+        print(f"✓ Saved final model: final_model_epoch_{epoch}.pt")
     
     except KeyboardInterrupt:
         print("\n\n" + "="*60)
