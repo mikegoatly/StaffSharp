@@ -13,6 +13,7 @@ internal static class LayoutEngine
 {
     internal static ILayoutPass[] LayoutPasses { get; } =
     [
+        new SymbolIdAssignmentPass(),               // Assign unique IDs to all symbols
         new VerticalPositionPass(),                 // Y positions relative to staff
         new AccidentalPlacementPass(),              // Which accidentals to show
         new NoteHeadPass(),                         // Notehead position and chord notehead shifts

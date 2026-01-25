@@ -6,6 +6,11 @@ namespace StaffSharp.Layout.Model;
 internal abstract class LayoutSymbol : LayoutElement, ILayoutSymbol
 {
     /// <summary>
+    /// Unique identifier for this symbol (used for highlighting and reference).
+    /// </summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>
     /// Time position of this symbol in musical time (e.g., quarter note = 1.0).
     /// </summary>
     public double TimePosition { get; set; }
