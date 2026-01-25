@@ -61,7 +61,7 @@ public sealed class NotationEngine : INotationEngine
             Tempo: (int)Math.Round(timeline.TempoMap.GetTempoAtTime(0))
         );
 
-        return new NotationScore(metadata, [part]);
+        return new NotationScore(metadata, [part], timeline.TempoMap);
     }
 
     /// <summary>
