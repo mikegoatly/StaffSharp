@@ -334,8 +334,13 @@ internal sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 
     private InferenceSession CreateInferenceSession(SessionOptions sessionOptions)
     {
-        if (!string.IsNullOrWhiteSpace(_options.ModelPath) && File.Exists(_options.ModelPath))
+        if (!string.IsNullOrWhiteSpace(_options.ModelPath))
         {
+            if (!File.Exists(_options.ModelPath))
+            {
+                throw new FileNotFoundException($"ONNX model not found at: {_options.ModelPath}", _options.ModelPath);
+            }
+
             return new InferenceSession(_options.ModelPath, sessionOptions);
         }
 

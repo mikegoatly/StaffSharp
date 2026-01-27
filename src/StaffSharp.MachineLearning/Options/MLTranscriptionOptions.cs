@@ -86,5 +86,5 @@ public sealed record MLTranscriptionOptions
     /// When set, notes starting within the configured temporal window with harmonic relationships
     /// (octaves, perfect 12ths, 2 octaves) are filtered to keep only the fundamental (lowest pitch).
     /// </summary>
-    public HarmonicSuppressionOptions HarmonicSuppression { get; init; } = new(true);
+    public HarmonicSuppressionOptions HarmonicSuppressionOptions { get; init; } = new(true);
 }

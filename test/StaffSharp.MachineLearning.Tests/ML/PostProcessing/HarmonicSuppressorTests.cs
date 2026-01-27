@@ -180,7 +180,7 @@ public sealed class HarmonicSuppressorTests
     public void SuppressHarmonics_OutsideTemporalWindow_BothKept()
     {
         // Arrange
-        var options = new HarmonicSuppressionOptions { TemporalWindowMs = 50.0, VelocityRatio = 0.9f };
+        var options = new HarmonicSuppressionOptions { TemporalWindow = TimeSpan.FromMilliseconds(50), VelocityRatio = 0.9f };
         var suppressor = new HarmonicSuppressor(options);
         var notes = new List<NoteEvent>
         {

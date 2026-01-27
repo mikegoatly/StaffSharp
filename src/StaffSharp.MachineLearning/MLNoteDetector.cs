@@ -42,7 +42,7 @@ public sealed class MLNoteDetector : INoteDetector
         _tempoDetector = TempoDetectorFactory.Create(_options.TempoOptions);
         _quantizer = new PolyphonicQuantizer();
         _decoder = new NoteEventDecoder(_options);
-        _harmonicSuppressor = new HarmonicSuppressor(_options.HarmonicSuppression);
+        _harmonicSuppressor = new HarmonicSuppressor(_options.HarmonicSuppressionOptions);
     }
 
     /// <summary>
@@ -103,7 +103,7 @@ public sealed class MLNoteDetector : INoteDetector
         // Apply harmonic suppression BEFORE tempo/time signature detection
         // This ensures we detect the correct meter based on the actual notes (without harmonics)
         var beforeCount = noteEvents.Count;
-        progress.EmitDiagnostics("Harmonic suppression enabled", _options.HarmonicSuppression.SuppressHarmonics);
+        progress.EmitDiagnostics("Harmonic suppression enabled", _options.HarmonicSuppressionOptions.SuppressHarmonics);
         noteEvents = _harmonicSuppressor.SuppressHarmonics(noteEvents);
         var afterCount = noteEvents.Count;
 

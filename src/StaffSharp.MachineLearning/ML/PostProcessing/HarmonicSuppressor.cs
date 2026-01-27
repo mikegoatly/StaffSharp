@@ -41,6 +41,8 @@ public sealed class HarmonicSuppressor
         var keepNote = new bool[sortedEvents.Count];
         Array.Fill(keepNote, true);
 
+        var temporalWindow = _options.TemporalWindow;
+
         for (int i = 0; i < sortedEvents.Count; i++)
         {
             if (!keepNote[i])
@@ -48,51 +50,64 @@ public sealed class HarmonicSuppressor
                 continue;
             }
 
-            var fundamental = sortedEvents[i];
+            var note1 = sortedEvents[i];
 
-            for (int j = i + 1; j < sortedEvents.Count; j++)
+            // Check both forward (harmonics after fundamental) and backward (harmonics before fundamental)
+            for (int j = 0; j < sortedEvents.Count; j++)
             {
-                var potentialHarmonic = sortedEvents[j];
-
-                // Stop checking if we leave the time window
-                var temporalWindow = TimeSpan.FromMilliseconds(_options.TemporalWindowMs);
-                if (potentialHarmonic.Onset - fundamental.Onset > temporalWindow)
-                {
-                    break;
-                }
-
-                if (!keepNote[j])
+                if (i == j || !keepNote[j])
                 {
                     continue;
                 }
 
-                // 1. Check Pitch Relationship
-                // We only care if the potential harmonic is HIGHER than the fundamental
-                if (potentialHarmonic.Pitch.MidiNumber <= fundamental.Pitch.MidiNumber)
+                var note2 = sortedEvents[j];
+
+                // Check if notes are within temporal window (either direction)
+                var timeDiff = (note2.Onset - note1.Onset).Duration();
+                if (timeDiff > temporalWindow)
                 {
                     continue;
                 }
 
-                int interval = potentialHarmonic.Pitch.MidiNumber - fundamental.Pitch.MidiNumber;
+                // Determine which is fundamental (lower pitch) and which is harmonic (higher pitch)
+                NoteEvent fundamental;
+                NoteEvent harmonic;
+                int harmonicIndex;
+
+                var note1Pitch = note1.Pitch.MidiNumber;
+                var note2Pitch = note2.Pitch.MidiNumber;
+                if (note1Pitch < note2Pitch)
+                {
+                    fundamental = note1;
+                    harmonic = note2;
+                    harmonicIndex = j;
+                }
+                else if (note2Pitch < note1Pitch)
+                {
+                    fundamental = note2;
+                    harmonic = note1;
+                    harmonicIndex = i;
+                }
+                else
+                {
+                    continue; // Same pitch, not a harmonic relationship
+                }
+
+                int interval = harmonic.Pitch.MidiNumber - fundamental.Pitch.MidiNumber;
 
                 // 12 (Octave), 19 (Perfect 12th), 24 (2 Octaves)
-                // We don't do perfect 5th because played 5ths are too common in chords to risk suppressing
                 if (interval == 12 || interval == 19 || interval == 24)
                 {
                     // Check Physics Constraints
                     // Constraint A: Velocity
-                    // A harmonic artifact is usually weaker than the real note.
-                    // If the "harmonic" is LOUDER or similar volume, it was likely played.
-                    bool isQuietEnough = potentialHarmonic.Velocity.Value < (fundamental.Velocity.Value * _options.VelocityRatio);
+                    bool isQuietEnough = harmonic.Velocity.Value < (fundamental.Velocity.Value * _options.VelocityRatio);
 
                     // Constraint B: Duration
-                    // A harmonic cannot sustain longer than its parent fundamental.
-                    // We allow a small error margin (e.g. 100ms) for release detection jitter.
-                    bool stopsWithFundamental = potentialHarmonic.Offset <= fundamental.Offset + TimeSpan.FromMilliseconds(100);
+                    bool stopsWithFundamental = harmonic.Offset <= fundamental.Offset + TimeSpan.FromMilliseconds(100);
 
                     if (isQuietEnough && stopsWithFundamental)
                     {
-                        keepNote[j] = false;
+                        keepNote[harmonicIndex] = false;
                     }
                 }
             }
