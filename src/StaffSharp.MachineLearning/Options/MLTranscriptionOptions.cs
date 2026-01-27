@@ -80,4 +80,11 @@ public sealed record MLTranscriptionOptions
     /// </para>
     /// </summary>
     public bool TreatPolyphonyAsChords { get; init; } = true;
+
+    /// <summary>
+    /// Options for harmonic suppression to filter out overtones detected as separate notes.
+    /// When set, notes starting within the configured temporal window with harmonic relationships
+    /// (octaves, perfect 12ths, 2 octaves) are filtered to keep only the fundamental (lowest pitch).
+    /// </summary>
+    public HarmonicSuppressionOptions HarmonicSuppression { get; init; } = new(true);
 }

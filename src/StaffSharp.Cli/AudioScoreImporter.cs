@@ -47,12 +47,24 @@ internal sealed class AudioScoreImporter : IScoreImporter
         float? minGapSeconds,
         float? minVelocity,
         float? minFrameForOnset,
-        bool treatPolyphonyAsChords)
+        bool treatPolyphonyAsChords,
+        bool suppressHarmonics,
+        float? harmonicVelocityRatio)
     {
+        var harmonicSuppressionOptions = new HarmonicSuppressionOptions(suppressHarmonics);
+        if (harmonicVelocityRatio is not null)
+        {
+            harmonicSuppressionOptions = harmonicSuppressionOptions with
+            {
+                VelocityRatio = harmonicVelocityRatio.GetValueOrDefault()
+            };
+        }
+
         _mlOptions = new MLTranscriptionOptions
         {
             ModelPath = modelPath,
             TreatPolyphonyAsChords = treatPolyphonyAsChords,
+            HarmonicSuppression = harmonicSuppressionOptions
         };
 
         // Don't override the default options unless specified

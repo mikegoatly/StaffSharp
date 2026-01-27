@@ -51,6 +51,14 @@ internal static partial class ConvertCommand
         DefaultValueFactory = (_) => true,
         Description = "Force overlapping notes into chords sharing a single stem/voice (default: true)"
     };
+    private static readonly Option<bool> suppressHarmonicsOption = new("--suppress-harmonics")
+    {
+        Description = "Filter out harmonic overtones detected as separate notes (recommended for monophonic instruments)"
+    };
+    private static readonly Option<float?> harmonicVelocityRatioOption = new("--harmonic-velocity-ratio")
+    {
+        Description = "Velocity ratio threshold for harmonic suppression (0.0-1.0). Harmonic must be quieter than (fundamental * ratio) to be removed. Default: 0.9"
+    };
 
     // Tempo detection options
     private static readonly Option<string?> tempoDetectorOption = new("--tempo-detector") { Description = "Tempo detection algorithm: 'comb-filter' (default, robust) or 'inter-onset' (simple, faster)" };
@@ -95,6 +103,8 @@ internal static partial class ConvertCommand
         command.Options.Add(minVelocityOption);
         command.Options.Add(minFrameForOnsetOption);
         command.Options.Add(treatPolyphonyAsChordsOption);
+        command.Options.Add(suppressHarmonicsOption);
+        command.Options.Add(harmonicVelocityRatioOption);
         command.Options.Add(tempoDetectorOption);
 
         command.Options.Add(maxDiagnosticArrayLengthOption);
@@ -350,7 +360,9 @@ internal static partial class ConvertCommand
                 parseResult.GetValue(minGapSecondsOption),
                 parseResult.GetValue(minVelocityOption),
                 parseResult.GetValue(minFrameForOnsetOption),
-                parseResult.GetValue(treatPolyphonyAsChordsOption));
+                parseResult.GetValue(treatPolyphonyAsChordsOption),
+                parseResult.GetValue(suppressHarmonicsOption),
+                parseResult.GetValue(harmonicVelocityRatioOption));
         }
     }
 

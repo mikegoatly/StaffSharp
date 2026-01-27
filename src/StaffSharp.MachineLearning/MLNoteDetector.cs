@@ -1,3 +1,5 @@
+using Melanchall.DryWetMidi.MusicTheory;
+
 using StaffSharp.Audio;
 using StaffSharp.Audio.Analysis.Meter;
 using StaffSharp.Audio.Analysis.Tempo;
@@ -21,6 +23,7 @@ public sealed class MLNoteDetector : INoteDetector
     private readonly ITempoDetector _tempoDetector;
     private readonly PolyphonicQuantizer _quantizer;
     private readonly NoteEventDecoder _decoder;
+    private readonly HarmonicSuppressor _harmonicSuppressor;
     private readonly MLTranscriptionOptions _options;
 
     /// <summary>
@@ -33,12 +36,13 @@ public sealed class MLNoteDetector : INoteDetector
         _options = options ?? new MLTranscriptionOptions();
 
 #pragma warning disable CA2000 // Dispose objects before losing scope - Disposed by MLNoteDetector
-        _transcriber = new OnnxTranscriber(options);
+        _transcriber = new OnnxTranscriber(_options);
 #pragma warning restore CA2000 // Dispose objects before losing scope
         _timeSignatureDetector = new SimpleTimeSignatureDetector();
-        _tempoDetector = TempoDetectorFactory.Create(options.TempoOptions);
+        _tempoDetector = TempoDetectorFactory.Create(_options.TempoOptions);
         _quantizer = new PolyphonicQuantizer();
-        _decoder = new NoteEventDecoder(options);
+        _decoder = new NoteEventDecoder(_options);
+        _harmonicSuppressor = new HarmonicSuppressor(_options.HarmonicSuppression);
     }
 
     /// <summary>
@@ -80,7 +84,35 @@ public sealed class MLNoteDetector : INoteDetector
         }
 
         progress.EmitDiagnostics("Note count", noteEvents.Count);
-        progress.EmitDiagnostics("DecodedNoteEvents", noteEvents);
+
+        // Emit detailed note information for debugging
+        if (progress.DiagnosticsEnabled && noteEvents.Count > 0)
+        {
+            var noteSummary = noteEvents.Select((n, i) =>
+                $"[{i}] MIDI {n.Pitch.MidiNumber} @ {n.Onset.TotalSeconds:F3}s, dur={n.Duration.TotalSeconds:F3}s, vel={n.Velocity.Value:F2}"
+            ).ToArray();
+            progress.EmitDiagnostics("NotePitches", noteSummary);
+        }
+
+        // Apply harmonic suppression if enabled
+        if (noteEvents.Count > 0)
+        {
+            var beforeCount = noteEvents.Count;
+            noteEvents = _harmonicSuppressor.SuppressHarmonics(noteEvents);
+            var afterCount = noteEvents.Count;
+
+            if (progress.DiagnosticsEnabled && beforeCount != afterCount)
+            {
+                progress.EmitDiagnostics("Harmonics suppressed", $"{beforeCount - afterCount} notes removed ({beforeCount} → {afterCount})");
+
+                // Emit filtered notes for debugging
+                var filteredSummary = noteEvents.Select((n, i) =>
+                    $"[{i}] MIDI {n.Pitch.MidiNumber} @ {n.Onset.TotalSeconds:F3}s, dur={n.Duration.TotalSeconds:F3}s, vel={n.Velocity.Value:F2}"
+                ).ToArray();
+
+                progress.EmitDiagnostics("FilteredNotes", filteredSummary);
+            }
+        }
 
         if (noteEvents.Count == 0)
         {
@@ -126,6 +158,16 @@ public sealed class MLNoteDetector : INoteDetector
         var (quantizedNotes, refinedTempoMap) = _quantizer.Quantize(noteEvents, finalTempoMap);
 
         progress.EmitDiagnostics("Quantized note count", quantizedNotes.Count);
+
+        // Emit quantization details for debugging alignment issues
+        if (progress.DiagnosticsEnabled && quantizedNotes.Count > 0)
+        {
+            var quantizedSummary = quantizedNotes.Select((n, i) =>
+                $"[{i}] MIDI {n.Pitch.MidiNumber} @ beat {n.OnsetBeats.ToDouble():F3}, dur={n.DurationBeats.ToDouble():F3} beats (error: {n.QuantizationMetadata.OnsetError.TotalSeconds:F4}s)"
+            ).ToArray();
+
+            progress.EmitDiagnostics("QuantizedNotes", quantizedSummary);
+        }
 
         if (_options.TreatPolyphonyAsChords)
         {
