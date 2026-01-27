@@ -46,6 +46,11 @@ internal static partial class ConvertCommand
     private static readonly Option<float?> minGapSecondsOption = new("--min-gap-seconds") { Description = "Maximum gap duration in seconds to tolerate before ending a note (default: 0.05)" };
     private static readonly Option<float?> minVelocityOption = new("--min-velocity") { Description = "Minimum velocity threshold for onset detection (0.0-1.0, default: 0.1)" };
     private static readonly Option<float?> minFrameForOnsetOption = new("--min-frame-for-onset") { Description = "Minimum frame probability required for onset validation (0.0-1.0, default: 0.3)" };
+    private static readonly Option<bool> treatPolyphonyAsChordsOption = new("--treat-polyphony-as-chords")
+    {
+        DefaultValueFactory = (_) => true,
+        Description = "Force overlapping notes into chords sharing a single stem/voice (default: true)"
+    };
 
     // Tempo detection options
     private static readonly Option<string?> tempoDetectorOption = new("--tempo-detector") { Description = "Tempo detection algorithm: 'comb-filter' (default, robust) or 'inter-onset' (simple, faster)" };
@@ -89,6 +94,7 @@ internal static partial class ConvertCommand
         command.Options.Add(minGapSecondsOption);
         command.Options.Add(minVelocityOption);
         command.Options.Add(minFrameForOnsetOption);
+        command.Options.Add(treatPolyphonyAsChordsOption);
         command.Options.Add(tempoDetectorOption);
 
         command.Options.Add(maxDiagnosticArrayLengthOption);
@@ -335,16 +341,16 @@ internal static partial class ConvertCommand
         var useMl = parseResult.GetValue(useMlOption);
         if (useMl)
         {
-            var modelPath = parseResult.GetValue(modelPathOption);
-            var onsetThreshold = parseResult.GetValue(onsetThresholdOption);
-            var frameThreshold = parseResult.GetValue(frameThresholdOption);
-            var offsetThreshold = parseResult.GetValue(offsetThresholdOption);
-            var minNoteLength = parseResult.GetValue(minNoteLengthOption);
-            var minGapSeconds = parseResult.GetValue(minGapSecondsOption);
-            var minVelocity = parseResult.GetValue(minVelocityOption);
-            var minFrameForOnset = parseResult.GetValue(minFrameForOnsetOption);
-
-            audioImporter.ConfigureMLOptions(modelPath, onsetThreshold, frameThreshold, offsetThreshold, minNoteLength, minGapSeconds, minVelocity, minFrameForOnset);
+            audioImporter.ConfigureMLOptions(
+                parseResult.GetValue(modelPathOption),
+                parseResult.GetValue(onsetThresholdOption),
+                parseResult.GetValue(frameThresholdOption),
+                parseResult.GetValue(offsetThresholdOption),
+                parseResult.GetValue(minNoteLengthOption),
+                parseResult.GetValue(minGapSecondsOption),
+                parseResult.GetValue(minVelocityOption),
+                parseResult.GetValue(minFrameForOnsetOption),
+                parseResult.GetValue(treatPolyphonyAsChordsOption));
         }
     }
 

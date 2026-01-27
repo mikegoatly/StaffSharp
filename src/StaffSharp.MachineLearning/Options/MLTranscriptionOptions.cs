@@ -71,4 +71,13 @@ public sealed record MLTranscriptionOptions
     /// Default: false (CPU only).
     /// </summary>
     public bool UseGpu { get; init; }
+
+    /// <summary>
+    /// If true, overlapping notes are grouped into chords sharing a single stem/voice.
+    /// If false, overlapping notes may be split into separate rhythmic voices.
+    /// <para>
+    /// Recommended: <c>true</c> for simple piano/lead sheets, <c>false</c> for orchestral scores.
+    /// </para>
+    /// </summary>
+    public bool TreatPolyphonyAsChords { get; init; } = true;
 }

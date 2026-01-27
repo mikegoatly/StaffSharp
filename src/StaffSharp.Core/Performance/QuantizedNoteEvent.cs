@@ -54,10 +54,9 @@ public sealed record QuantizedNoteEvent : IPerformanceEvent
     public QuantizationMetadata QuantizationMetadata { get; }
 
     /// <summary>
-    /// Suggested voice number for polyphonic music (1-based). Null for monophonic.
-    /// This is a hint for the NotationEngine; it may reassign voices for better engraving.
+    /// Suggested voice number for polyphonic music (1-based).
     /// </summary>
-    public int? VoiceHint { get; }
+    public int? VoiceHint { get; set; }
 
     /// <summary>
     /// Articulation detected from audio analysis (staccato, accent, etc.).

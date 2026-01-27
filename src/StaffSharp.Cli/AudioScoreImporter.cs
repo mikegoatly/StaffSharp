@@ -46,11 +46,13 @@ internal sealed class AudioScoreImporter : IScoreImporter
         float? minNoteLength,
         float? minGapSeconds,
         float? minVelocity,
-        float? minFrameForOnset)
+        float? minFrameForOnset,
+        bool treatPolyphonyAsChords)
     {
         _mlOptions = new MLTranscriptionOptions
         {
             ModelPath = modelPath,
+            TreatPolyphonyAsChords = treatPolyphonyAsChords,
         };
 
         // Don't override the default options unless specified

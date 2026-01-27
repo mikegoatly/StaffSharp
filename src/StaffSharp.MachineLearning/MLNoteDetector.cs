@@ -21,6 +21,7 @@ public sealed class MLNoteDetector : INoteDetector
     private readonly ITempoDetector _tempoDetector;
     private readonly PolyphonicQuantizer _quantizer;
     private readonly NoteEventDecoder _decoder;
+    private readonly MLTranscriptionOptions _options;
 
     /// <summary>
     /// Creates a new ML-based note detector with the specified options.
@@ -29,7 +30,7 @@ public sealed class MLNoteDetector : INoteDetector
     /// <param name="options">ML transcription options (model path, thresholds, etc.). If null, uses defaults.</param>
     public MLNoteDetector(MLTranscriptionOptions? options = null)
     {
-        options ??= new MLTranscriptionOptions();
+        _options = options ?? new MLTranscriptionOptions();
 
 #pragma warning disable CA2000 // Dispose objects before losing scope - Disposed by MLNoteDetector
         _transcriber = new OnnxTranscriber(options);
@@ -54,8 +55,7 @@ public sealed class MLNoteDetector : INoteDetector
 
         progress.ReportProgress("Transcribing audio with ML model");
 
-        // Step 1: ONNX inference (audio → piano roll)
-        // Note: We pass the FULL audio to the ML model to preserve context
+        // ONNX inference (audio → piano roll)
         var transcriptionResult = await _transcriber.TranscribeAsync(progress, audio).ConfigureAwait(false);
 
         progress.EmitDiagnostics("Frame count", transcriptionResult.NumFrames);
@@ -64,10 +64,10 @@ public sealed class MLNoteDetector : INoteDetector
 
         progress.ReportProgress("Decoding note events from predictions");
 
-        // Step 2: Decode piano roll to note events
+        // Decode piano roll to note events
         var noteEvents = _decoder.Decode(transcriptionResult);
 
-        // Step 2a: Shift note events to remove leading silence
+        // Shift note events to remove leading silence
         // (Align first note to beat 0, like the monophonic detector does)
         if (noteEvents.Count > 0)
         {
@@ -95,10 +95,8 @@ public sealed class MLNoteDetector : INoteDetector
 
         progress.ReportProgress("Analyzing tempo and time signature");
 
-        // Step 3: Extract onset times for tempo/time signature detection
+        // Extract onset times for tempo/time signature detection
         var onsetTimes = noteEvents.Select(n => n.Onset.TotalSeconds).ToArray();
-
-        // Step 4: Detect time signature and tempo
         var timeSignatures = _timeSignatureDetector.DetectTimeSignatures(progress, onsetTimes);
 
         // Validate time signatures
@@ -124,10 +122,18 @@ public sealed class MLNoteDetector : INoteDetector
 
         progress.ReportProgress("Quantizing note events");
 
-        // Step 5: Quantize note events (snap to rhythmic grid)
+        // Quantize note events (snap to rhythmic grid)
         var (quantizedNotes, refinedTempoMap) = _quantizer.Quantize(noteEvents, finalTempoMap);
 
         progress.EmitDiagnostics("Quantized note count", quantizedNotes.Count);
+
+        if (_options.TreatPolyphonyAsChords)
+        {
+            foreach (var note in quantizedNotes)
+            {
+                note.VoiceHint = 1;
+            }
+        }
 
         return new PerformanceTimeline(refinedTempoMap, quantizedNotes);
     }

@@ -30,9 +30,9 @@ public sealed class SimpleVoiceAssigner : IVoiceAssigner
 
             // Check if event has a voice hint
 
-            if (evt.VoiceHint is not null)
+            if (evt.VoiceHint is { } voiceHint)
             {
-                voiceNumber = evt.VoiceHint.GetValueOrDefault();
+                voiceNumber = voiceHint;
             }
             else if (activeVoices.Count == 0)
             {
