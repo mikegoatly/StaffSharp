@@ -118,6 +118,12 @@ public sealed class PerformanceTimeline
     /// </summary>
     public double TotalDurationSeconds => TempoMap.BeatsToSeconds(TotalDurationBeats);
 
+    public static PerformanceTimeline Empty { get; } = new(
+        new TempoMap(
+            [new TempoChange(Rational.Zero, 120.0)],
+            [new TimeSignatureChange(Rational.Zero, Notation.TimeSignature.CommonTime)]),
+        []);
+
     /// <summary>
     /// Binary search to find the index of the first event at or after the specified onset time.
     /// </summary>

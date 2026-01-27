@@ -94,36 +94,33 @@ public sealed class MLNoteDetector : INoteDetector
             progress.EmitDiagnostics("NotePitches", noteSummary);
         }
 
-        // Apply harmonic suppression if enabled
-        if (noteEvents.Count > 0)
-        {
-            var beforeCount = noteEvents.Count;
-            noteEvents = _harmonicSuppressor.SuppressHarmonics(noteEvents);
-            var afterCount = noteEvents.Count;
-
-            if (progress.DiagnosticsEnabled && beforeCount != afterCount)
-            {
-                progress.EmitDiagnostics("Harmonics suppressed", $"{beforeCount - afterCount} notes removed ({beforeCount} → {afterCount})");
-
-                // Emit filtered notes for debugging
-                var filteredSummary = noteEvents.Select((n, i) =>
-                    $"[{i}] MIDI {n.Pitch.MidiNumber} @ {n.Onset.TotalSeconds:F3}s, dur={n.Duration.TotalSeconds:F3}s, vel={n.Velocity.Value:F2}"
-                ).ToArray();
-
-                progress.EmitDiagnostics("FilteredNotes", filteredSummary);
-            }
-        }
-
         if (noteEvents.Count == 0)
         {
             // No notes detected - return empty result with default tempo
-            var defaultTempoMap = new TempoMap(
-                [new TempoChange(Rational.Zero, 120.0)],
-                [new TimeSignatureChange(Rational.Zero, Notation.TimeSignature.CommonTime)]
-            );
-
-            return new PerformanceTimeline(defaultTempoMap, []);
+            return PerformanceTimeline.Empty;
         }
+
+        // Apply harmonic suppression BEFORE tempo/time signature detection
+        // This ensures we detect the correct meter based on the actual notes (without harmonics)
+        var beforeCount = noteEvents.Count;
+        progress.EmitDiagnostics("Harmonic suppression enabled", _options.HarmonicSuppression.SuppressHarmonics);
+        noteEvents = _harmonicSuppressor.SuppressHarmonics(noteEvents);
+        var afterCount = noteEvents.Count;
+
+        if (progress.DiagnosticsEnabled && beforeCount != afterCount)
+        {
+            progress.EmitDiagnostics("Harmonics suppressed", $"{beforeCount - afterCount} notes removed ({beforeCount} → {afterCount})");
+
+            // Emit filtered notes for debugging
+            var filteredSummary = noteEvents.Select((n, i) =>
+                $"[{i}] MIDI {n.Pitch.MidiNumber} @ {n.Onset.TotalSeconds:F3}s, dur={n.Duration.TotalSeconds:F3}s, vel={n.Velocity.Value:F2}"
+            ).ToArray();
+
+            progress.EmitDiagnostics("FilteredNotes", filteredSummary);
+        }
+
+        progress.ReportProgress("Analyzing tempo and time signature");
+
 
         progress.ReportProgress("Analyzing tempo and time signature");
 
