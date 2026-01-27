@@ -5,7 +5,6 @@
     xmlns:controls="using:StaffSharp.SvgRenderDebug.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:ssControls="using:StaffSharp.Avalonia.Controls"
     xmlns:vm="using:StaffSharp.SvgRenderDebug.ViewModels"
     Title="StaffSharp SVG Render Debugger"
     Width="1200"
@@ -89,7 +88,7 @@
             BorderThickness="1"
             SizeChanged="OnSvgViewerSizeChanged">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <ssControls:NotationScoreControl Score="{Binding Score}" />
+                <controls:SvgContentControl Stretch="None" SvgContent="{Binding SvgContent}" />
             </ScrollViewer>
         </Border>
 

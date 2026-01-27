@@ -47,6 +47,12 @@ public record SvgRenderOptions
     /// </summary>
     public bool RenderDebugArtifacts { get; init; }
 
+    /// <summary>
+    /// If set, the layout engine will stop processing after the specified pass. Can be used for 
+    /// debugging layout issues.
+    /// </summary>
+    public string? BailAfterPass { get; init; }
+
     internal SvgContext ToSvgContext()
     {
         return new SvgContext
@@ -62,6 +68,7 @@ public record SvgRenderOptions
             NoteHeadHalfWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadHalf, StaffSpace),
             NoteHeadBlackWidth = CalculateNoteheadWidth(MusicGlyphs.NoteHeadBlack, StaffSpace),
             HalfStaffSpace = StaffSpace / 2D,
+            BailAfterPass = BailAfterPass,
         };
     }
 

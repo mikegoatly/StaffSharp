@@ -24,7 +24,10 @@ public class SvgScoreExporter : IScoreExporter
         new("scale", "Global scale multiplier for staff-space units to pixels", "1.0"),
         new("margins", "Margins in pixels: left,right,top,bottom", "40,40,40,40"),
         new("staffSpace", "Pixels between staff lines", "10"),
-        new("renderDebugArtifacts", "Render debug artifacts (true/false)", "false")
+        new("renderDebugArtifacts", "Render debug artifacts (true/false)", "false"),
+        new("foreground", "Foreground color (CSS format)", SvgRenderOptions.Default.Foreground),
+        new("background", "Background color (CSS format)", SvgRenderOptions.Default.Background),
+        new("bailAfterPass", "If set, the layout engine will stop processing after the specified pass")
     ];
 
     /// <inheritdoc />
@@ -93,6 +96,7 @@ public class SvgScoreExporter : IScoreExporter
         var renderDebugArtifacts = bool.Parse(options?.GetValueOrDefault("renderDebugArtifacts") ?? "false");
         var background = options?.GetValueOrDefault("background") ?? SvgRenderOptions.Default.Background;
         var foreground = options?.GetValueOrDefault("foreground") ?? SvgRenderOptions.Default.Foreground;
+        var bailAfterPass = options?.GetValueOrDefault("bailAfterPass");
 
         return new SvgRenderOptions
         {
@@ -102,7 +106,8 @@ public class SvgScoreExporter : IScoreExporter
             StaffSpace = staffSpace,
             RenderDebugArtifacts = renderDebugArtifacts,
             Background = background,
-            Foreground = foreground
+            Foreground = foreground,
+            BailAfterPass = bailAfterPass
         };
 
     }
