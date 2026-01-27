@@ -64,7 +64,7 @@ internal sealed class AudioScoreImporter : IScoreImporter
         {
             ModelPath = modelPath,
             TreatPolyphonyAsChords = treatPolyphonyAsChords,
-            HarmonicSuppression = harmonicSuppressionOptions
+            HarmonicSuppressionOptions = harmonicSuppressionOptions
         };
 
         // Don't override the default options unless specified

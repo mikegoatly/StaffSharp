@@ -3,7 +3,6 @@ namespace StaffSharp.MachineLearning.Tests.ML.Models;
 using StaffSharp.Audio;
 using StaffSharp.Audio.Pipeline;
 using StaffSharp.MachineLearning.ML.Models;
-using StaffSharp.MachineLearning.Options;
 using StaffSharp.TestHelpers.Builders;
 
 public sealed class OnnxPolyphonicTranscriberTests
