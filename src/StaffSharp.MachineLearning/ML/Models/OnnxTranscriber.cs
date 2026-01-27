@@ -1,6 +1,7 @@
 namespace StaffSharp.MachineLearning.ML.Models;
 
 using System;
+using System.Numerics.Tensors;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -24,13 +25,14 @@ using StaffSharp.MachineLearning.Options;
 ///
 /// The model expects input of shape (batch, time, mel_bins) where mel_bins is typically 229.
 /// </remarks>
-public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
+internal sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 {
     private const int PianoKeyCount = 88; // MIDI notes 21-108 (A0-C8)
 
     private readonly InferenceSession _session;
     private readonly MelSpectrogramExtractor _featureExtractor;
     private readonly MLTranscriptionOptions _options;
+    private bool? _requiresSigmoid;
     private bool _disposed;
 
     /// <summary>
@@ -57,7 +59,7 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
             }
 
             // Load the model
-            _session = new InferenceSession(LoadModel(), sessionOptions);
+            _session = CreateInferenceSession(sessionOptions);
         }
         catch
         {
@@ -76,74 +78,126 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(audio);
 
-        // 1. Extract mel spectrogram features
+        // 1. Extract features
         var features = _featureExtractor.ExtractFeatures(progress, audio);
 
-        // 2. Convert features to ONNX tensor (batch_size=1, time, mel_bins)
-        var inputTensor = ConvertToTensor(features);
+        int totalFrames = features.GetLength(0);
+        int melBins = features.GetLength(1);
 
-        // 3. Run inference
-        var (onsetProbs, offsetProbs, frameProbs, velocities) = await RunInferenceAsync(inputTensor).ConfigureAwait(false);
+        // 2. Configuration
+        // The Margin is how much context the BiLSTM needs on each side to be accurate.
+        const int Margin = 100;
+        // The Stride is how many *new* frames of valid output we generate per step.
+        const int Stride = 1800;
+        // The Window is the actual chunk size sent to ONNX (Stride + Context on both sides).
+        // Note: At the start/end of the file, the actual input will be smaller than this.
+        const int MaxWindowSize = Stride + (2 * Margin);
 
-        // 4. Validate output shapes
-        ValidateOutputShapes(onsetProbs, offsetProbs, frameProbs, velocities);
+        // 3. Allocate a single buffer large enough for the biggest possible window
+        float[] inferenceBuffer = new float[1 * MaxWindowSize * melBins];
 
-        // 5. Convert from (batch, time, keys) to (time, keys)
-        var onsetRoll = ExtractBatch(onsetProbs);
-        var offsetRoll = ExtractBatch(offsetProbs);
-        var pianoRoll = ExtractBatch(frameProbs);
-        var velocityRoll = ExtractBatch(velocities);
+        // 4. Prepare output accumulators
+        var allOnsets = new float[totalFrames, PianoKeyCount];
+        var allOffsets = new float[totalFrames, PianoKeyCount];
+        var allFrames = new float[totalFrames, PianoKeyCount];
+        var allVelocities = new float[totalFrames, PianoKeyCount];
 
-        progress.EmitDiagnostics("OnsetProbabilities", onsetRoll);
-        progress.EmitDiagnostics("FrameProbabilities", pianoRoll);
-        progress.EmitDiagnostics("OffsetProbabilities", offsetRoll);
+        // 5. Iterate over the TARGET output
+        // We step through the *output* timeline.
+        for (int writeStart = 0; writeStart < totalFrames; writeStart += Stride)
+        {
+            // Calculate how many frames we need to write in this block
+            // (Usually equals Stride, unless we are at the very end of the song)
+            int writeLength = Math.Min(Stride, totalFrames - writeStart);
 
-        // 6. Compute frame rate
+            // Determine the Input Window needed to generate this Output Block
+            // We try to grab 'Margin' frames before and after the write block
+            int inputStart = Math.Max(0, writeStart - Margin);
+            int inputEnd = Math.Min(totalFrames, writeStart + writeLength + Margin);
+            int inputLength = inputEnd - inputStart;
+
+            // Extract the slice (Input)
+            CopyFeaturesToBuffer(features, inferenceBuffer, inputStart, inputLength);
+
+            // Create OrtValue directly from reused buffer with dynamic shape (batch=1, time=inputLength, mel_bins)
+            // Note: We pass the entire buffer, but the shape tells ONNX to only use the first inputLength*melBins elements
+            var inputShape = new long[] { 1, inputLength, melBins };
+            using var inputOrtValue = OrtValue.CreateTensorValueFromMemory(inferenceBuffer, inputShape);
+
+            // Run Inference
+            var (onsets, offsets, frames, vels) = await RunInferenceAsync(inputOrtValue).ConfigureAwait(false);
+
+            // Calculate "Where is my valid data inside this prediction?"
+            // If we are at the start of the file (writeStart == 0), inputStart is 0, so valid data starts at 0.
+            // Otherwise, we added Margin frames to the left, so valid data starts at Margin.
+            int readOffset = (writeStart == 0) ? 0 : Margin;
+
+            // Copy the valid middle section to the final output
+            CopySlice(onsets, allOnsets, readOffset, writeStart, writeLength);
+            CopySlice(offsets, allOffsets, readOffset, writeStart, writeLength);
+            CopySlice(frames, allFrames, readOffset, writeStart, writeLength);
+            CopySlice(vels, allVelocities, readOffset, writeStart, writeLength);
+
+            progress.ReportProgress($"Transcribing: {Math.Min(100, (int)(100.0 * writeStart / totalFrames))}%");
+        }
+
+        // Emit diagnostics for the complete accumulated probability matrices
+        progress.EmitDiagnostics("OnsetProbabilities", allOnsets);
+        progress.EmitDiagnostics("FrameProbabilities", allFrames);
+        progress.EmitDiagnostics("OffsetProbabilities", allOffsets);
+
         var frameRate = _options.FeatureOptions.SampleRate / _options.FeatureOptions.HopSize;
 
         return new PolyphonicTranscriptionResult(
-            pianoRoll,
-            onsetRoll,
-            offsetRoll,
-            velocityRoll,
+            allFrames,
+            allOnsets,
+            allOffsets,
+            allVelocities,
             frameRate,
             _options.FeatureOptions.SampleRate);
     }
 
-    private static DenseTensor<float> ConvertToTensor(float[,] features)
+    // Copy a slice of features into the inference buffer
+    private static void CopyFeaturesToBuffer(float[,] features, float[] buffer, int startFrame, int length)
     {
-        var numFrames = features.GetLength(0);
-        var numMelBins = features.GetLength(1);
+        var melBins = features.GetLength(1);
 
-        // Create tensor with shape (batch=1, time, mel_bins)
-        var tensor = new DenseTensor<float>([1, numFrames, numMelBins]);
-
-        // Get the underlying buffer as a span
-        var tensorSpan = tensor.Buffer.Span;
+        // Create a span over the relevant section of the 2D array
         var sourceSpan = MemoryMarshal.CreateReadOnlySpan(
-            ref features[0, 0],
-            numFrames * numMelBins);
+            ref features[startFrame, 0],
+            length * melBins);
 
-        // Single bulk copy operation
-        sourceSpan.CopyTo(tensorSpan);
-
-        return tensor;
+        sourceSpan.CopyTo(buffer);
     }
 
-    private async Task<(float[,,] onsets, float[,,] offsets, float[,,] frames, float[,,] velocities)> RunInferenceAsync(DenseTensor<float> inputTensor)
+    // Helper to copy from 3D batch output [1, Time, 88] to 2D accumulators [TotalTime, 88]
+    private static void CopySlice(float[,,] sourceBatch, float[,] dest, int sourceTimeStart, int destTimeStart, int length)
+    {
+        // Span-based copy for speed
+        // Source: sourceBatch[0, sourceTimeStart, 0]
+        // Dest: dest[destTimeStart, 0]
+
+        var sourceSpan = MemoryMarshal.CreateReadOnlySpan(
+            ref sourceBatch[0, sourceTimeStart, 0],
+            length * PianoKeyCount);
+
+        var destSpan = MemoryMarshal.CreateSpan(
+            ref dest[destTimeStart, 0],
+            length * PianoKeyCount);
+
+        sourceSpan.CopyTo(destSpan);
+    }
+
+    private async Task<(float[,,] onsets, float[,,] offsets, float[,,] frames, float[,,] velocities)> RunInferenceAsync(OrtValue inputOrtValue)
     {
         // Get input name (typically "input" or "mel_spectrogram")
         var inputName = _session.InputNames[0];
 
-        // Create OrtValue from tensor
-        using var inputOrtValue = OrtValue.CreateTensorValueFromMemory(
-            inputTensor.Buffer.ToArray(),
-            [.. inputTensor.Dimensions.ToArray().Select(d => (long)d)]);
-
         // Pre-allocate output OrtValues with expected shapes
         // Shape: (batch=1, time, keys=88)
-        var batch = inputTensor.Dimensions[0]; // Should be 1
-        var timeFrames = inputTensor.Dimensions[1];
+        var inputShape = inputOrtValue.GetTensorTypeAndShape().Shape;
+        var batch = inputShape[0]; // Should be 1
+        var timeFrames = inputShape[1];
         var outputShape = new long[] { batch, timeFrames, PianoKeyCount };
 
         using var onsetOutput = OrtValue.CreateAllocatedTensorValue(OrtAllocator.DefaultInstance, TensorElementType.Float, outputShape);
@@ -172,15 +226,16 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
 
         // Auto-detect if outputs are logits (need sigmoid) or probabilities
         // Check if values are outside [0,1] range, indicating logits
-        if (RequiresSigmoid(onsets))
+        _requiresSigmoid ??= RequiresSigmoid(onsets);
+        if (_requiresSigmoid.GetValueOrDefault())
         {
-            onsets = ApplySigmoid3D(onsets);
-            offsets = ApplySigmoid3D(offsets);
-            frames = ApplySigmoid3D(frames);
+            ApplySigmoidInPlace(onsets);
+            ApplySigmoidInPlace(offsets);
+            ApplySigmoidInPlace(frames);
             // Note: velocities might already be in [0,1] range even if others are logits
             if (RequiresSigmoid(velocities))
             {
-                velocities = ApplySigmoid3D(velocities);
+                ApplySigmoidInPlace(velocities);
             }
         }
 
@@ -213,52 +268,31 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
         return array;
     }
 
-    private static float[,] ExtractBatch(float[,,] tensor)
-    {
-        // Extract first batch (we always use batch_size=1)
-        var time = tensor.GetLength(1);
-        var keys = tensor.GetLength(2);
-
-        var result = new float[time, keys];
-
-        // Use span-based bulk copy for better performance
-        var totalElements = time * keys;
-        var sourceSpan = MemoryMarshal.CreateReadOnlySpan(ref tensor[0, 0, 0], totalElements);
-        var destSpan = MemoryMarshal.CreateSpan(ref result[0, 0], totalElements);
-        sourceSpan.CopyTo(destSpan);
-
-        return result;
-    }
-
     /// <summary>
     /// Detects if the tensor contains logits (values outside [0,1]) that require sigmoid activation.
     /// Samples a subset of values for efficiency.
     /// </summary>
     private static bool RequiresSigmoid(float[,,] tensor)
     {
-        var batch = tensor.GetLength(0);
-        var time = tensor.GetLength(1);
-        var keys = tensor.GetLength(2);
+        var totalLength = tensor.Length;
+        if (totalLength == 0)
+        {
+            return false;
+        }
 
         // Sample up to 100 values across the tensor
-        var sampleSize = Math.Min(100, batch * time * keys);
-        var step = Math.Max(1, (batch * time * keys) / sampleSize);
+        var sampleSize = Math.Min(100, totalLength);
+        var step = Math.Max(1, totalLength / sampleSize);
 
-        var count = 0;
-        for (int i = 0; i < batch && count < sampleSize; i++)
+        var span = MemoryMarshal.CreateReadOnlySpan(ref tensor[0, 0, 0], totalLength);
+
+        for (int idx = 0; idx < totalLength; idx += step)
         {
-            for (int j = 0; j < time && count < sampleSize; j += step)
+            var value = span[idx];
+            // If we find any value outside [0,1] range, it's likely logits
+            if (value < 0.0f || value > 1.0f)
             {
-                for (int k = 0; k < keys && count < sampleSize; k++)
-                {
-                    var value = tensor[i, j, k];
-                    // If we find any value outside [0,1] range, it's likely logits
-                    if (value < 0.0f || value > 1.0f)
-                    {
-                        return true;
-                    }
-                    count++;
-                }
+                return true;
             }
         }
 
@@ -268,26 +302,13 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
     /// <summary>
     /// Applies sigmoid activation to convert logits to probabilities.
     /// </summary>
-    private static float[,,] ApplySigmoid3D(float[,,] tensor)
+    private static void ApplySigmoidInPlace(float[,,] tensor)
     {
-        var batch = tensor.GetLength(0);
-        var time = tensor.GetLength(1);
-        var keys = tensor.GetLength(2);
+        var totalLength = tensor.Length;
 
-        var result = new float[batch, time, keys];
+        var span = MemoryMarshal.CreateSpan(ref tensor[0, 0, 0], totalLength);
 
-        for (int i = 0; i < batch; i++)
-        {
-            for (int j = 0; j < time; j++)
-            {
-                for (int k = 0; k < keys; k++)
-                {
-                    result[i, j, k] = 1.0f / (1.0f + MathF.Exp(-tensor[i, j, k]));
-                }
-            }
-        }
-
-        return result;
+        TensorPrimitives.Sigmoid(span, span);
     }
 
     private void ValidateModelSignature()
@@ -311,53 +332,14 @@ public sealed class OnnxTranscriber : IMLTranscriber, IDisposable
         }
     }
 
-    private static void ValidateOutputShapes(
-        float[,,] onsets,
-        float[,,] offsets,
-        float[,,] frames,
-        float[,,] velocities)
+    private InferenceSession CreateInferenceSession(SessionOptions sessionOptions)
     {
-        // Check batch size
-        if (onsets.GetLength(0) != 1 || offsets.GetLength(0) != 1 || frames.GetLength(0) != 1 || velocities.GetLength(0) != 1)
+        if (!string.IsNullOrWhiteSpace(_options.ModelPath) && File.Exists(_options.ModelPath))
         {
-            throw new InvalidOperationException("Expected batch size of 1");
+            return new InferenceSession(_options.ModelPath, sessionOptions);
         }
 
-        // Check time dimension
-        var onsetTime = onsets.GetLength(1);
-        var offsetTime = offsets.GetLength(1);
-        var frameTime = frames.GetLength(1);
-        var velocityTime = velocities.GetLength(1);
-
-        if (onsetTime != offsetTime || onsetTime != frameTime || onsetTime != velocityTime)
-        {
-            throw new InvalidOperationException(
-                $"Time dimensions mismatch: onsets={onsetTime}, offsets={offsetTime}, frames={frameTime}, velocities={velocityTime}");
-        }
-
-        // Note: The model may output slightly different number of frames due to padding/convolution
-        // We allow some tolerance here
-
-        // Check key dimension (should be 88 piano keys)
-        var onsetKeys = onsets.GetLength(2);
-        var offsetKeys = offsets.GetLength(2);
-        var frameKeys = frames.GetLength(2);
-        var velocityKeys = velocities.GetLength(2);
-
-        if (onsetKeys != PianoKeyCount || offsetKeys != PianoKeyCount || frameKeys != PianoKeyCount || velocityKeys != PianoKeyCount)
-        {
-            throw new InvalidOperationException(
-                $"Expected {PianoKeyCount} piano keys, got onsets={onsetKeys}, offsets={offsetKeys}, frames={frameKeys}, velocities={velocityKeys}");
-        }
-    }
-
-    private byte[] LoadModel()
-    {
-        // Use the provided model path, or fallback to Models/model_dynamic.zip in the output directory
-        var modelPath = string.IsNullOrWhiteSpace(_options.ModelPath)
-            ? Path.Combine(AppContext.BaseDirectory, "Models", "model_dynamic.zip")
-            : _options.ModelPath;
-        return ModelLoader.LoadModel(modelPath);
+        return new InferenceSession(Path.Combine(AppContext.BaseDirectory, "Models", "model_v2_dynamic.onnx"), sessionOptions);
     }
 
     /// <summary>
