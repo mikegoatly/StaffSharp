@@ -12,7 +12,7 @@ using StaffSharp.MachineLearning.Options;
 
 /// <summary>
 /// Extracts mel spectrogram features from audio.
-/// Implementation must match Python training code exactly for correct inference.
+/// This implementation is used in both data preparation and model inference for consistency.
 /// </summary>
 public sealed class MelSpectrogramExtractor : IFeatureExtractor
 {
