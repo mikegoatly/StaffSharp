@@ -13,7 +13,7 @@ public sealed record PipelineProgress
         return new PipelineProgress(options.Progress, options.DiagnosticsCollector, "Pipeline");
     }
 
-    private PipelineProgress(IProgress<ImportProgress>? progress, IDiagnosticsCollector? diagnosticsCollector, string stageName)
+    internal PipelineProgress(IProgress<ImportProgress>? progress, IDiagnosticsCollector? diagnosticsCollector, string stageName)
     {
         _progress = progress;
         _diagnosticsCollector = diagnosticsCollector;
