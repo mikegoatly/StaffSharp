@@ -11,7 +11,7 @@ from metrics import compute_note_metrics      # Your metric logic (which calls d
 
 # CONFIG
 DEVICE = 'cpu'
-CHECKPOINT = "models/checkpoint_epoch_060.pt"
+CHECKPOINT = "models/final_model_epoch_70.pt"
 DATA_DIR = r"..\tmp\maestro-v3.0.0-processed"
 
 def get_validation_data():
@@ -24,10 +24,10 @@ def objective(trial, model, dataloader):
     # 1. Suggest Parameters to try
     onset_thresh = trial.suggest_float('onset_thresh', 0.1, 0.9)
     frame_thresh = trial.suggest_float('frame_thresh', 0.1, 0.9)
-    # offset_thresh = trial.suggest_float('offset_thresh', 0.1, 0.9) # Usually less critical
+    offset_thresh = trial.suggest_float('offset_thresh', 0.1, 0.9)
     
     min_velocity = trial.suggest_float('min_velocity', 0.01, 0.2)
-    min_duration = trial.suggest_float('min_duration', 0.01, 0.15)
+    min_duration = trial.suggest_float('min_duration', 0.05, 0.15)
     gap_tolerance = trial.suggest_float('gap_tolerance', 0.01, 0.2)
     min_frame_for_onset = trial.suggest_float('min_frame_for_onset', 0.1, 0.5)
     
@@ -55,6 +55,7 @@ def objective(trial, model, dataloader):
                 onset_ref, offset_ref, frame_ref, vel_ref,
                 onset_thresh=onset_thresh,
                 frame_thresh=frame_thresh,
+                offset_thresh=offset_thresh,
                 min_duration_seconds=min_duration,
                 gap_tolerance_seconds=gap_tolerance, 
                 min_velocity=min_velocity,
