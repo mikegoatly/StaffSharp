@@ -211,6 +211,83 @@ class MaestroDataset(Dataset):
         return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
 
 
+class NoiseDataset(Dataset):
+    """Dataset for preprocessed noise data (negative samples)."""
+
+    def __init__(self, data_dir: str, sequence_length: Optional[int] = None,
+                 use_spec_augment: bool = True):
+        """
+        Initialize noise dataset.
+
+        Args:
+            data_dir: Root directory containing processed data (should have 'noise' subdirectory)
+            sequence_length: Maximum sequence length in frames. Longer sequences are cropped.
+            use_spec_augment: Apply SpecAugment during training (default: True)
+        """
+        self.data_dir = Path(data_dir) / 'noise'
+        self.sequence_length = sequence_length
+        self.use_spec_augment = use_spec_augment
+
+        # Load noise files if directory exists
+        if self.data_dir.exists():
+            self.files = sorted(list(self.data_dir.glob('*.npz')))
+        else:
+            self.files = []
+            print(f"Warning: Noise directory not found: {self.data_dir}")
+
+        if len(self.files) > 0:
+            print(f"Loaded {len(self.files)} noise files")
+            if self.use_spec_augment:
+                print(f"  ✓ SpecAugment enabled for noise samples")
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        # Load preprocessed data with error handling (same retry logic as MaestroDataset)
+        max_retries = len(self.files)
+        attempts = 0
+        current_idx = idx
+
+        while attempts < max_retries:
+            try:
+                mel_spec, on_roll, off_roll, p_roll, v_roll = load_npz_with_retry(
+                    self.files[current_idx],
+                    self.files[current_idx].name
+                )
+                break
+
+            except Exception:
+                attempts += 1
+                current_idx = (current_idx + 1) % len(self.files)
+                continue
+
+        if attempts >= max_retries:
+            raise RuntimeError(f"Failed to load any valid noise files after {max_retries} attempts.")
+
+        # Crop if necessary (random crop for training)
+        if self.sequence_length and mel_spec.shape[0] > self.sequence_length:
+            start = np.random.randint(0, mel_spec.shape[0] - self.sequence_length)
+            end = start + self.sequence_length
+            mel_spec = mel_spec[start:end]
+            on_roll = on_roll[start:end]
+            off_roll = off_roll[start:end]
+            p_roll = p_roll[start:end]
+            v_roll = v_roll[start:end]
+
+        # Apply SpecAugment to mel spectrogram
+        if self.use_spec_augment:
+            mel_spec = spec_augment(mel_spec)
+
+        mel_spec = torch.from_numpy(mel_spec)
+        onset_roll = torch.from_numpy(on_roll)
+        offset_roll = torch.from_numpy(off_roll)
+        piano_roll = torch.from_numpy(p_roll)
+        velocity_roll = torch.from_numpy(v_roll)
+
+        return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
+
+
 class SlidingWindowDataset(Dataset):
     """
     Wraps MaestroDataset to yield multiple sliding window crops per file.
@@ -323,6 +400,64 @@ class SlidingWindowDataset(Dataset):
         velocity_roll = torch.from_numpy(v_roll)
 
         return mel_spec, onset_roll, offset_roll, piano_roll, velocity_roll
+
+
+class MixedDataset(Dataset):
+    """
+    Dataset that randomly mixes piano and noise samples for negative sampling.
+
+    With probability `noise_prob`, returns a noise sample instead of a piano sample.
+    This helps the model learn to distinguish piano from non-piano audio.
+
+    Example:
+        For noise_prob=0.1, approximately 10% of samples will be noise.
+    """
+
+    def __init__(
+        self,
+        piano_dataset: Dataset,
+        noise_dataset: Optional[NoiseDataset],
+        noise_prob: float = 0.1,
+        split: str = 'train'
+    ):
+        """
+        Initialize mixed dataset.
+
+        Args:
+            piano_dataset: Primary dataset (MaestroDataset or SlidingWindowDataset)
+            noise_dataset: Optional noise dataset. If None or empty, behaves like piano_dataset only
+            noise_prob: Probability of substituting piano sample with noise (default: 0.1)
+            split: Dataset split ('train', 'validation', 'test'). Noise sampling only for 'train'.
+        """
+        self.piano_dataset = piano_dataset
+        self.noise_dataset = noise_dataset
+        self.noise_prob = noise_prob
+        self.split = split
+
+        # Only use noise mixing for training split
+        self.use_noise = (split == 'train' and
+                         noise_dataset is not None and
+                         len(noise_dataset) > 0 and
+                         noise_prob > 0)
+
+        if self.use_noise:
+            print(f"  ✓ Noise mixing enabled: {noise_prob*100:.1f}% noise probability ({len(noise_dataset)} noise samples)")
+        else:
+            if split == 'train' and noise_prob > 0:
+                print(f"  ! Noise mixing disabled: no noise samples available")
+
+    def __len__(self):
+        return len(self.piano_dataset)
+
+    def __getitem__(self, idx):
+        # Randomly decide whether to use noise sample
+        if self.use_noise and random.random() < self.noise_prob:
+            # Select random noise sample
+            noise_idx = random.randint(0, len(self.noise_dataset) - 1)
+            return self.noise_dataset[noise_idx]
+        else:
+            # Use piano sample
+            return self.piano_dataset[idx]
 
 
 def collate_fn(batch):
@@ -694,6 +829,11 @@ def main():
     parser.add_argument('--early-stopping-min-delta', type=float, default=0.001,
                         help='Minimum loss improvement to reset early stopping counter (default: 0.001)')
 
+    # Negative sampling
+    parser.add_argument('--noise-prob', type=float, default=0.1,
+                        help='Probability of using noise sample instead of piano (default: 0.1). ' +
+                             'Set to 0 to disable noise sampling.')
+
     args = parser.parse_args()
 
     # Create output directories
@@ -720,13 +860,26 @@ def main():
     print("\nLoading datasets...")
     train_dataset = MaestroDataset(args.data_dir, split='train', sequence_length=args.sequence_length)
     val_dataset = MaestroDataset(args.data_dir, split='validation', sequence_length=args.sequence_length)
-    
+
+    # Create noise dataset (will be empty if noise/ directory doesn't exist)
+    print("\nLoading noise dataset...")
+    noise_dataset = NoiseDataset(
+        args.data_dir,
+        sequence_length=args.sequence_length,
+        use_spec_augment=True  # Apply augmentation to noise samples too
+    )
+
     # Optionally wrap with sliding window for better data utilization
     if args.sliding_window:
         print(f"\nEnabling sliding window sampling with stride={args.window_stride}")
         train_dataset = SlidingWindowDataset(train_dataset, stride=args.window_stride, use_all_windows=True)
         # Note: validation dataset typically uses single crops for consistency
         val_dataset = SlidingWindowDataset(val_dataset, stride=args.window_stride, use_all_windows=False)
+
+    # Mix piano and noise datasets
+    print("\nCreating mixed datasets...")
+    train_dataset = MixedDataset(train_dataset, noise_dataset, noise_prob=args.noise_prob, split='train')
+    val_dataset = MixedDataset(val_dataset, noise_dataset, noise_prob=0.0, split='validation')  # No noise in validation
 
     train_loader = DataLoader(
         train_dataset,
