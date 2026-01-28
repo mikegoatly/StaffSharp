@@ -46,8 +46,15 @@ internal static class PrepareDatasetCommand
                           $"{Math.Max(1, Environment.ProcessorCount / 2)}"
         };
 
+        var noiseDirOption = new Option<string?>("--noise-dir")
+        {
+            Description = "Optional directory containing noise WAV files (audio without piano). " +
+                          "Processed as negative samples with zero labels."
+        };
+
         command.Options.Add(maxFilesOption);
         command.Options.Add(parallelOption);
+        command.Options.Add(noiseDirOption);
 
         // Handler
         command.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
@@ -56,14 +63,15 @@ internal static class PrepareDatasetCommand
             var outputDir = parseResult.GetRequiredValue(outputDirArg);
             var maxFiles = parseResult.GetValue(maxFilesOption);
             var parallel = parseResult.GetValue(parallelOption);
-            
+            var noiseDir = parseResult.GetValue(noiseDirOption);
+
             // Apply default if not specified
             if (parallel == 0)
             {
                 parallel = Math.Max(1, Environment.ProcessorCount / 2);
             }
 
-            return await ExecuteAsync(maestroDir, outputDir, maxFiles, parallel);
+            return await ExecuteAsync(maestroDir, outputDir, maxFiles, parallel, noiseDir);
         });
 
         return command;
@@ -73,11 +81,12 @@ internal static class PrepareDatasetCommand
         string maestroDir,
         string outputDir,
         int? maxFiles,
-        int parallel)
+        int parallel,
+        string? noiseDir)
     {
         try
         {
-            var processor = new DatasetProcessor(maestroDir, outputDir, maxFiles, parallel);
+            var processor = new DatasetProcessor(maestroDir, outputDir, maxFiles, parallel, noiseDir);
             await processor.ProcessAsync();
             return 0;
         }

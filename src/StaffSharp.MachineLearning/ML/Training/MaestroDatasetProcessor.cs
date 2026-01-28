@@ -66,6 +66,58 @@ public sealed class MaestroDatasetProcessor
         };
     }
 
+    /// <summary>
+    /// Processes a noise audio file (no piano) into a training data sample with zero labels.
+    /// Used for negative sampling to help the model distinguish piano from non-piano audio.
+    /// </summary>
+    /// <param name="audioPath">Path to noise audio file (.wav).</param>
+    /// <returns>Training data sample with features and zero-valued labels.</returns>
+    public async Task<TrainingDataSample> ProcessNoiseFileAsync(string audioPath)
+    {
+        ArgumentNullException.ThrowIfNull(audioPath);
+
+        // 1. Load and process audio (same as ProcessFileAsync)
+        AudioBuffer audio;
+        using (var stream = File.OpenRead(audioPath))
+        {
+            audio = await WavReader.ReadAsync(stream).ConfigureAwait(false);
+        }
+
+        // 2. Extract mel spectrogram features (same as ProcessFileAsync)
+        var melSpec = _extractor.ExtractFeatures(PipelineProgress.Null, audio);
+
+        var numFrames = melSpec.GetLength(0);
+
+        // 3. Generate zero-valued label rolls (no MIDI, so all zeros)
+        var (pianoRoll, onsetRoll, offsetRoll, velocityRoll) = CreateZeroRolls(numFrames);
+
+        return new TrainingDataSample
+        {
+            MelSpectrogram = melSpec,
+            PianoRoll = pianoRoll,
+            OnsetRoll = onsetRoll,
+            OffsetRoll = offsetRoll,
+            VelocityRoll = velocityRoll,
+            AudioPath = audioPath,
+            MidiPath = null  // No MIDI for noise files
+        };
+    }
+
+    /// <summary>
+    /// Creates zero-valued rolls for noise samples (no piano notes).
+    /// </summary>
+    private static (float[,] piano, float[,] onset, float[,] offset, float[,] velocity)
+        CreateZeroRolls(int numFrames)
+    {
+        // All arrays initialized to zeros (default for float)
+        return (
+            new float[numFrames, NumKeys],
+            new float[numFrames, NumKeys],
+            new float[numFrames, NumKeys],
+            new float[numFrames, NumKeys]
+        );
+    }
+
     private static List<NoteEvent> ParseMidiFile(string path)
     {
         var midiFile = MidiFile.Read(path);
