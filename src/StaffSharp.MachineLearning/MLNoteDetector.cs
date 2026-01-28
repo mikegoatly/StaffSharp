@@ -1,5 +1,3 @@
-using Melanchall.DryWetMidi.MusicTheory;
-
 using StaffSharp.Audio;
 using StaffSharp.Audio.Analysis.Meter;
 using StaffSharp.Audio.Analysis.Tempo;

@@ -1,3 +1,5 @@
+using StaffSharp.TestHelpers.Builders;
+
 namespace StaffSharp.Audio.Tests;
 
 public class AudioBufferTests
@@ -255,5 +257,217 @@ public class AudioBufferTests
         // Assert
         Assert.Equal(22050, resampled.SampleRate);
         Assert.True(resampled.SampleCount >= 0);
+    }
+
+    [Fact]
+    public void DetectContent_AllSilence_ReturnsFullDuration()
+    {
+        // Arrange
+        var samples = AudioSignalBuilder.Silence(duration: 0.1, sampleRate: 1000);
+        var buffer = new AudioBuffer(samples, 1000, 1);
+
+        // Act
+        var (start, end) = buffer.DetectContent();
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, start);
+        Assert.Equal(TimeSpan.FromSeconds(buffer.DurationSeconds), end);
+    }
+
+    [Fact]
+    public void DetectContent_LeadingSilence_DetectsCorrectStart()
+    {
+        // Arrange - 1s silence + 4s signal = 5s total
+        var samples = AudioSignalBuilder.Create()
+            .WithSampleRate(1000)
+            .WithDuration(5.0)
+            .AtTime(1.0).AddSine(100, amplitude: 0.1, durationSeconds: 4.0)
+            .Build();
+        var buffer = new AudioBuffer(samples, 1000, 1);
+
+        // Act - use smaller frame size for precise detection
+        var (start, end) = buffer.DetectContent(frameSize: 512, hopSize: 256);
+
+        // Assert
+        // Content should start after some silence (not at zero)
+        Assert.True(start.TotalSeconds > 0.5, $"Expected start > 0.5s, got {start.TotalSeconds}s");
+        // Content should end at or near the end
+        Assert.True(end.TotalSeconds >= 4.5, $"Expected end >= 4.5s, got {end.TotalSeconds}s");
+    }
+
+    [Fact]
+    public void DetectContent_TrailingSilence_DetectsCorrectEnd()
+    {
+        // Arrange - 4s signal + 1s silence = 5s total
+        var samples = AudioSignalBuilder.Create()
+            .WithSampleRate(1000)
+            .WithDuration(5.0)
+            .AtTime(0.0).AddSine(100, amplitude: 0.1, durationSeconds: 4.0)
+            .Build();
+        var buffer = new AudioBuffer(samples, 1000, 1);
+
+        // Act - use smaller frame size for precise detection
+        var (start, end) = buffer.DetectContent(frameSize: 512, hopSize: 256);
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, start);
+        // Content should end before the full duration (trailing silence detected)
+        Assert.True(end.TotalSeconds < 4.5, $"Expected end < 4.5s, got {end.TotalSeconds}s");
+    }
+
+    [Fact]
+    public void DetectContent_LeadingAndTrailingSilence_DetectsBoth()
+    {
+        // Arrange - 1s silence + 3s signal + 1s silence = 5s total
+        var samples = AudioSignalBuilder.Create()
+            .WithSampleRate(1000)
+            .WithDuration(5.0)
+            .AtTime(1.0).AddSine(100, amplitude: 0.1, durationSeconds: 3.0)
+            .Build();
+        var buffer = new AudioBuffer(samples, 1000, 1);
+
+        // Act - use smaller frame size for precise detection
+        var (start, end) = buffer.DetectContent(frameSize: 512, hopSize: 256);
+
+        // Assert
+        // Content should start after leading silence
+        Assert.True(start.TotalSeconds > 0.5, $"Expected start > 0.5s, got {start.TotalSeconds}s");
+        // Content should end before trailing silence
+        Assert.True(end.TotalSeconds < 4.5, $"Expected end < 4.5s, got {end.TotalSeconds}s");
+        // Content duration should be less than full duration
+        Assert.True((end - start).TotalSeconds < 4.0, $"Expected content duration < 4s, got {(end - start).TotalSeconds}s");
+    }
+
+    [Fact]
+    public void DetectContent_NoSilence_ReturnsFullDuration()
+    {
+        // Arrange
+        var samples = AudioSignalBuilder.Sine(frequency: 100, duration: 0.1, sampleRate: 1000, amplitude: 0.1);
+        var buffer = new AudioBuffer(samples, 1000, 1);
+
+        // Act
+        var (start, end) = buffer.DetectContent();
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, start);
+        Assert.Equal(TimeSpan.FromSeconds(buffer.DurationSeconds), end);
+    }
+
+    [Fact]
+    public void DetectContent_StereoInput_HandlesCorrectly()
+    {
+        // Arrange - stereo with L=silence, R=signal
+        var samples = new float[200]; // 100 frames stereo
+        for (int i = 0; i < 100; i++)
+        {
+            samples[i * 2] = 0.0f;     // Left channel: silence
+            samples[i * 2 + 1] = 0.1f; // Right channel: signal
+        }
+        var buffer = new AudioBuffer(samples, 1000, 2);
+
+        // Act
+        var (start, end) = buffer.DetectContent();
+
+        // Assert - should detect content (mixed down to mono with signal)
+        Assert.Equal(TimeSpan.Zero, start);
+        Assert.True(end > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void NormalizeRms_QuietAudio_IncreasesGain()
+    {
+        // Arrange
+        // Create audio with RMS of 0.01 (very quiet)
+        var samples = new float[] { 0.01f, -0.01f, 0.01f, -0.01f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, stats) = buffer.NormalizeRms(targetRms: 0.1f);
+
+        // Assert
+        // Gain should be ~10x to get from 0.01 RMS to 0.1 RMS
+        Assert.True(stats.GainApplied > 5.0f);
+        Assert.Equal(0.01f, stats.OriginalRms, 2);
+
+        // Verify samples are louder
+        var span = normalized.Samples.Span;
+        Assert.True(Math.Abs(span[0]) > 0.05f);
+    }
+
+    [Fact]
+    public void NormalizeRms_LoudAudio_DecreasesGain()
+    {
+        // Arrange
+        // Create audio with RMS of 0.5 (loud)
+        var samples = new float[] { 0.5f, -0.5f, 0.5f, -0.5f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, stats) = buffer.NormalizeRms(targetRms: 0.1f);
+
+        // Assert
+        // Gain should be 0.2x to get from 0.5 RMS to 0.1 RMS
+        Assert.True(stats.GainApplied < 0.5f);
+        Assert.Equal(0.5f, stats.OriginalRms, 2);
+
+        // Verify samples are quieter
+        var span = normalized.Samples.Span;
+        Assert.True(Math.Abs(span[0]) < 0.2f);
+    }
+
+    [Fact]
+    public void NormalizeRms_Silence_ReturnsOriginal()
+    {
+        // Arrange
+        var samples = AudioSignalBuilder.Silence(duration: 0.1, sampleRate: 44100);
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, stats) = buffer.NormalizeRms();
+
+        // Assert
+        Assert.Equal(0.0f, stats.OriginalRms);
+        Assert.Equal(1.0f, stats.GainApplied); // No gain applied
+        Assert.Same(buffer, normalized);
+    }
+
+    [Fact]
+    public void NormalizeRms_FullBuffer_CalculatesCorrectRms()
+    {
+        // Arrange
+        // Create signal with known RMS
+        // For a square wave alternating between +A and -A, RMS = A
+        var samples = new float[] { 0.3f, -0.3f, 0.3f, -0.3f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, stats) = buffer.NormalizeRms(targetRms: 0.1f);
+
+        // Assert
+        // Original RMS should be 0.3
+        Assert.Equal(0.3f, stats.OriginalRms, 2);
+        // Gain should be 0.1 / 0.3 ≈ 0.333
+        Assert.Equal(0.1f / 0.3f, stats.GainApplied, 2);
+    }
+
+    [Fact]
+    public void NormalizeRms_PreservesWaveformShape()
+    {
+        // Arrange
+        var samples = new float[] { 0.1f, 0.2f, 0.3f, 0.2f, 0.1f };
+        var buffer = new AudioBuffer(samples, 44100, 1);
+
+        // Act
+        var (normalized, stats) = buffer.NormalizeRms(targetRms: 0.5f);
+
+        // Assert - relative amplitudes should be preserved
+        var span = normalized.Samples.Span;
+        var gain = stats.GainApplied;
+
+        Assert.Equal(0.1f * gain, span[0], 4);
+        Assert.Equal(0.2f * gain, span[1], 4);
+        Assert.Equal(0.3f * gain, span[2], 4);
+        Assert.Equal(0.2f * gain, span[3], 4);
+        Assert.Equal(0.1f * gain, span[4], 4);
     }
 }

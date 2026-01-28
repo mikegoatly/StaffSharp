@@ -2,6 +2,7 @@ namespace StaffSharp.MachineLearning.ML.Features;
 
 using System.Numerics;
 using System.Numerics.Tensors;
+using System.Runtime.InteropServices;
 
 using MathNet.Numerics.IntegralTransforms;
 
@@ -35,20 +36,26 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
         ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(audio);
 
-        // 1. Convert to mono first
-        var processedAudio = audio;
-        if (processedAudio.Channels > 1)
-        {
-            processedAudio = processedAudio.ToMono();
-        }
+        // Convert to mono first
+        var processedAudio = audio.ToMono();
 
-        // Ensure the audio is normalized
-        (processedAudio, var normalizationStats) = processedAudio.Normalize();
-        progress.EmitDiagnostics("NormalizationStats", normalizationStats);
+        // Detect content boundaries
+        var (contentStart, contentEnd) = processedAudio.DetectContent();
+        progress.EmitDiagnostics("ContentStart", contentStart);
+        progress.EmitDiagnostics("ContentEnd", contentEnd);
+        progress.EmitDiagnostics("ContentDuration", contentEnd - contentStart);
+
+        // Mute silence outside content range
+        processedAudio = processedAudio.MuteOutsideRange(contentStart, contentEnd);
+
+        // Normalize entire audio using RMS
+        // This provides more consistent loudness than peak normalization
+        (processedAudio, var rmsStats) = processedAudio.NormalizeRms();
+        progress.EmitDiagnostics("RmsNormalizationStats", rmsStats);
         progress.EmitDiagnostics("NormalizedWaveform", processedAudio.Samples.ToArray());
         progress.EmitDiagnostics("NormalizedSampleRate", processedAudio.SampleRate);
 
-        // 2. Resample audio to target sample rate if needed
+        // Resample audio to target sample rate if needed
         var resampledAudio = processedAudio.Resample(_options.SampleRate);
 
         if (resampledAudio != processedAudio)
@@ -57,151 +64,140 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             progress.EmitDiagnostics("ResampledWaveform", resampledAudio.Samples.ToArray());
         }
 
-        // 3. Compute STFT (Short-Time Fourier Transform)
-        var stft = ComputeStft(resampledAudio);
-
-        // 4. Convert to power spectrogram
-        var powerSpec = ComputePowerSpectrogram(stft);
-
-        // 5. Apply mel filterbank
-        var melSpec = ApplyMelFilterbank(powerSpec);
-
-        // 6. Apply logarithmic compression
-        ApplyLogCompression(melSpec);
+        // --- Feature Extraction ---
+        var melSpec = ComputeMelSpectrogramStreaming(resampledAudio);
 
         progress.EmitDiagnostics("MelSpectrogram", melSpec);
 
         return melSpec;
     }
 
-    private Complex[,] ComputeStft(AudioBuffer audio)
+    private float[,] ComputeMelSpectrogramStreaming(AudioBuffer audio)
     {
-        var originalSamples = audio.Samples.Span;
+        var samples = audio.Samples.Span;
 
         // We pad with zeros so that Frame 0 is centered at Time 0.
         // Without this, features are shifted by (FrameSize/2) / SampleRate seconds (approx 64ms).
         int padLength = _options.FrameSize / 2;
-        var paddedLength = originalSamples.Length + (padLength * 2);
-        var paddedSamples = new float[paddedLength];
-
-        // Copy original audio into the middle
-        originalSamples.CopyTo(paddedSamples.AsSpan().Slice(padLength, originalSamples.Length));
-        
-        // TODO Consider implementing reflection padding at edges
-
-        // Recalculate numFrames based on PADDED length
-        // This formula ensures numFrames * hopSize is roughly equal to originalSamples.Length
-        var numFrames = ((paddedLength - _options.FrameSize) / _options.HopSize) + 1;
+        int totalPaddedLength = samples.Length + (padLength * 2);
+        int numFrames = ((totalPaddedLength - _options.FrameSize) / _options.HopSize) + 1;
 
         if (numFrames <= 0)
         {
             throw new ArgumentException("Audio is too short", nameof(audio));
         }
 
-        var stft = new Complex[numFrames, _fftBins];
-        var complexBuffer = new Complex[_options.FrameSize];
-        var windowedFrame = new float[_options.FrameSize];
-
-        for (int frameIdx = 0; frameIdx < numFrames; frameIdx++)
-        {
-            var frameStart = frameIdx * _options.HopSize;
-
-            // Extract and window from PADDED samples
-            for (int i = 0; i < _options.FrameSize; i++)
-            {
-                windowedFrame[i] = paddedSamples[frameStart + i] * _window[i];
-            }
-
-            // Convert to complex for FFT
-            for (int i = 0; i < _options.FrameSize; i++)
-            {
-                complexBuffer[i] = new Complex(windowedFrame[i], 0);
-            }
-
-            Fourier.Forward(complexBuffer, FourierOptions.Default);
-
-            var scale = MathF.Sqrt(_options.FrameSize);
-            for (int i = 0; i < _fftBins; i++)
-            {
-                stft[frameIdx, i] = complexBuffer[i] * scale;
-            }
-        }
-
-        return stft;
-    }
-
-    private float[,] ComputePowerSpectrogram(Complex[,] stft)
-    {
-        var numFrames = stft.GetLength(0);
-        var powerSpec = new float[numFrames, _fftBins];
-
-        // Use vectorized operations for better performance
-        Span<float> realParts = stackalloc float[_fftBins];
-        Span<float> imagParts = stackalloc float[_fftBins];
-
-        for (int t = 0; t < numFrames; t++)
-        {
-            // Extract real and imaginary parts
-            for (int f = 0; f < _fftBins; f++)
-            {
-                var c = stft[t, f];
-                realParts[f] = (float)c.Real;
-                imagParts[f] = (float)c.Imaginary;
-            }
-
-            // Compute power = real^2 + imag^2 using SIMD
-            var rowSpan = GetRowSpan(powerSpec, t);
-            TensorPrimitives.Multiply(realParts, realParts, rowSpan);
-            TensorPrimitives.MultiplyAdd(imagParts, imagParts, rowSpan, rowSpan);
-        }
-
-        return powerSpec;
-    }
-
-    private static Span<float> GetRowSpan(float[,] array, int row)
-    {
-        return System.Runtime.InteropServices.MemoryMarshal.CreateSpan(
-            ref array[row, 0],
-            array.GetLength(1));
-    }
-
-    private float[,] ApplyMelFilterbank(float[,] powerSpec)
-    {
-        var numFrames = powerSpec.GetLength(0);
         var melSpec = new float[numFrames, _options.MelBins];
 
-        for (int t = 0; t < numFrames; t++)
-        {
-            var powerFrame = GetRowSpan(powerSpec, t);
-            var melFrame = GetRowSpan(melSpec, t);
+        // Allocate Reusable Buffers
+        // MathNet Fourier wants Complex[], so we use that as our workspace
+        var fftBuffer = new Complex[_options.FrameSize];
+        var powerFrame = new float[_fftBins];
 
-            for (int m = 0; m < _options.MelBins; m++)
-            {
-                var filterRow = GetRowSpan(_melFilterbank, m);
-                // Use SIMD dot product for matrix multiplication
-                melFrame[m] = TensorPrimitives.Dot(powerFrame, filterRow);
-            }
+        // Pre-calculate constants
+        float scale = MathF.Sqrt(_options.FrameSize);
+        float logConstant = _options.LogCompressionConstant;
+        int hopSize = _options.HopSize;
+
+        // 4. Process Frame-by-Frame (Streaming)
+        for (int frameIdx = 0; frameIdx < numFrames; frameIdx++)
+        {
+            // Windowing & FFT Preparation
+            // Calculate where this frame starts in the *padded* timeline
+            int paddedFrameStart = frameIdx * hopSize;
+
+            // Calculate where this corresponds to in the *actual* samples
+            int actualSampleStart = paddedFrameStart - padLength;
+
+            // Fill fftBuffer with Windowed Samples
+            CopyAndWindowFrame(samples, fftBuffer, actualSampleStart);
+
+            // FFT
+            Fourier.Forward(fftBuffer, FourierOptions.Default);
+
+            // Compute Power Spectrum
+            // Power = (Real^2 + Imag^2) * scale
+            ComputePowerFrame(fftBuffer, powerFrame, scale);
+
+            // Apply Mel Filterbank & Log Compression immediately
+            // We write directly into the final 'melSpec' array
+            ApplyMelAndLog(powerFrame, melSpec, frameIdx, logConstant);
         }
 
         return melSpec;
     }
 
-    private void ApplyLogCompression(float[,] melSpec)
+    /// <summary>
+    /// Copies samples from source to fftBuffer, applying the window function.
+    /// Handles the "Virtual Padding" (reading zeros if out of bounds) without allocating a padded array.
+    /// </summary>
+    private void CopyAndWindowFrame(ReadOnlySpan<float> sourceSamples, Complex[] fftBuffer, int startSampleIndex)
     {
-        var numFrames = melSpec.GetLength(0);
-        var constant = _options.LogCompressionConstant;
+        int frameSize = _options.FrameSize;
 
-        Span<float> temp = stackalloc float[_options.MelBins];
-
-        for (int t = 0; t < numFrames; t++)
+        // Fast Path: If the entire frame is within the bounds of the source array
+        if (startSampleIndex >= 0 && startSampleIndex + frameSize <= sourceSamples.Length)
         {
-            var row = GetRowSpan(melSpec, t);
-            
-            // Use SIMD operations: log(1 + constant * x)
-            TensorPrimitives.Multiply(row, constant, temp);
-            TensorPrimitives.Add(temp, 1.0f, temp);
-            TensorPrimitives.Log(temp, row);
+            var slice = sourceSamples.Slice(startSampleIndex, frameSize);
+            for (int i = 0; i < frameSize; i++)
+            {
+                // Real = Sample * Window, Imag = 0
+                fftBuffer[i] = new Complex(slice[i] * _window[i], 0);
+            }
         }
+        else
+        {
+            // Slow/Safe Path: Edge cases (start or end of file)
+            for (int i = 0; i < frameSize; i++)
+            {
+                int sampleIdx = startSampleIndex + i;
+                float sample = 0f;
+
+                // Virtual Zero Padding
+                if (sampleIdx >= 0 && sampleIdx < sourceSamples.Length)
+                {
+                    sample = sourceSamples[sampleIdx];
+                }
+
+                fftBuffer[i] = new Complex(sample * _window[i], 0);
+            }
+        }
+    }
+
+    private static void ComputePowerFrame(Complex[] fftBuffer, float[] powerFrame, float scale)
+    {
+        // We only need the first _fftBins (Nyquist), ignoring the symmetric half
+        for (int i = 0; i < powerFrame.Length; i++)
+        {
+            var c = fftBuffer[i];
+
+            // |c|^2 = Real^2 + Imag^2
+            double magSquared = (c.Real * c.Real) + (c.Imaginary * c.Imaginary);
+            powerFrame[i] = (float)magSquared * (scale * scale);
+        }
+    }
+
+    private void ApplyMelAndLog(float[] powerFrame, float[,] melSpec, int frameIdx, float logConstant)
+    {
+        int melBins = _options.MelBins;
+
+        // Get the output row for this frame
+        var melRow = GetRowSpan(melSpec, frameIdx);
+        var powerSpan = new ReadOnlySpan<float>(powerFrame);
+
+        for (int m = 0; m < melBins; m++)
+        {
+            var filterRow = GetRowSpan(_melFilterbank, m);
+
+            // Mel Dot Product then log compression
+            float melValue = TensorPrimitives.Dot(powerSpan, filterRow);
+            melRow[m] = MathF.Log(1.0f + (logConstant * melValue));
+        }
+    }
+
+    private static Span<float> GetRowSpan(float[,] array, int row)
+    {
+        return MemoryMarshal.CreateSpan(ref array[row, 0], array.GetLength(1));
     }
 
     private float[,] CreateMelFilterbank()
@@ -219,9 +215,10 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
 
         // Create FFT bin frequencies
         var fftFreqs = new float[_fftBins];
+        float fftFreqMult = (float)_options.SampleRate / _options.FrameSize;
         for (int i = 0; i < _fftBins; i++)
         {
-            fftFreqs[i] = i * _options.SampleRate / (float)_options.FrameSize;
+            fftFreqs[i] = i * fftFreqMult;
         }
 
         // Convert min/max frequencies to mel scale
@@ -236,7 +233,6 @@ public sealed class MelSpectrogramExtractor : IFeatureExtractor
             melFreqs[i] = MelToHz(minMel + (i * melStep));
         }
 
-        // Compute differences between adjacent mel frequencies
         var fdiff = new float[melFreqs.Length - 1];
         for (int i = 0; i < fdiff.Length; i++)
         {

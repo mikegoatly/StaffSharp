@@ -85,16 +85,13 @@ public sealed class AudioBuffer
     /// <summary>
     /// Normalizes the audio volume so the peak amplitude matches the target.
     /// </summary>
-    /// <param name="targetAmplitude">Target peak amplitude (default 0.6).</param>
-    /// <param name="minAllowedPeak">Minimum allowed peak amplitude before normalization (default 0.4).</param>
-    /// <param name="maxAllowedPeak">Maximum allowed peak amplitude before normalization (default 0.85).</param>
+    /// <param name="targetAmplitude">Target peak amplitude.</param>
+    /// <param name="minAllowedPeak">Minimum allowed peak amplitude before normalization.</param>
+    /// <param name="maxAllowedPeak">Maximum allowed peak amplitude before normalization.</param>
     /// <returns>A new normalized AudioBuffer, or the original if no change is needed.</returns>
     public (AudioBuffer, NormalizationStats) Normalize(float targetAmplitude = 0.6f, float minAllowedPeak = 0.4f, float maxAllowedPeak = 0.85f)
     {
-        if (targetAmplitude <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(targetAmplitude), "Target amplitude must be positive.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(targetAmplitude, 0f);
 
         var span = Samples.Span;
         
@@ -134,15 +131,34 @@ public sealed class AudioBuffer
         var samplesSpan = Samples.Span;
         var monoSamples = new float[Samples.Length / Channels];
 
-        for (int i = 0; i < monoSamples.Length; i++)
-        {
-            float sum = 0;
-            for (int ch = 0; ch < Channels; ch++)
-            {
-                sum += samplesSpan[i * Channels + ch];
-            }
+        float multiplier = 1.0f / Channels;
 
-            monoSamples[i] = sum / Channels;
+        // Optimization: Handle Stereo (2 channels) explicitly
+        // This is 99% of use cases and allows the CPU to unroll the loop better
+        if (Channels == 2)
+        {
+            for (int i = 0; i < monoSamples.Length; i++)
+            {
+                // Direct access avoids inner loop overhead
+                var offset = i * 2;
+                float left = samplesSpan[offset];
+                float right = samplesSpan[offset + 1];
+                monoSamples[i] = (left + right) * 0.5f;
+            }
+        }
+        else
+        {
+            // General case for 3+ channels
+            for (int i = 0; i < monoSamples.Length; i++)
+            {
+                float sum = 0;
+                for (int ch = 0; ch < Channels; ch++)
+                {
+                    sum += samplesSpan[i * Channels + ch];
+                }
+
+                monoSamples[i] = sum * multiplier;
+            }
         }
 
         return new AudioBuffer(monoSamples, SampleRate, 1);
@@ -156,10 +172,7 @@ public sealed class AudioBuffer
     /// <returns>A new resampled AudioBuffer, or the original if no change is needed.</returns>
     public AudioBuffer Resample(int targetSampleRate)
     {
-        if (targetSampleRate <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(targetSampleRate, 0);
 
         if (SampleRate == targetSampleRate)
         {
@@ -190,9 +203,168 @@ public sealed class AudioBuffer
 
         return new AudioBuffer(resampled, targetSampleRate, Channels);
     }
+
+    /// <summary>
+    /// Detects the start and end of audio content by finding regions above a silence threshold.
+    /// Uses frame-based RMS analysis for stability.
+    /// </summary>
+    /// <param name="silenceThresholdDb">Threshold in dB below which audio is considered silence.</param>
+    /// <param name="frameSize">Size of analysis frames in samples.</param>
+    /// <param name="hopSize">Hop size between frames in samples.</param>
+    /// <returns>Start and end times of detected content, or (TimeSpan.Zero, TotalDuration) if no silence detected.</returns>
+    public (TimeSpan Start, TimeSpan End) DetectContent(float silenceThresholdDb = -45.0f, int frameSize = 1024, int hopSize = 128)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(silenceThresholdDb, 0f);
+
+        // Convert to mono if needed for analysis
+        AudioBuffer monoAudio = Channels > 1 ? ToMono() : this;
+        var monoSamples = monoAudio.Samples.Span;
+
+        // Convert dB threshold to linear amplitude
+        var linearThreshold = MathF.Pow(10, silenceThresholdDb / 20.0f);
+
+        // Calculate number of frames
+        var numFrames = Math.Max(1, ((monoSamples.Length - frameSize) / hopSize) + 1);
+
+        // Find first non-silent frame
+        int? firstContentFrame = null;
+        for (int frameIdx = 0; frameIdx < numFrames; frameIdx++)
+        {
+            var frameStart = frameIdx * hopSize;
+            var frameEnd = Math.Min(frameStart + frameSize, monoSamples.Length);
+            var frameSlice = monoSamples.Slice(frameStart, frameEnd - frameStart);
+
+            // Calculate RMS for this frame
+            var rms = CalculateRms(frameSlice);
+
+            if (rms > linearThreshold)
+            {
+                firstContentFrame = frameIdx;
+                break;
+            }
+        }
+
+        // Find last non-silent frame (search backwards)
+        int? lastContentFrame = null;
+        for (int frameIdx = numFrames - 1; frameIdx >= 0; frameIdx--)
+        {
+            var frameStart = frameIdx * hopSize;
+            var frameEnd = Math.Min(frameStart + frameSize, monoSamples.Length);
+            var frameSlice = monoSamples.Slice(frameStart, frameEnd - frameStart);
+
+            // Calculate RMS for this frame
+            var rms = CalculateRms(frameSlice);
+
+            if (rms > linearThreshold)
+            {
+                lastContentFrame = frameIdx;
+                break;
+            }
+        }
+
+        // Convert frame indices to time
+        if (!firstContentFrame.HasValue || !lastContentFrame.HasValue)
+        {
+            // No content detected or all content - return full duration
+            return (TimeSpan.Zero, TimeSpan.FromSeconds(DurationSeconds));
+        }
+
+        var samplesPerChannel = monoSamples.Length;
+        var startSample = firstContentFrame.Value * hopSize;
+        var endSample = Math.Min((lastContentFrame.Value * hopSize) + frameSize, samplesPerChannel);
+
+        var startTime = TimeSpan.FromSeconds((double)startSample / SampleRate);
+        var endTime = TimeSpan.FromSeconds((double)endSample / SampleRate);
+
+        return (startTime, endTime);
+    }
+
+    private int CalculateSampleIndex(TimeSpan time)
+    {
+        return Math.Clamp((int)(time.TotalSeconds * SampleRate) * Channels, 0, Samples.Length);
+    }
+
+    public AudioBuffer MuteOutsideRange(TimeSpan startTime, TimeSpan endTime)
+    {
+        var samples = Samples.Span;
+        var newSamples = samples.ToArray();
+
+        // Convert time range to sample indices
+        var startSample = CalculateSampleIndex(startTime);
+        var endSample = CalculateSampleIndex(endTime);
+
+        if (endSample < startSample)
+        {
+            throw new ArgumentException("End time must be after start time.");
+        }
+
+        if (startSample == 0 && endSample >= newSamples.Length)
+        {
+            // No muting needed
+            return this;
+        }
+
+        if (startSample > 0)
+        {
+            Array.Fill(newSamples, 0f, 0, startSample);
+        }
+
+        if (endSample > 0)
+        {
+            Array.Fill(newSamples, 0f, endSample, newSamples.Length - endSample);
+        }
+
+        return new AudioBuffer(newSamples, SampleRate, Channels);
+    }
+
+    /// <summary>
+    /// Normalizes audio based on RMS (Root Mean Square) level instead of peak amplitude.
+    /// Optionally normalizes only within a specific time range.
+    /// </summary>
+    /// <param name="targetRms">Target RMS level.</param>
+    /// <returns>A new normalized AudioBuffer with RMS-based normalization applied.</returns>
+    public (AudioBuffer, RmsNormalizationStats) NormalizeRms(float targetRms = 0.1f)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(targetRms, 0.0f, nameof(targetRms));
+
+        var samples = Samples.Span;
+
+        // Calculate RMS of the region
+        var rms = CalculateRms(samples);
+
+        // If silent, return original
+        if (rms <= Minus120Db)
+        {
+            return (this, new RmsNormalizationStats(rms, 1.0f));
+        }
+
+        // Calculate gain
+        var gain = targetRms / rms;
+
+        // Apply gain to create new buffer
+        var newSamples = samples.ToArray();
+        TensorPrimitives.Multiply(newSamples, gain, newSamples);
+
+        return (
+            new AudioBuffer(newSamples, SampleRate, Channels),
+            new RmsNormalizationStats(rms, gain));
+    }
+
+    /// <summary>
+    /// Calculates the RMS (Root Mean Square) of a sample buffer.
+    /// </summary>
+    private static float CalculateRms(ReadOnlySpan<float> samples)
+    {
+        if (samples.Length == 0)
+        {
+            return 0;
+        }
+
+        float sumOfSquares = TensorPrimitives.SumOfSquares(samples);
+        return MathF.Sqrt(sumOfSquares / samples.Length);
+    }
 }
 
 
-public readonly record struct NormalizationStats(
-    float OriginalPeakAmplitude,
-    float GainApplied);
+public readonly record struct NormalizationStats(float OriginalPeakAmplitude, float GainApplied);
+public readonly record struct RmsNormalizationStats(float OriginalRms, float GainApplied);

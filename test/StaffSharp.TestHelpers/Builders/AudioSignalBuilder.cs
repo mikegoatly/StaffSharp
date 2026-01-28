@@ -1,3 +1,5 @@
+using System.Numerics.Tensors;
+
 namespace StaffSharp.TestHelpers.Builders;
 
 /// <summary>
@@ -5,14 +7,16 @@ namespace StaffSharp.TestHelpers.Builders;
 /// </summary>
 public sealed class AudioSignalBuilder
 {
-    private readonly List<SignalComponent> _components = new();
+    private readonly List<SignalComponent> _components = [];
     private int _sampleRate = 44100;
     private double _duration = 0.1; // 100ms default
     private int? _fixedLength;
     private double _currentTimeOffset;
     private IEnvelope? _currentEnvelope;
 
-    private AudioSignalBuilder() { }
+    private AudioSignalBuilder()
+    {
+    }
 
     /// <summary>
     /// Creates a new audio signal builder.
@@ -127,11 +131,12 @@ public sealed class AudioSignalBuilder
     }
 
     /// <summary>
-    /// Adds a DC offset (constant value).
+    /// Adds a constant value for a specific time range.
+    /// Useful for creating regions with specific amplitude levels.
     /// </summary>
-    public AudioSignalBuilder AddDC(double offset)
+    public AudioSignalBuilder AddConstant(double value, double? durationSeconds = null)
     {
-        _components.Add(new DCComponent(offset));
+        _components.Add(new ConstantComponent(value, _currentTimeOffset, durationSeconds));
         return this;
     }
 
@@ -205,54 +210,37 @@ public sealed class AudioSignalBuilder
         double GetAmplitude(double time, double duration);
     }
 
-    private sealed class AttackEnvelope : IEnvelope
+    private sealed class AttackEnvelope(double attackTime) : IEnvelope
     {
-        private readonly double _attackTime;
-
-        public AttackEnvelope(double attackTime) => _attackTime = attackTime;
-
         public double GetAmplitude(double time, double duration)
         {
-            if (time < _attackTime)
-                return time / _attackTime;
-            return 1.0;
+            return time < attackTime ? time / attackTime : 1.0;
         }
     }
 
-    private sealed class ADSREnvelope : IEnvelope
+    private sealed class ADSREnvelope(double attack, double decay, double sustain, double release) : IEnvelope
     {
-        private readonly double _attack;
-        private readonly double _decay;
-        private readonly double _sustain;
-        private readonly double _release;
-
-        public ADSREnvelope(double attack, double decay, double sustain, double release)
-        {
-            _attack = attack;
-            _decay = decay;
-            _sustain = sustain;
-            _release = release;
-        }
-
         public double GetAmplitude(double time, double duration)
         {
-            if (time < _attack)
-                return time / _attack;
-
-            if (time < _attack + _decay)
+            if (time < attack)
             {
-                var decayProgress = (time - _attack) / _decay;
-                return 1.0 - (1.0 - _sustain) * decayProgress;
+                return time / attack;
             }
 
-            var releaseStart = duration - _release;
+            if (time < attack + decay)
+            {
+                var decayProgress = (time - attack) / decay;
+                return 1.0 - (1.0 - sustain) * decayProgress;
+            }
+
+            var releaseStart = duration - release;
             if (time >= releaseStart)
             {
-                var releaseProgress = (time - releaseStart) / _release;
-                return _sustain * (1.0 - releaseProgress);
+                var releaseProgress = (time - releaseStart) / release;
+                return sustain * (1.0 - releaseProgress);
             }
 
-            return _sustain;
+            return sustain;
         }
     }
 
@@ -262,121 +250,87 @@ public sealed class AudioSignalBuilder
         public abstract void AddToBuffer(float[] buffer, int sampleRate);
     }
 
-    private sealed class SineComponent : SignalComponent
+    private sealed class SineComponent(double frequency, double amplitude, double phase, double timeOffset, double? duration, AudioSignalBuilder.IEnvelope? envelope) : SignalComponent
     {
-        private readonly double _frequency;
-        private readonly double _amplitude;
-        private readonly double _phase;
-        private readonly double _timeOffset;
-        private readonly double? _duration;
-        private readonly IEnvelope? _envelope;
-
-        public SineComponent(double frequency, double amplitude, double phase, double timeOffset, double? duration, IEnvelope? envelope)
-        {
-            _frequency = frequency;
-            _amplitude = amplitude;
-            _phase = phase;
-            _timeOffset = timeOffset;
-            _duration = duration;
-            _envelope = envelope;
-        }
-
         public override void AddToBuffer(float[] buffer, int sampleRate)
         {
-            var startSample = (int)(_timeOffset * sampleRate);
-            var endSample = _duration.HasValue
-                ? Math.Min(buffer.Length, startSample + (int)(_duration.Value * sampleRate))
+            var startSample = (int)(timeOffset * sampleRate);
+            var endSample = duration.HasValue
+                ? Math.Min(buffer.Length, startSample + (int)(duration.Value * sampleRate))
                 : buffer.Length;
 
             for (int i = startSample; i < endSample; i++)
             {
-                if (i < 0 || i >= buffer.Length) continue;
+                if (i < 0 || i >= buffer.Length)
+                {
+                    continue;
+                }
 
                 var t = (i - startSample) / (double)sampleRate;
-                var totalDuration = _duration ?? (buffer.Length / (double)sampleRate);
-                var envelopeAmp = _envelope?.GetAmplitude(t, totalDuration) ?? 1.0;
+                var totalDuration = duration ?? (buffer.Length / (double)sampleRate);
+                var envelopeAmp = envelope?.GetAmplitude(t, totalDuration) ?? 1.0;
 
-                buffer[i] += (float)(_amplitude * envelopeAmp * Math.Sin(2 * Math.PI * _frequency * t + _phase));
+                buffer[i] += (float)(amplitude * envelopeAmp * Math.Sin(2 * Math.PI * frequency * t + phase));
             }
         }
     }
 
-    private sealed class ImpulseComponent : SignalComponent
+    private sealed class ImpulseComponent(double amplitude, double timeOffset, double duration) : SignalComponent
     {
-        private readonly double _amplitude;
-        private readonly double _timeOffset;
-        private readonly double _duration;
-
-        public ImpulseComponent(double amplitude, double timeOffset, double duration)
-        {
-            _amplitude = amplitude;
-            _timeOffset = timeOffset;
-            _duration = duration;
-        }
-
         public override void AddToBuffer(float[] buffer, int sampleRate)
         {
-            var startSample = (int)(_timeOffset * sampleRate);
-            var durationSamples = (int)(_duration * sampleRate);
+            var startSample = (int)(timeOffset * sampleRate);
+            var durationSamples = (int)(duration * sampleRate);
 
             for (int i = 0; i < durationSamples; i++)
             {
                 var sampleIndex = startSample + i;
-                if (sampleIndex < 0 || sampleIndex >= buffer.Length) continue;
+                if (sampleIndex < 0 || sampleIndex >= buffer.Length)
+                {
+                    continue;
+                }
 
                 // Exponentially decaying broadband impulse
                 var decay = Math.Exp(-i / 10.0);
-                buffer[sampleIndex] += (float)(_amplitude * decay * Math.Sin(i * 0.5));
+                buffer[sampleIndex] += (float)(amplitude * decay * Math.Sin(i * 0.5));
             }
         }
     }
 
-    private sealed class NoiseComponent : SignalComponent
+    private sealed class NoiseComponent(double amplitude, int seed, double timeOffset, double? duration) : SignalComponent
     {
-        private readonly double _amplitude;
-        private readonly int _seed;
-        private readonly double _timeOffset;
-        private readonly double? _duration;
-
-        public NoiseComponent(double amplitude, int seed, double timeOffset, double? duration)
-        {
-            _amplitude = amplitude;
-            _seed = seed;
-            _timeOffset = timeOffset;
-            _duration = duration;
-        }
-
         public override void AddToBuffer(float[] buffer, int sampleRate)
         {
-            var random = new Random(_seed);
-            var startSample = (int)(_timeOffset * sampleRate);
-            var endSample = _duration.HasValue
-                ? Math.Min(buffer.Length, startSample + (int)(_duration.Value * sampleRate))
+            var random = new Random(seed);
+            var startSample = (int)(timeOffset * sampleRate);
+            var endSample = duration.HasValue
+                ? Math.Min(buffer.Length, startSample + (int)(duration.Value * sampleRate))
                 : buffer.Length;
 
             for (int i = startSample; i < endSample; i++)
             {
-                if (i < 0 || i >= buffer.Length) continue;
-                buffer[i] += (float)(_amplitude * (random.NextDouble() * 2 - 1));
+                if (i < 0 || i >= buffer.Length)
+                {
+                    continue;
+                }
+
+                buffer[i] += (float)(amplitude * (random.NextDouble() * 2 - 1));
             }
         }
     }
 
-    private sealed class DCComponent : SignalComponent
+    private sealed class ConstantComponent(double value, double timeOffset, double? duration) : SignalComponent
     {
-        private readonly double _offset;
-
-        public DCComponent(double offset)
-        {
-            _offset = offset;
-        }
-
         public override void AddToBuffer(float[] buffer, int sampleRate)
         {
-            for (int i = 0; i < buffer.Length; i++)
-            {
-                buffer[i] += (float)_offset;
-            }
+            var startSample = (int)(timeOffset * sampleRate);
+            var endSample = duration.HasValue
+                ? Math.Min(buffer.Length, startSample + (int)(duration.Value * sampleRate))
+                : buffer.Length;
+
+            var targetBuffer = buffer.AsSpan(startSample, endSample - startSample);
+
+            TensorPrimitives.Add(targetBuffer, (float)value, targetBuffer);
         }
     }
 }
