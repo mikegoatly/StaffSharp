@@ -923,17 +923,34 @@ def main():
         weight_decay=1e-5
     )
 
-    # Learning rate scheduler - Cosine Annealing with Warm Restarts
+    # Learning rate scheduler with warmup
+    # 1. Warmup: Linearly increase LR from 1% to 100% over 5 epochs
+    warmup_epochs = 5
+    warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer,
+        start_factor=0.01,  # Start at 1% of target LR
+        end_factor=1.0,
+        total_iters=warmup_epochs
+    )
+
+    # 2. Main scheduler: Cosine Annealing with Warm Restarts
     # T_0: Number of epochs for the first restart (default: 10)
     # T_mult: Factor to increase T_i after each restart (default: 2)
     # eta_min: Minimum learning rate (default: 1e-7)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    main_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer,
         T_0=10,
         T_mult=2,
         eta_min=1e-7
     )
-    print(f"Using CosineAnnealingWarmRestarts scheduler (T_0=10, T_mult=2)")
+
+    # 3. Chain schedulers: warmup -> cosine annealing
+    scheduler = torch.optim.lr_scheduler.SequentialLR(
+        optimizer,
+        schedulers=[warmup_scheduler, main_scheduler],
+        milestones=[warmup_epochs]
+    )
+    print(f"Using Linear Warmup (5 epochs) -> CosineAnnealingWarmRestarts (T_0=10, T_mult=2)")
 
     # Mixed precision scaler
     scaler = torch.cuda.amp.GradScaler() if args.device == 'cuda' else None
