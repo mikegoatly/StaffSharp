@@ -804,12 +804,12 @@ def main():
                         help='Weight for frame loss (default: 1.0)')
     parser.add_argument('--velocity-weight', type=float, default=1.0,
                         help='Weight for velocity loss (default: 1.0)')
-    parser.add_argument('--onset-pos-weight', type=float, default=100.0,
-                        help='Positive class weight for onset detection, compensates for extreme class imbalance in MAESTRO (~410:1 ratio). (default: 100.0)')
-    parser.add_argument('--offset-pos-weight', type=float, default=100.0,
-                        help='Positive class weight for offset detection, compensates for extreme class imbalance in MAESTRO (~412:1 ratio). (default: 100.0)')
-    parser.add_argument('--frame-pos-weight', type=float, default=40.0,
-                        help='Positive class weight for frame activation, compensates for class imbalance in MAESTRO (~33:1 ratio). (default: 40.0)')
+    parser.add_argument('--onset-pos-weight', type=float, default=30.0,
+                        help='Positive class weight for onset detection. (default: 30.0)')
+    parser.add_argument('--offset-pos-weight', type=float, default=30.0,
+                        help='Positive class weight for offset detection. (default: 30.0)')
+    parser.add_argument('--frame-pos-weight', type=float, default=20.0,
+                        help='Positive class weight for frame activation. (default: 20.0)')
     parser.add_argument('--focal-gamma', type=float, default=2.0,
                         help='Gamma parameter for Focal Loss on onset/offset. Higher values focus more on hard examples. (default: 2.0)')
     
@@ -830,8 +830,8 @@ def main():
                         help='Minimum loss improvement to reset early stopping counter (default: 0.001)')
 
     # Negative sampling
-    parser.add_argument('--noise-prob', type=float, default=0.1,
-                        help='Probability of using noise sample instead of piano (default: 0.1). ' +
+    parser.add_argument('--noise-prob', type=float, default=0.05,
+                        help='Probability of using noise sample instead of piano (default: 0.05). ' +
                              'Set to 0 to disable noise sampling.')
 
     args = parser.parse_args()
@@ -964,6 +964,7 @@ def main():
     # Training loop
     print("\nStarting training...")
     best_val_loss = float('inf')
+    best_onset_f1 = 0.0
 
     try:
         for epoch in range(start_epoch, args.epochs + 1):
@@ -1022,12 +1023,20 @@ def main():
             if epoch % args.save_interval == 0:
                 save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir)
 
-            # Save best model
+            # Save best model by loss
             if val_metrics['loss'] < best_val_loss:
                 best_val_loss = val_metrics['loss']
-                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_model.pt')
-                print(f"  ✓ New best model saved! (loss: {best_val_loss:.4f})")
-            
+                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_loss.pt')
+                print(f"  ✓ New best loss model saved! (loss: {best_val_loss:.4f})")
+
+            # Save best model by onset F1
+            if 'eval_metrics' in val_metrics and 'onset_f1' in val_metrics['eval_metrics']:
+                current_f1 = val_metrics['eval_metrics']['onset_f1']
+                if current_f1 > best_onset_f1:
+                    best_onset_f1 = current_f1
+                    save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_f1.pt')
+                    print(f"  ✓ New best F1 model saved! (onset F1: {best_onset_f1:.4f})")
+
             # Check early stopping
             if early_stopping:
                 early_stopping_status = early_stopping(val_metrics['loss'], epoch)
@@ -1037,6 +1046,7 @@ def main():
                     print(f"\n{'='*60}")
                     print(f"Early stopping triggered!")
                     print(f"Best validation loss: {early_stopping.best_loss:.4f} (epoch {early_stopping.best_epoch})")
+                    print(f"Best onset F1: {best_onset_f1:.4f}")
                     print(f"{'='*60}\n")
                     
                     # Save final checkpoint before stopping
@@ -1045,7 +1055,9 @@ def main():
                     break
 
         print("\nTraining complete!")
-        
+        print(f"Best validation loss: {best_val_loss:.4f}")
+        print(f"Best onset F1: {best_onset_f1:.4f}")
+
         # Save final model after training completes
         save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, f'final_model_epoch_{epoch}.pt')
         print(f"✓ Saved final model: final_model_epoch_{epoch}.pt")
