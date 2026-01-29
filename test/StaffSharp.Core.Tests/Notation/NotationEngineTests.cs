@@ -277,7 +277,7 @@ public sealed class NotationEngineTests
         );
 
         var engine = new NotationEngine();
-        var options = new NotationOptions { ClefPreference = ClefPreference.AutoGrandStaff };
+        var options = new NotationOptions { ClefPreference = ClefPreference.Auto };
 
         // Act
         var score = engine.Convert(timeline, options);
@@ -319,7 +319,7 @@ public sealed class NotationEngineTests
         );
 
         var engine = new NotationEngine();
-        var options = new NotationOptions { ClefPreference = ClefPreference.AutoGrandStaff };
+        var options = new NotationOptions { ClefPreference = ClefPreference.Auto };
 
         // Act
         var score = engine.Convert(timeline, options);
@@ -357,7 +357,7 @@ public sealed class NotationEngineTests
         var engine = new NotationEngine();
         var options = new NotationOptions
         {
-            ClefPreference = ClefPreference.AutoGrandStaff,
+            ClefPreference = ClefPreference.Auto,
             GrandStaffSplitPoint = 64  // E4 instead of C4
         };
 
@@ -399,7 +399,7 @@ public sealed class NotationEngineTests
         );
 
         var engine = new NotationEngine();
-        var options = new NotationOptions { ClefPreference = ClefPreference.AutoGrandStaff };
+        var options = new NotationOptions { ClefPreference = ClefPreference.Auto };
 
         // Act
         var score = engine.Convert(timeline, options);
@@ -431,7 +431,7 @@ public sealed class NotationEngineTests
         );
 
         var engine = new NotationEngine();
-        var options = new NotationOptions { ClefPreference = ClefPreference.AutoGrandStaff };
+        var options = new NotationOptions { ClefPreference = ClefPreference.Auto };
 
         // Act
         var score = engine.Convert(timeline, options);

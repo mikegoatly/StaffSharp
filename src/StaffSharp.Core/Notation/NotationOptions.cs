@@ -8,8 +8,10 @@ namespace StaffSharp.Core.Notation;
 public enum ClefPreference
 {
     /// <summary>
-    /// Automatically detect the appropriate clef based on pitch range.
-    /// Uses treble for high notes, bass for low notes.
+    /// Automatically detect the appropriate clef(s) based on pitch range.
+    /// For narrow ranges: uses treble (avg pitch >= Middle C) or bass (avg pitch < Middle C).
+    /// For wide ranges (> 24 semitones): creates grand staff with treble + bass staves.
+    /// This is the recommended default for most use cases.
     /// </summary>
     Auto,
 
@@ -31,13 +33,7 @@ public enum ClefPreference
     /// <summary>
     /// Force all parts to use tenor clef regardless of pitch range.
     /// </summary>
-    ForceTenor,
-
-    /// <summary>
-    /// Automatically create grand staff (treble + bass) when pitch range is wide.
-    /// Uses threshold and split point from NotationOptions.
-    /// </summary>
-    AutoGrandStaff
+    ForceTenor
 }
 
 /// <summary>

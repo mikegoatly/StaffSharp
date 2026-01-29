@@ -14,18 +14,26 @@ internal static class StaffSplitter
         IReadOnlyList<IPerformanceEvent> events,
         NotationOptions options)
     {
-        if (options.ClefPreference != ClefPreference.AutoGrandStaff)
+        // Grand staff is only considered for Auto preference
+        // Force* preferences should never create grand staff
+        if (options.ClefPreference != ClefPreference.Auto)
         {
             return false;
         }
 
-        var pitches = ExtractPitches(events);
-        if (pitches.Count == 0)
+        if (events.Count == 0) 
         {
             return false;
         }
 
-        var range = pitches.Max() - pitches.Min();
+        var (max, min) = events
+            .Select(ev => ev.Pitch.MidiNumber)
+            .Aggregate(
+                (Max: int.MinValue, Min: int.MaxValue),
+                (acc, pitch) => (Math.Max(acc.Max, pitch), Math.Min(acc.Min, pitch))
+            );
+
+        var range = max - min;
         return range > options.GrandStaffRangeThreshold;
     }
 
@@ -37,24 +45,13 @@ internal static class StaffSplitter
             IReadOnlyList<VoiceAssignment> assignments,
             int splitPoint)
     {
-        var treble = new List<VoiceAssignment>();
-        var bass = new List<VoiceAssignment>();
+        var groups = assignments
+            .ToLookup(a => a.Event.Pitch.Value >= splitPoint);
 
-        foreach (var assignment in assignments)
-        {
-            if (assignment.Event.Pitch.Value >= splitPoint)
-            {
-                // High notes go to treble staff
-                treble.Add(assignment);
-            }
-            else
-            {
-                // Low notes go to bass staff
-                bass.Add(assignment);
-            }
-        }
-
-        return (treble, bass);
+        return (
+            Treble: [.. groups[true]],
+            Bass: [.. groups[false]]
+        );
     }
 
     /// <summary>
@@ -91,15 +88,5 @@ internal static class StaffSplitter
         }
 
         return renumbered;
-    }
-
-    /// <summary>
-    /// Extracts all MIDI pitch numbers from performance events.
-    /// </summary>
-    private static List<int> ExtractPitches(IEnumerable<IPerformanceEvent> events)
-    {
-        return events
-            .Select(ev => ev.Pitch.MidiNumber)
-            .ToList();
     }
 }

@@ -54,14 +54,14 @@ public static class AudioPipeline
 
         // Note detection (sub-pipeline: detect → tempo → quantize)
         var timeline = await options.NoteDetector.DetectAsync(
-            progress with { StageName = "Note detection" }, 
-            audioBuffer, 
+            progress with { StageName = "Note detection" },
+            audioBuffer,
             ct).ConfigureAwait(false);
 
         // Convert to notation score
         var score = await new ConvertToScoreStage(
             new NotationEngine(), // TODO allow voice assigner configuration
-            new NotationOptions())
+            options.NotationOptions)
             .ExecuteAsync(progress with { StageName = "Score conversion" }, timeline, ct)
             .ConfigureAwait(false);
 

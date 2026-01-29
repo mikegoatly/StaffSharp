@@ -1,5 +1,6 @@
 using StaffSharp.Audio.Analysis;
 using StaffSharp.Audio.Diagnostics;
+using StaffSharp.Core.Notation;
 
 namespace StaffSharp.Audio.Pipeline;
 
@@ -33,6 +34,12 @@ public sealed record AudioPipelineOptions
     /// Gets or sets the diagnostics collector for emitting telemetry data.
     /// </summary>
     public IDiagnosticsCollector? DiagnosticsCollector { get; set; }
+
+    /// <summary>
+    /// Gets or sets the notation options for controlling score conversion.
+    /// Defaults to Auto mode which intelligently chooses treble, bass, or grand staff.
+    /// </summary>
+    public NotationOptions NotationOptions { get; set; } = new NotationOptions();
 
     /// <summary>
     /// Creates the default note detector with standard algorithmic components.

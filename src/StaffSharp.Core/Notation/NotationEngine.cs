@@ -32,19 +32,10 @@ public sealed class NotationEngine : INotationEngine
             .ToDictionary(g => g.Key, g => g.ToList());
 
         // Step 3: Check if grand staff is needed
-        var useGrandStaff = StaffSplitter.ShouldUseGrandStaff(timeline.Events, options);
 
-        Part part;
-        if (useGrandStaff)
-        {
-            // Create grand staff (treble + bass)
-            part = CreateGrandStaffPart(timeline, voiceAssignments, options);
-        }
-        else
-        {
-            // Create single-staff part
-            part = CreateSingleStaffPart(timeline, voiceAssignments, options);
-        }
+        Part part = StaffSplitter.ShouldUseGrandStaff(timeline.Events, options)
+            ? CreateGrandStaffPart(timeline, voiceAssignments, options)
+            : CreateSingleStaffPart(timeline, voiceAssignments, options);
 
         // Build TieSpans and SlurSpans from markers on notes
         SpanBuilder.BuildTieSpans(part);
@@ -89,7 +80,7 @@ public sealed class NotationEngine : INotationEngine
         }
 
         // Determine clef
-        var clef = DetermineClef(timeline.Events, options);
+        var clef = DetermineSingleStaffClef(timeline.Events, options);
 
         // Create single-staff part using legacy constructor
         return new Part(
@@ -184,12 +175,12 @@ public sealed class NotationEngine : INotationEngine
     }
 
     /// <summary>
-    /// Determines the appropriate clef based on options and pitch range analysis.
+    /// Determines the appropriate clef for a single-staff part based on options and pitch range analysis.
     /// </summary>
-    private static Clef DetermineClef(IReadOnlyList<IPerformanceEvent> events, NotationOptions options)
+    private static Clef DetermineSingleStaffClef(IReadOnlyList<IPerformanceEvent> events, NotationOptions options)
     {
-        // If user forced a specific clef, use it (but not AutoGrandStaff - that's handled separately)
-        if (options.ClefPreference != ClefPreference.Auto && options.ClefPreference != ClefPreference.AutoGrandStaff)
+        // If user forced a specific clef, use it
+        if (options.ClefPreference != ClefPreference.Auto)
         {
             return options.ClefPreference switch
             {
@@ -201,35 +192,20 @@ public sealed class NotationEngine : INotationEngine
             };
         }
 
-        // Auto-detect based on pitch range
-        // Extract all pitches from events
+        // Auto-detect based on average pitch
         var pitches = events
             .Select(e => e.Pitch.MidiNumber)
             .ToList();
 
         if (pitches.Count == 0)
         {
-            // No pitched events, default to treble
-            return Clef.Treble;
+            return Clef.Treble; // Default to treble for empty staff
         }
 
-        // Calculate average pitch
         var averagePitch = pitches.Average();
 
-        // Middle C is MIDI 60
-        // Treble clef center is around B4 (MIDI 71)
-        // Bass clef center is around D3 (MIDI 50)
         // Use MIDI 60 (Middle C) as the pivot point
-
-        if (averagePitch >= 60)
-        {
-            // Average pitch is at or above middle C - use treble clef
-            return Clef.Treble;
-        }
-        else
-        {
-            // Average pitch is below middle C - use bass clef
-            return Clef.Bass;
-        }
+        // >= 60 → Treble, < 60 → Bass
+        return averagePitch >= 60 ? Clef.Treble : Clef.Bass;
     }
 }
