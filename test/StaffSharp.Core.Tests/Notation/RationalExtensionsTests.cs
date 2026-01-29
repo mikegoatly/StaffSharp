@@ -65,13 +65,17 @@ public class RationalExtensionsTests
     }
 
     [Fact]
-    public void FromRational_UnmatchedDuration_ReturnsQuarterDefault()
+    public void FromRational_UnmatchedDuration_ReturnsClosestApproximation()
     {
-        // Test various unmatched durations all default to quarter
-        // Note: 5/1 is now matched by the improved algorithm (Triple-dotted whole in triplet)
-        var duration2 = Rational.Create(5, 7); // Truly unmatched
+        // Test that unmatched durations return the closest standard duration
+        // 5/7 ≈ 0.714 beats, closest match is dotted eighth (0.75) or eighth (0.5)
+        // Since 0.75 - 0.714 = 0.036 and 0.714 - 0.5 = 0.214, dotted eighth is closer
+        var duration = Rational.Create(5, 7);
+        var result = duration.FromRational();
 
-        Assert.Equal(SymbolicDuration.Quarter, duration2.FromRational());
+        // The improved algorithm finds the closest match (dotted eighth: 3/4 = 0.75)
+        var expected = new SymbolicDuration(NoteDurationBase.Eighth, dots: 1);
+        Assert.Equal(expected, result);
     }
 
     [Fact]

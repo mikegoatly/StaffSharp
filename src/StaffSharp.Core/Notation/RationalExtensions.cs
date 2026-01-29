@@ -4,6 +4,23 @@ using StaffSharp;
 
 public static class RationalExtensions
 {
+    private static readonly SymbolicDuration[] standardDurationCandidates =
+        [
+            SymbolicDuration.Whole,
+            new SymbolicDuration(NoteDurationBase.Half, dots: 1),
+            SymbolicDuration.Half,
+            new SymbolicDuration(NoteDurationBase.Quarter, dots: 1),
+            SymbolicDuration.Quarter,
+            new SymbolicDuration(NoteDurationBase.Eighth, dots: 1),
+            SymbolicDuration.Eighth,
+            new SymbolicDuration(NoteDurationBase.Sixteenth, dots: 1),
+            SymbolicDuration.Sixteenth,
+            SymbolicDuration.ThirtySecond,
+            new SymbolicDuration(NoteDurationBase.Quarter, dots: 0, Tuplet.Triplet),
+            new SymbolicDuration(NoteDurationBase.Eighth, dots: 0, Tuplet.Triplet),
+            new SymbolicDuration(NoteDurationBase.Sixteenth, dots: 0, Tuplet.Triplet)
+        ];
+
     public static SymbolicDuration FromRational(this Rational duration)
     {
         // Handle some special cases that don't fit the general pattern
@@ -22,21 +39,21 @@ public static class RationalExtensions
         // We check common tuplets by multiplying the duration by the inverse of the tuplet ratio.
         // If the result is a standard duration, then we found it.
         var tuplets = new[] { Tuplet.Triplet, Tuplet.Quintuplet, Tuplet.Sextuplet, Tuplet.Septuplet };
-        
+
         foreach (var tuplet in tuplets)
         {
             // Calculate unscaled duration: duration * (Actual / Normal)
             // e.g. for Triplet (3 in 2), we multiply by 3/2 to get the "normal" duration that was compressed
             var unscaled = duration * Rational.Create(tuplet.ActualNotes, tuplet.NormalNotes);
-            
+
             if (TryGetStandardDuration(unscaled, out baseVal, out dots))
             {
                 return new SymbolicDuration(baseVal, dots, tuplet);
             }
         }
 
-        // Fallback to quarter note if no exact match found
-        return SymbolicDuration.Quarter;
+        // Fallback: find closest standard duration to minimize error
+        return FindClosestStandardDuration(duration);
     }
 
     private static bool TryGetStandardDuration(Rational duration, out NoteDurationBase baseVal, out int dots)
@@ -96,5 +113,32 @@ public static class RationalExtensions
         int log = 0;
         while ((n >>= 1) > 0) log++;
         return log;
+    }
+
+    /// <summary>
+    /// Finds the closest standard duration (with optional tuplet) to the given rational duration.
+    /// This is used as a fallback when exact quantization fails.
+    /// </summary>
+    private static SymbolicDuration FindClosestStandardDuration(Rational target)
+    {
+        // Find the candidate with minimum absolute difference
+        SymbolicDuration? bestMatch = null;
+        Rational minError = Rational.Create(int.MaxValue, 1);
+
+        foreach (var candidate in standardDurationCandidates)
+        {
+            var candidateRational = candidate.ToBeats();
+            var diff = target - candidateRational;
+            var error = diff.Numerator >= 0 ? diff : Rational.Create(-diff.Numerator, diff.Denominator);
+
+            if (error < minError)
+            {
+                minError = error;
+                bestMatch = candidate;
+            }
+        }
+
+        // Default to quarter note if something went wrong
+        return bestMatch ?? SymbolicDuration.Quarter;
     }
 }
