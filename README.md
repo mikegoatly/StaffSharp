@@ -6,7 +6,7 @@ A music notation library for .NET that converts between musical formats - audio,
 
 StaffSharp transforms music from one representation to another. The original goal was converting audio recordings (WAV files) into readable sheet music (SVG), but the architecture supports any-to-any conversion:
 
-- **Audio** → MIDI, SVG
+- **Audio** → MIDI, SVG, ABC
 - **MusicXML** → SVG, MIDI, ABC
 - **ABC notation** → SVG, MIDI
 - **MIDI** → (planned)
@@ -17,8 +17,9 @@ This is a very early stage project. The core architecture is in place with dual 
 
 What's working:
 - Monophonic audio analysis (Using pYIN, though there is a YIN implementation in there)
+- Polyphonic audio analysis (Using a deep learning model trained with StaffSharp)
 - MusicXML import
-- ABC import
+- ABC import and export
 - MIDI export
 - Basic score structures
 - Score validation - the notation layer has validation logic that verifies it is structurally sound
@@ -26,24 +27,26 @@ What's working:
   ![Sample SVG output](docs/images/sample.svg)
 
 What's not:
-- Polyphonic audio analysis
-- ABC export
 - MIDI import
 - MusicXML export
-- Rendering decorations (trills, etc.) is very ropey
-- Realistically even the things above you should expect bugs in!
 
 ## Structure
 
 The codebase is organized into focused libraries:
 
-- **StaffSharp.Core** - Core types (`NoteEvent`, `Frequency`, `Rational` timing)
-- **StaffSharp.Audio** - DSP pipeline for audio analysis (pitch/onset detection)
-- **StaffSharp.MusicXml** - MusicXML parsing (Exporting TODO)
+- **StaffSharp.Core** - Core types and utilities
+- **StaffSharp.Audio** - DSP pipeline for monophonic audio analysis using algorithmic analysis (YIN/pYIN)
+- **StaffSharp.MachineLearning** - a deep learning model for polyphonic pitch detection
+- **StaffSharp.MusicXml** - MusicXML parsing and exporting
 - **StaffSharp.Abc** - ABC parsing and exporting
-- **StaffSharp.Midi** - MIDI file generation (Parsing TODO)
-- **StaffSharp.Svg** - SVG score rendering (very much WIP)
+- **StaffSharp.Json** - JSON parsing and exporting of intermediate representations
+- **StaffSharp.Midi** - MIDI file generation
+- **StaffSharp.Svg** - SVG score rendering
+- **StaffSharp.Synthesis** - Simple audio synthesis from score outputs
 - **StaffSharp.Cli** - Command-line interface
+
+Rendering
+- **StaffSharp.Avalonia** - An Avalonia-based viewer application
 
 ## Architecture
 
