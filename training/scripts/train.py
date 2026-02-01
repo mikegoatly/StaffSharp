@@ -791,8 +791,8 @@ def main():
                         help='Learning rate')
     parser.add_argument('--warmup-epochs', type=int, default=5,
                         help='Number of warmup epochs (default: 5)')
-    parser.add_argument('--scheduler-patience', type=int, default=3,
-                        help='Patience for ReduceLROnPlateau scheduler (default: 3)')
+    parser.add_argument('--scheduler-patience', type=int, default=6,
+                        help='Patience for ReduceLROnPlateau scheduler (default: 6)')
     parser.add_argument('--scheduler-factor', type=float, default=0.5,
                         help='Factor for ReduceLROnPlateau scheduler (default: 0.5)')
     parser.add_argument('--min-lr', type=float, default=1e-7,
@@ -816,12 +816,14 @@ def main():
                         help='Weight for frame loss (default: 1.0)')
     parser.add_argument('--velocity-weight', type=float, default=1.0,
                         help='Weight for velocity loss (default: 1.0)')
-    parser.add_argument('--onset-pos-weight', type=float, default=30.0,
-                        help='Positive class weight for onset detection. (default: 30.0)')
-    parser.add_argument('--offset-pos-weight', type=float, default=30.0,
-                        help='Positive class weight for offset detection. (default: 30.0)')
+    # Higher onset pos weight - We want to be very sure about note beginnings
+    parser.add_argument('--onset-pos-weight', type=float, default=100.0,
+                        help='Positive class weight for onset detection.')
+    # Lower offset pos weight - We want it to flag obvious stops, but we don't want it to panic over fuzzy decays
+    parser.add_argument('--offset-pos-weight', type=float, default=10.0,
+                        help='Positive class weight for offset detection.')
     parser.add_argument('--frame-pos-weight', type=float, default=20.0,
-                        help='Positive class weight for frame activation. (default: 20.0)')
+                        help='Positive class weight for frame activation.')
     parser.add_argument('--focal-gamma', type=float, default=2.0,
                         help='Gamma parameter for Focal Loss on onset/offset. Higher values focus more on hard examples. (default: 2.0)')
     
