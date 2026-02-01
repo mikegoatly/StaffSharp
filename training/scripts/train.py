@@ -13,9 +13,12 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import random
+import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -737,6 +740,95 @@ def save_checkpoint(
     print(f"Saved checkpoint: {output_path}")
 
 
+def extract_date_from_path(path: str) -> Optional[str]:
+    """Extract date in YYYY-MM-DD format from a path.
+    
+    Looks for patterns like 'YYYY-MM-DD' in the path string.
+    
+    Args:
+        path: Path string that may contain a date
+        
+    Returns:
+        Date string in YYYY-MM-DD format, or None if not found
+    """
+    # Match YYYY-MM-DD pattern
+    match = re.search(r'(\d{4}-\d{2}-\d{2})', str(path))
+    if match:
+        return match.group(1)
+    return None
+
+
+def get_run_date(resume_path: Optional[str] = None) -> str:
+    """Get the run date for organizing outputs.
+    
+    If resuming, extracts date from the resume path.
+    Otherwise, uses current date.
+    
+    Args:
+        resume_path: Optional path to checkpoint being resumed
+        
+    Returns:
+        Date string in YYYY-MM-DD format
+    """
+    if resume_path:
+        date_str = extract_date_from_path(resume_path)
+        if date_str:
+            print(f"Extracted date from resume path: {date_str}")
+            return date_str
+        else:
+            print(f"Warning: Could not extract date from resume path, using current date")
+    
+    # Use current date
+    return datetime.now().strftime('%Y-%m-%d')
+
+
+def setup_output_directories(base_output_dir: str, base_log_dir: str, run_date: str) -> tuple[Path, Path]:
+    """Setup dated output directories for models and logs.
+    
+    Args:
+        base_output_dir: Base directory for model outputs
+        base_log_dir: Base directory for TensorBoard logs
+        run_date: Date string in YYYY-MM-DD format
+        
+    Returns:
+        Tuple of (model_dir, log_dir) as Path objects
+    """
+    model_dir = Path(base_output_dir) / run_date
+    log_dir = Path(base_log_dir) / run_date
+    
+    model_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    return model_dir, log_dir
+
+
+def save_training_params(output_dir: Path, args: argparse.Namespace):
+    """Save training parameters to JSON file.
+    
+    Args:
+        output_dir: Directory to save the parameters file
+        args: Parsed command-line arguments
+    """
+    params_file = output_dir / 'training_params.json'
+    
+    # Only save if file doesn't exist (don't overwrite on resume)
+    if params_file.exists():
+        print(f"  Training parameters already exist: {params_file}")
+        return
+    
+    # Convert args to dictionary
+    params = vars(args).copy()
+    
+    # Add timestamp
+    params['created_at'] = datetime.now().isoformat()
+    
+    # Save to JSON
+    with open(params_file, 'w') as f:
+        json.dump(params, f, indent=2)
+    
+    print(f"  ✓ Saved training parameters: {params_file}")
+
+
 def load_checkpoint(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -850,9 +942,17 @@ def main():
 
     args = parser.parse_args()
 
-    # Create output directories
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    Path(args.log_dir).mkdir(parents=True, exist_ok=True)
+    # Setup date-based output directories
+    run_date = get_run_date(args.resume)
+    model_dir, log_dir = setup_output_directories(args.output_dir, args.log_dir, run_date)
+    
+    print(f"\nRun date: {run_date}")
+    print(f"Model directory: {model_dir}")
+    print(f"Log directory: {log_dir}")
+    
+    # Save training parameters for new runs
+    if not args.resume:
+        save_training_params(model_dir, args)
 
     # Set device
     if args.device == 'cuda' and not torch.cuda.is_available():
@@ -978,7 +1078,7 @@ def main():
         # Note: We use main_scheduler for loading since that's what gets saved after warmup
 
     # TensorBoard writer
-    writer = SummaryWriter(args.log_dir)
+    writer = SummaryWriter(log_dir)
 
     # Initialize early stopping if enabled
     early_stopping = None
@@ -1057,12 +1157,12 @@ def main():
 
             # Save checkpoint
             if epoch % args.save_interval == 0:
-                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir)
+                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, model_dir)
 
             # Save best model by loss
             if val_metrics['loss'] < best_val_loss:
                 best_val_loss = val_metrics['loss']
-                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, 'best_loss.pt')
+                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, model_dir, 'best_loss.pt')
                 print(f"  ✓ New best loss model saved! (loss: {best_val_loss:.4f})")
 
             # Save best model by onset F1
@@ -1070,7 +1170,7 @@ def main():
                 current_f1 = val_metrics['eval_metrics']['onset_f1']
                 if current_f1 > best_onset_f1:
                     best_onset_f1 = current_f1
-                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, 'best_f1.pt')
+                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, model_dir, 'best_f1.pt')
                     print(f"  ✓ New best F1 model saved! (onset F1: {best_onset_f1:.4f})")
 
             # Check early stopping
@@ -1086,7 +1186,7 @@ def main():
                     print(f"{'='*60}\n")
                     
                     # Save final checkpoint before stopping
-                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, f'early_stopped_epoch_{epoch}.pt')
+                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, model_dir, f'early_stopped_epoch_{epoch}.pt')
                     print(f"✓ Saved final checkpoint: early_stopped_epoch_{epoch}.pt\n")
                     break
 
@@ -1096,7 +1196,7 @@ def main():
 
         # Save final model after training completes
         current_scheduler = warmup_scheduler if epoch <= warmup_epochs else main_scheduler
-        save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, f'final_model_epoch_{epoch}.pt')
+        save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, model_dir, f'final_model_epoch_{epoch}.pt')
         print(f"✓ Saved final model: final_model_epoch_{epoch}.pt")
     
     except KeyboardInterrupt:
@@ -1108,7 +1208,7 @@ def main():
         # Save checkpoint before exiting
         current_scheduler = warmup_scheduler if epoch <= warmup_epochs else main_scheduler
         save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics if 'val_metrics' in locals() else {}, 
-                       args.output_dir, f'interrupted_epoch_{epoch}.pt')
+                       model_dir, f'interrupted_epoch_{epoch}.pt')
         print(f"✓ Saved checkpoint: interrupted_epoch_{epoch}.pt")
     
     finally:
