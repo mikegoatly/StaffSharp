@@ -54,7 +54,9 @@ def spec_augment(mel_spec: np.ndarray,
     """
     augmented = mel_spec.copy()
     time_steps, mel_bins = augmented.shape
-    mask_value = 0 # I'll float(augmented.mean()) if zero does work well
+    # For piano music, use mean instead of zero to simulate ambiguity rather than silence
+    # This is more realistic than zero (which is unnatural in log-scale mel spectrograms)
+    mask_value = float(augmented.mean())
 
     # Apply frequency masking
     for _ in range(num_freq_masks):
@@ -777,6 +779,8 @@ def main():
                         help='Number of epochs')
     parser.add_argument('--batch-size', type=int, default=8,
                         help='Batch size')
+    parser.add_argument('--prefetch-factor', type=int, default=4,
+                        help='DataLoader prefetch factor')
     parser.add_argument('--sequence-length', type=int, default=2000,
                         help='Sequence length in frames (default: 2000, approx 20s)')
     parser.add_argument('--no-sliding-window', dest='sliding_window', action='store_false', default=True,
@@ -785,6 +789,14 @@ def main():
                         help='Stride for sliding window in frames (default: 500). Only used when sliding window is enabled.')
     parser.add_argument('--learning-rate', type=float, default=0.0006,
                         help='Learning rate')
+    parser.add_argument('--warmup-epochs', type=int, default=5,
+                        help='Number of warmup epochs (default: 5)')
+    parser.add_argument('--scheduler-patience', type=int, default=3,
+                        help='Patience for ReduceLROnPlateau scheduler (default: 3)')
+    parser.add_argument('--scheduler-factor', type=float, default=0.5,
+                        help='Factor for ReduceLROnPlateau scheduler (default: 0.5)')
+    parser.add_argument('--min-lr', type=float, default=1e-7,
+                        help='Minimum learning rate (default: 1e-7)')
     parser.add_argument('--device', type=str, default='cuda',
                         choices=['cuda', 'cpu'],
                         help='Device to use (cuda or cpu)')
@@ -887,6 +899,8 @@ def main():
         shuffle=True,
         num_workers=args.num_workers,
         collate_fn=collate_fn,
+        persistent_workers=args.num_workers > 0,
+        prefetch_factor=args.prefetch_factor,
         pin_memory=(args.device == 'cuda')
     )
 
@@ -896,6 +910,8 @@ def main():
         shuffle=False,
         num_workers=args.num_workers,
         collate_fn=collate_fn,
+        persistent_workers=args.num_workers > 0,
+        prefetch_factor=args.prefetch_factor,
         pin_memory=(args.device == 'cuda')
     )
 
@@ -924,8 +940,8 @@ def main():
     )
 
     # Learning rate scheduler with warmup
-    # 1. Warmup: Linearly increase LR from 1% to 100% over 5 epochs
-    warmup_epochs = 5
+    # 1. Warmup: Linearly increase LR from 1% to 100% over warmup_epochs
+    warmup_epochs = args.warmup_epochs
     warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
         optimizer,
         start_factor=0.01,  # Start at 1% of target LR
@@ -933,24 +949,17 @@ def main():
         total_iters=warmup_epochs
     )
 
-    # 2. Main scheduler: Cosine Annealing with Warm Restarts
-    # T_0: Number of epochs for the first restart (default: 10)
-    # T_mult: Factor to increase T_i after each restart (default: 2)
-    # eta_min: Minimum learning rate (default: 1e-7)
-    main_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    # 2. Main scheduler: ReduceLROnPlateau (applied after warmup)
+    main_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
-        T_0=10,
-        T_mult=2,
-        eta_min=1e-7
+        mode='min',
+        factor=args.scheduler_factor,
+        patience=args.scheduler_patience,
+        min_lr=args.min_lr,
     )
 
-    # 3. Chain schedulers: warmup -> cosine annealing
-    scheduler = torch.optim.lr_scheduler.SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, main_scheduler],
-        milestones=[warmup_epochs]
-    )
-    print(f"Using Linear Warmup (5 epochs) -> CosineAnnealingWarmRestarts (T_0=10, T_mult=2)")
+    # Note: We manually switch between schedulers since SequentialLR is incompatible with ReduceLROnPlateau
+    print(f"Using Linear Warmup ({warmup_epochs} epochs) -> ReduceLROnPlateau (factor={args.scheduler_factor}, patience={args.scheduler_patience})")
 
     # Mixed precision scaler
     scaler = torch.cuda.amp.GradScaler() if args.device == 'cuda' else None
@@ -959,10 +968,12 @@ def main():
     start_epoch = 1
     if args.resume:
         print(f"\nResuming from checkpoint: {args.resume}")
-        start_epoch, metrics = load_checkpoint(model, optimizer, scheduler, args.resume, args.resume_scheduler)
-        start_epoch += 1
+        # Load checkpoint (we'll manage scheduler state manually based on which epoch we're at)
+        temp_epoch, metrics = load_checkpoint(model, optimizer, main_scheduler, args.resume, args.resume_scheduler)
+        start_epoch = temp_epoch + 1
         print(f"Resuming from epoch {start_epoch}")
         print(f"Previous metrics: {metrics}")
+        # Note: We use main_scheduler for loading since that's what gets saved after warmup
 
     # TensorBoard writer
     writer = SummaryWriter(args.log_dir)
@@ -1030,20 +1041,26 @@ def main():
                     if isinstance(metric_value, (int, float)):
                         writer.add_scalar(f'val/{metric_name}', metric_value, epoch)
 
-            # Learning rate scheduling (step every epoch)
-            scheduler.step()
+            # Learning rate scheduling (manual switching between warmup and main scheduler)
+            if epoch <= warmup_epochs:
+                warmup_scheduler.step()
+            else:
+                main_scheduler.step(val_metrics['loss'])
+
+            current_scheduler = warmup_scheduler if epoch <= warmup_epochs else main_scheduler
+
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar('train/learning_rate', current_lr, epoch)
             print(f"  Learning rate: {current_lr:.2e}")
 
             # Save checkpoint
             if epoch % args.save_interval == 0:
-                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir)
+                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir)
 
             # Save best model by loss
             if val_metrics['loss'] < best_val_loss:
                 best_val_loss = val_metrics['loss']
-                save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_loss.pt')
+                save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, 'best_loss.pt')
                 print(f"  ✓ New best loss model saved! (loss: {best_val_loss:.4f})")
 
             # Save best model by onset F1
@@ -1051,7 +1068,7 @@ def main():
                 current_f1 = val_metrics['eval_metrics']['onset_f1']
                 if current_f1 > best_onset_f1:
                     best_onset_f1 = current_f1
-                    save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, 'best_f1.pt')
+                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, 'best_f1.pt')
                     print(f"  ✓ New best F1 model saved! (onset F1: {best_onset_f1:.4f})")
 
             # Check early stopping
@@ -1067,7 +1084,7 @@ def main():
                     print(f"{'='*60}\n")
                     
                     # Save final checkpoint before stopping
-                    save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, f'early_stopped_epoch_{epoch}.pt')
+                    save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, f'early_stopped_epoch_{epoch}.pt')
                     print(f"✓ Saved final checkpoint: early_stopped_epoch_{epoch}.pt\n")
                     break
 
@@ -1076,7 +1093,8 @@ def main():
         print(f"Best onset F1: {best_onset_f1:.4f}")
 
         # Save final model after training completes
-        save_checkpoint(model, optimizer, scheduler, epoch, val_metrics, args.output_dir, f'final_model_epoch_{epoch}.pt')
+        current_scheduler = warmup_scheduler if epoch <= warmup_epochs else main_scheduler
+        save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics, args.output_dir, f'final_model_epoch_{epoch}.pt')
         print(f"✓ Saved final model: final_model_epoch_{epoch}.pt")
     
     except KeyboardInterrupt:
@@ -1086,7 +1104,8 @@ def main():
         print("\nCleaning up resources...")
         
         # Save checkpoint before exiting
-        save_checkpoint(model, optimizer, scheduler, epoch, val_metrics if 'val_metrics' in locals() else {}, 
+        current_scheduler = warmup_scheduler if epoch <= warmup_epochs else main_scheduler
+        save_checkpoint(model, optimizer, current_scheduler, epoch, val_metrics if 'val_metrics' in locals() else {}, 
                        args.output_dir, f'interrupted_epoch_{epoch}.pt')
         print(f"✓ Saved checkpoint: interrupted_epoch_{epoch}.pt")
     
