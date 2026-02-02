@@ -1070,12 +1070,30 @@ def main():
     start_epoch = 1
     if args.resume:
         print(f"\nResuming from checkpoint: {args.resume}")
-        # Load checkpoint (we'll manage scheduler state manually based on which epoch we're at)
-        temp_epoch, metrics = load_checkpoint(model, optimizer, main_scheduler, args.resume, args.resume_scheduler)
+        
+        # 1. Peek at the checkpoint first to determine the epoch
+        # This is slightly inefficient (double load) but safe and simple
+        checkpoint_data = torch.load(args.resume, map_location='cpu')
+        saved_epoch = checkpoint_data['epoch']
+        
+        # 2. Select the correct scheduler target
+        if saved_epoch <= warmup_epochs:
+            print(f"Resuming during warmup phase (Epoch {saved_epoch})")
+            target_scheduler = warmup_scheduler
+        else:
+            print(f"Resuming after warmup phase (Epoch {saved_epoch})")
+            target_scheduler = main_scheduler
+
+        # 3. Load full state
+        # Now we pass the correct scheduler type to be populated
+        temp_epoch, metrics = load_checkpoint(model, optimizer, target_scheduler, args.resume, args.resume_scheduler)
         start_epoch = temp_epoch + 1
+        
         print(f"Resuming from epoch {start_epoch}")
         print(f"Previous metrics: {metrics}")
-        # Note: We use main_scheduler for loading since that's what gets saved after warmup
+        
+        # Free memory from the peek
+        del checkpoint_data
 
     # TensorBoard writer
     writer = SummaryWriter(log_dir)
