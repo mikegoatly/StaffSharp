@@ -741,54 +741,54 @@ def save_checkpoint(
 
 
 def extract_date_from_path(path: str) -> Optional[str]:
-    """Extract date in YYYY-MM-DD format from a path.
+    """Extract datetime in YYYY-MM-DD_HHMM format from a path.
     
-    Looks for patterns like 'YYYY-MM-DD' in the path string.
+    Looks for patterns like 'YYYY-MM-DD_HHMM' in the path string.
     
     Args:
-        path: Path string that may contain a date
+        path: Path string that may contain a datetime
         
     Returns:
-        Date string in YYYY-MM-DD format, or None if not found
+        Datetime string in YYYY-MM-DD_HHMM format, or None if not found
     """
-    # Match YYYY-MM-DD pattern
-    match = re.search(r'(\d{4}-\d{2}-\d{2})', str(path))
+    # Match YYYY-MM-DD_HHMM pattern
+    match = re.search(r'(\d{4}-\d{2}-\d{2}_\d{4})', str(path))
     if match:
         return match.group(1)
     return None
 
 
 def get_run_date(resume_path: Optional[str] = None) -> str:
-    """Get the run date for organizing outputs.
+    """Get the run datetime for organizing outputs.
     
-    If resuming, extracts date from the resume path.
-    Otherwise, uses current date.
+    If resuming, extracts datetime from the resume path.
+    Otherwise, uses current datetime.
     
     Args:
         resume_path: Optional path to checkpoint being resumed
         
     Returns:
-        Date string in YYYY-MM-DD format
+        Datetime string in YYYY-MM-DD_HHMM format
     """
     if resume_path:
         date_str = extract_date_from_path(resume_path)
         if date_str:
-            print(f"Extracted date from resume path: {date_str}")
+            print(f"Extracted datetime from resume path: {date_str}")
             return date_str
         else:
-            print(f"Warning: Could not extract date from resume path, using current date")
+            print(f"Warning: Could not extract datetime from resume path, using current datetime")
     
-    # Use current date
-    return datetime.now().strftime('%Y-%m-%d')
+    # Use current datetime with hours and minutes
+    return datetime.now().strftime('%Y-%m-%d_%H%M')
 
 
 def setup_output_directories(base_output_dir: str, base_log_dir: str, run_date: str) -> tuple[Path, Path]:
-    """Setup dated output directories for models and logs.
+    """Setup datetime-based output directories for models and logs.
     
     Args:
         base_output_dir: Base directory for model outputs
         base_log_dir: Base directory for TensorBoard logs
-        run_date: Date string in YYYY-MM-DD format
+        run_date: Datetime string in YYYY-MM-DD_HHMM format
         
     Returns:
         Tuple of (model_dir, log_dir) as Path objects
