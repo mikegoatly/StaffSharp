@@ -26,6 +26,9 @@ public sealed class CombFilterTempoDetector : ITempoDetector
     /// </summary>
     private double MaxValidInterval => 60.0 / _options.MinBpm;
 
+    private static readonly IReadOnlyList<TempoChange> _defaultTempo =
+        [ new TempoChange(Rational.Zero, 120) ];
+
     public CombFilterTempoDetector(TempoDetectionOptions? options = null)
     {
         _options = options ?? new TempoDetectionOptions();
@@ -40,9 +43,7 @@ public sealed class CombFilterTempoDetector : ITempoDetector
 
         if (onsetTimes.Length < 2)
         {
-            throw new ArgumentException(
-                "At least two onset times are required to detect tempo.",
-                nameof(onsetTimes));
+            return _defaultTempo;
         }
 
         // STEP 1: Compute All-Pairs Intervals
@@ -51,8 +52,7 @@ public sealed class CombFilterTempoDetector : ITempoDetector
 
         if (rawIntervals.Count == 0)
         {
-            throw new InvalidOperationException(
-                "No valid inter-onset intervals found within the specified tempo range.");
+            return _defaultTempo;
         }
 
         progress.EmitDiagnostics("Raw intervals found", rawIntervals.Count);
@@ -64,7 +64,7 @@ public sealed class CombFilterTempoDetector : ITempoDetector
 
         if (clusters.Count == 0)
         {
-            throw new InvalidOperationException("No interval clusters found.");
+            return _defaultTempo;
         }
 
         // STEP 3: Comb Filter Scoring (Grid Fitting)
