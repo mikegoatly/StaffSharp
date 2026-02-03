@@ -119,14 +119,17 @@ public class CombFilterTempoDetectorTests
     }
 
     [Fact]
-    public void DetectTempo_OutOfRange_ThrowsException()
+    public void DetectTempo_OutOfRange_ReturnsDefaultTempo()
     {
         var detector = new CombFilterTempoDetector(new TempoDetectionOptions { MinBpm = 100, MaxBpm = 140 });
 
         // 60 BPM - below minimum
         var slowOnsets = new[] { 0.0, 1.0, 2.0, 3.0, 4.0 };
-        var ex = Assert.Throws<InvalidOperationException>(() => detector.DetectTempo(PipelineProgress.Null, slowOnsets));
-        Assert.Equal("No valid inter-onset intervals found within the specified tempo range.", ex.Message);
+        
+        var tempoChanges = detector.DetectTempo(PipelineProgress.Null, slowOnsets);
+
+        Assert.NotNull(tempoChanges);
+        Assert.Equal(120, tempoChanges[0].BeatsPerMinute);
     }
 
     [Fact]
