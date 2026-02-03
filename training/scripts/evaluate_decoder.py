@@ -122,7 +122,6 @@ def evaluate_split(model, dataloader, params, split_name, num_batches):
                     min_duration_seconds=params['min_duration'],
                     gap_tolerance_seconds=params['gap_tolerance'],
                     min_velocity=params['min_velocity'],
-                    min_frame_for_onset=params['min_frame_for_onset'],
                     frame_rate=FPS,
                     mask=sample_mask
                 )
@@ -168,7 +167,6 @@ def main():
     parser.add_argument('--min_velocity', type=float, default=0.017537805373506878)
     parser.add_argument('--min_duration', type=float, default=0.050547378558136784)
     parser.add_argument('--gap_tolerance', type=float, default=0.15503368741936713)
-    parser.add_argument('--min_frame_for_onset', type=float, default=0.463827429076491)
     parser.add_argument('--checkpoint', type=str, default=CHECKPOINT, help='Path to model checkpoint')
     parser.add_argument('--data_dir', type=str, default=DATA_DIR, help='Path to processed data')
     parser.add_argument('--output', type=str, default=None, help='Save results to JSON file')
@@ -192,8 +190,7 @@ def main():
         'offset_thresh': args.offset_thresh,
         'min_velocity': args.min_velocity,
         'min_duration': args.min_duration,
-        'gap_tolerance': args.gap_tolerance,
-        'min_frame_for_onset': args.min_frame_for_onset
+        'gap_tolerance': args.gap_tolerance
     }
     
     print("="*60)

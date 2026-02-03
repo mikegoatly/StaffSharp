@@ -242,7 +242,6 @@ def compute_note_metrics(
     min_duration_seconds: float = 0.05,
     gap_tolerance_seconds: float = 0.05,
     min_velocity: float = 0.1,
-    min_frame_for_onset: float = 0.3,
     frame_rate: float = 100.0,
     mask: torch.Tensor = None
 ) -> Dict[str, float]:
@@ -275,7 +274,6 @@ def compute_note_metrics(
         min_duration_seconds: Minimum note duration (default: 0.05, matches C# default)
         gap_tolerance_seconds: Time to wait before killing a note that lost frame activation (default: 0.05)
         min_velocity: Minimum velocity (0.0-1.0) to register a note (default: 0.1)
-        min_frame_for_onset: Minimum frame probability required to accept an onset (default: 0.3)
         frame_rate: Frame rate in Hz (default: 100.0)
         mask: Optional mask for padding
     
@@ -330,8 +328,7 @@ def compute_note_metrics(
             min_duration_seconds=min_duration_seconds,
             gap_tolerance_seconds=gap_tolerance_seconds,
             min_velocity=min_velocity,
-            frame_rate=frame_rate,
-            min_frame_for_onset=min_frame_for_onset
+            frame_rate=frame_rate
         )
         
         # Decode reference notes from ground truth
@@ -343,8 +340,7 @@ def compute_note_metrics(
             min_duration_seconds=min_duration_seconds,
             gap_tolerance_seconds=gap_tolerance_seconds,
             min_velocity=min_velocity,
-            frame_rate=frame_rate,
-            min_frame_for_onset=min_frame_for_onset
+            frame_rate=frame_rate
         )
         
         all_pred_notes.append(pred_notes)
