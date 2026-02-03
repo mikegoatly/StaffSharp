@@ -83,7 +83,7 @@ internal sealed class NoteEventDecoder
 
             // 1. Check for New Onset
             // We enforce a "Consensus" check: Frame prob shouldn't be zero.
-            if (isOnset && frameProb > _options.MinFrameForOnset)
+            if (isOnset && isActive)
             {
                 // If velocity is too low, ignore this onset entirely (Ghost busting)
                 if (velocity < _options.MinVelocity)
