@@ -106,17 +106,6 @@
                             Minimum="0.0"
                             Value="{Binding Options.MinVelocity}" />
                     </Grid>
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
-                        <TextBlock VerticalAlignment="Center" Text="Min Frame For Onset" />
-                        <NumericUpDown
-                            Grid.Column="1"
-
-                            FormatString="0.00000"
-                            Increment="0.05"
-                            Maximum="1.0"
-                            Minimum="0.0"
-                            Value="{Binding Options.MinFrameForOnset}" />
-                    </Grid>
                 </StackPanel>
 
             </StackPanel>

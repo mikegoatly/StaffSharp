@@ -44,9 +44,6 @@ public partial class ProcessingOptions : ObservableObject
     [ObservableProperty]
     public partial float MinVelocity { get; set; } = _defaultMLOptions.MinVelocity;
 
-    [ObservableProperty]
-    public partial float MinFrameForOnset { get; set; } = _defaultMLOptions.MinFrameForOnset;
-
     /// <summary>
     /// Resets all options to their default values.
     /// </summary>
@@ -61,7 +58,6 @@ public partial class ProcessingOptions : ObservableObject
         MinNoteLengthSeconds = _defaultMLOptions.MinNoteLengthSeconds;
         MinGapSeconds = _defaultMLOptions.MinGapSeconds;
         MinVelocity = _defaultMLOptions.MinVelocity;
-        MinFrameForOnset = _defaultMLOptions.MinFrameForOnset;
     }
 
     public AudioPipelineOptions CreateAudioPipelineOptions(IDiagnosticsCollector diagnosticsCollector)
@@ -88,7 +84,6 @@ public partial class ProcessingOptions : ObservableObject
             MinNoteLengthSeconds = MinNoteLengthSeconds,
             MinGapSeconds = MinGapSeconds,
             MinVelocity = MinVelocity,
-            MinFrameForOnset = MinFrameForOnset,
         };
     }
 }
