@@ -197,13 +197,14 @@ class OnsetsAndFramesModel(nn.Module):
         
         # Prepare for Linear: (B, T, C * F_reduced)
         x = x.permute(0, 2, 1, 3) 
-        x = x.flatten(2) 
+        x = x.flatten(2).contiguous()
         
         # 2. Projection
         x = self.fc_projection(x)
         x = F.relu(x)
         
         # 3. LSTM
+        x = x.contiguous()
         x, _ = self.lstm(x) # (B, T, hidden*2)
         
         # 4. Heads

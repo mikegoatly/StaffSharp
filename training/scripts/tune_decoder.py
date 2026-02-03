@@ -13,75 +13,75 @@ from metrics import compute_note_metrics
 
 # CONFIG
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-CHECKPOINT = "models/best_f1.pt"
+CHECKPOINT = r"models\2026-02-01_1256\final_model_epoch_65.pt"
 DATA_DIR = r"..\tmp\maestro-v3.0.0-processed"
-N_VAL_SONGS = 25
+N_VAL_SONGS = 40
 SAMPLE_RATE = 16000
 HOP_SIZE = 512
 FPS = SAMPLE_RATE / HOP_SIZE  # ~31.25
 
-def get_smart_ranges(metrics):
-    """
-    Analyze checkpoint metrics to determine the optimal search area.
-    """
+def get_search_ranges():
     ranges = {
-        'onset_min': 0.1, 'onset_max': 0.9,
-        'frame_min': 0.1, 'frame_max': 0.9,
-        'offset_min': 0.1, 'offset_max': 0.9
+        'onset_min': 0.3, 'onset_max': 0.95,
+        'frame_min': 0.3, 'frame_max': 0.95,
+        'offset_min': 0.3, 'offset_max': 0.95
     }
-    
-    # Check Onset P/R Balance
-    # 'eval_metrics' key might vary based on how you saved it, checking standard locations
-    eval_m = metrics.get('eval_metrics', {})
-    
-    on_prec = eval_m.get('onset_precision', 0.5)
-    on_rec = eval_m.get('onset_recall', 0.5)
-    off_prec = eval_m.get('offset_precision', 0.5)
-    off_rec = eval_m.get('offset_recall', 0.5)
-    
-    print(f" Onset P/R: {on_prec:.2f} / {on_rec:.2f}")
-
-    # Logic: If Recall is much higher than Precision, we are "Trigger Happy".
-    # We need to Shift the search window UP to filter false positives.
-    if on_rec > on_prec + 0.2:
-        print("  -> Model is Trigger Happy (High Recall). Shifting search range UP.")
-        ranges['onset_min'] = 0.4
-        ranges['onset_max'] = 0.95
-        ranges['frame_min'] = 0.4
-        ranges['frame_max'] = 0.95
-    # Logic: If Precision is much higher, we are "Shy". Shift DOWN.
-    elif on_prec > on_rec + 0.2:
-        print("  -> Model is Shy (High Precision). Shifting search range DOWN.")
-        ranges['onset_min'] = 0.05
-        ranges['onset_max'] = 0.6
-        ranges['frame_min'] = 0.05
-        ranges['frame_max'] = 0.6
-
-    print(f"  Offset P/R: {off_prec:.2f} / {off_rec:.2f}")
-    
-    if off_rec > off_prec + 0.2:
-        print("  -> Offsets are Trigger Happy (Jittery). Shifting range UP.")
-        ranges['offset_min'] = 0.5
-        ranges['offset_max'] = 0.98
-    elif off_prec > off_rec + 0.2:
-        print("  -> Offsets are Shy (Notes stick). Shifting range DOWN.")
-        ranges['offset_min'] = 0.05
-        ranges['offset_max'] = 0.5
 
     return ranges
+
+def process_long_sequence(model, mel_spec_full, device, chunk_size=20000):
+    """
+    Slices a long song into chunks, processes them on GPU, 
+    and stitches them back on CPU to save VRAM.
+    """
+    total_length = mel_spec_full.shape[1]  # (Batch, Time, Mel)
+    
+    # Store results on CPU to save GPU memory
+    all_onsets = []
+    all_offsets = []
+    all_frames = []
+    all_vels = []
+    
+    # Iterate in chunks
+    for i in range(0, total_length, chunk_size):
+        # 1. Slice on CPU (Fast & Cheap)
+        chunk = mel_spec_full[:, i:i+chunk_size, :]
+        
+        # 2. Move ONLY the chunk to GPU
+        chunk = chunk.to(device)
+        
+        # 3. Inference
+        with torch.no_grad():
+            o, off, f, v = model(chunk)
+        
+        # 4. Move result back to CPU immediately
+        all_onsets.append(o.cpu())
+        all_offsets.append(off.cpu())
+        all_frames.append(f.cpu())
+        all_vels.append(v.cpu())
+        
+        # 5. Clear GPU cache
+        del chunk, o, off, f, v
+    
+    # Stitch back together
+    return (torch.cat(all_onsets, dim=1),
+            torch.cat(all_offsets, dim=1),
+            torch.cat(all_frames, dim=1),
+            torch.cat(all_vels, dim=1))
 
 def get_validation_data():
     val_dataset = MaestroDataset(DATA_DIR, split='validation', sequence_length=None)
     
     # Shuffle and pick a subset to speed up optimization
     indices = list(range(len(val_dataset)))
+    random.seed(48) 
     random.shuffle(indices)
     subset_indices = indices[:N_VAL_SONGS]
     
     subset = Subset(val_dataset, subset_indices)
     
     # Batch size 1 because full songs have variable lengths
-    return DataLoader(subset, batch_size=1, collate_fn=collate_fn, num_workers=0)
+    return DataLoader(subset, batch_size=1, collate_fn=collate_fn, num_workers=0, pin_memory=False)
 
 def objective(trial, model, dataloader, ranges):
     onset_thresh = trial.suggest_float('onset_thresh', ranges['onset_min'], ranges['onset_max'])
@@ -91,7 +91,6 @@ def objective(trial, model, dataloader, ranges):
     min_velocity = trial.suggest_float('min_velocity', 0.01, 0.15)
     min_duration = trial.suggest_float('min_duration', 0.03, 0.10) # 30ms to 100ms
     gap_tolerance = trial.suggest_float('gap_tolerance', 0.05, 0.2) # 50ms to 200ms
-    min_frame_for_onset = trial.suggest_float('min_frame_for_onset', 0.1, 0.5)
     
     total_f1 = 0
     count = 0
@@ -99,10 +98,9 @@ def objective(trial, model, dataloader, ranges):
     with torch.no_grad():
         for batch in dataloader:
             mel, onset_ref, offset_ref, frame_ref, vel_ref, mask = batch
-            mel = mel.to(DEVICE)
             
-            # Inference
-            o_pred, off_pred, f_pred, v_pred = model(mel)
+            # Process in chunks to save GPU memory
+            o_pred, off_pred, f_pred, v_pred = process_long_sequence(model, mel, DEVICE)
             
             # Sigmoid
             o_prob = torch.sigmoid(o_pred)
@@ -120,7 +118,6 @@ def objective(trial, model, dataloader, ranges):
                 min_duration_seconds=min_duration,
                 gap_tolerance_seconds=gap_tolerance, 
                 min_velocity=min_velocity,
-                min_frame_for_onset=min_frame_for_onset,
                 frame_rate=FPS,  
                 mask=mask)
             
@@ -148,7 +145,7 @@ if __name__ == '__main__':
     
     # 2. Determine Search Ranges from Checkpoint
     metrics = checkpoint.get('metrics', {})
-    search_ranges = get_smart_ranges(metrics)
+    search_ranges = get_search_ranges()
     print(f"Search Ranges: {search_ranges}")
     
     # 3. Load Data
@@ -159,23 +156,6 @@ if __name__ == '__main__':
     # Use TPE (Tree-structured Parzen Estimator) which is smarter than random search
     sampler = optuna.samplers.TPESampler(seed=42)
     study = optuna.create_study(direction='maximize', sampler=sampler)
-    
-    # 5. Inject Initial Guesses
-    # Choose starting thresholds based on BOTH onset and offset diagnoses
-    onset_start = 0.7 if search_ranges['onset_min'] > 0.3 else 0.3 if search_ranges['onset_max'] < 0.7 else 0.5
-    frame_start = 0.6 if search_ranges['frame_min'] > 0.3 else 0.3 if search_ranges['frame_max'] < 0.7 else 0.5
-    offset_start = 0.7 if search_ranges['offset_min'] > 0.4 else 0.3 if search_ranges['offset_max'] < 0.6 else 0.5
-    
-    print(f"Injecting initial guess: onset={onset_start}, frame={frame_start}, offset={offset_start}")
-    study.enqueue_trial({
-        'onset_thresh': onset_start,
-        'frame_thresh': frame_start,
-        'offset_thresh': offset_start,
-        'min_velocity': 0.05,
-        'min_duration': 0.05,
-        'gap_tolerance': 0.1,
-        'min_frame_for_onset': 0.3
-    })
     
     obj_func = partial(objective, model=model, dataloader=dataloader, ranges=search_ranges)
     

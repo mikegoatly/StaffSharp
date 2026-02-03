@@ -4,7 +4,7 @@ import numpy as np
 def decode_notes(onset_probs, frame_probs, offset_probs, velocity_values, 
                  onset_thresh=0.5, frame_thresh=0.5, offset_thresh=0.5, 
                  min_duration_seconds=0.05, frame_rate=100.0,
-                 gap_tolerance_seconds=0.05, min_velocity=0.1, min_frame_for_onset=0.3):
+                 gap_tolerance_seconds=0.05, min_velocity=0.1):
     """
     Python equivalent of StaffSharp.MachineLearning.ML.PostProcessing.NoteEventDecoder
     MUST be consistent with that C# implementation!
@@ -20,11 +20,10 @@ def decode_notes(onset_probs, frame_probs, offset_probs, velocity_values,
         onset_thresh: Threshold for onset detection (default: 0.5)
         frame_thresh: Threshold for frame activation (default: 0.5)
         offset_thresh: Threshold for offset detection (default: 0.5)
-        min_duration_seconds: Minimum note duration (default: 0.05 matches C#)
+        min_duration_seconds: Minimum note duration (default: 0.05)
         frame_rate: Frame rate in Hz
         gap_tolerance_seconds: Time to wait before killing a note that lost frame activation (default: 0.05)
         min_velocity: Minimum velocity (0.0-1.0) to register a note (default: 0.1)
-        min_frame_for_onset: Minimum frame probability required to accept an onset (default: 0.3)
     
     Returns:
         List of dicts with keys: 'start', 'end', 'pitch', 'velocity'
@@ -56,7 +55,7 @@ def decode_notes(onset_probs, frame_probs, offset_probs, velocity_values,
             
             # 1. Check for New Onset
             # We enforce a "Consensus" check: Frame prob shouldn't be zero.
-            if is_onset and frame_p > min_frame_for_onset:
+            if is_onset and is_active:
                 
                 # Ghost busting: If velocity is too low, ignore this onset entirely
                 if velocity < min_velocity:
