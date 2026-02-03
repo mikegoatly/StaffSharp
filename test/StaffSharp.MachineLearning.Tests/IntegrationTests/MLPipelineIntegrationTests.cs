@@ -1,5 +1,4 @@
 using StaffSharp.Audio.Pipeline;
-using StaffSharp.MachineLearning;
 using StaffSharp.Notation;
 using StaffSharp.TestHelpers;
 
@@ -9,37 +8,66 @@ namespace StaffSharp.MachineLearning.Tests.IntegrationTests;
 
 public class MLPipelineIntegrationTests(ITestOutputHelper outputHelper)
 {
-    [Fact]
-    public async Task ParsingCScale_ResultsInExpectedScore()
+    [InlineData(@"Scales\c-scale-44100-mono.wav")]
+    [InlineData(@"Scales\c-scale-44100-stereo.wav")]
+    [Theory]
+    public async Task ParsingCScale_ResultsInExpectedScore(string testFile)
     {
-        var score = await ExtractScoreFromAudioUsingML(@"Scales\c-scale-44100-mono.wav");
+        var score = await ExtractScoreFromAudioUsingML(testFile);
 
-        // We are expecting a C major scale: C4, D4, E4, F4, G4, A4, B4, C5 in sequence.
-        // Note: ML may detect extra notes or different durations than algorithmic approach.
+        score.AssertSequence(0)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.F, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
 
-        var voice = score.Parts[0].Voices[0];
-        var notes = voice.Measures
-            .SelectMany(m => m.Events.OfType<NotationNote>())
-            .ToList();
+        score.AssertSequence(1)
+            .Note(PitchClass.G, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.B, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 5)
+            .AndNoMore();
+    }
 
-        // Verify we detected at least 8 notes (may be more due to ML sensitivity)
-        Assert.True(notes.Count >= 8, $"Expected at least 8 notes, got {notes.Count}");
+    [Fact]
+    public async Task ParsingDScale_ResultsInExpectedScore()
+    {
+        var score = await ExtractScoreFromAudioUsingML(@"Scales\d-scale.wav");
 
-        // Verify the C major scale appears in the detected notes
-        var pitchClasses = notes.Select(n => n.Pitch.PitchClass).ToList();
-        Assert.Contains(PitchClass.C, pitchClasses);
-        Assert.Contains(PitchClass.D, pitchClasses);
-        Assert.Contains(PitchClass.E, pitchClasses);
-        Assert.Contains(PitchClass.F, pitchClasses);
-        Assert.Contains(PitchClass.G, pitchClasses);
-        Assert.Contains(PitchClass.A, pitchClasses);
-        Assert.Contains(PitchClass.B, pitchClasses);
+        score.AssertSequence(0)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.FSharp, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.G, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
 
-        // Verify the first and last notes are C in correct octaves
-        Assert.Equal(PitchClass.C, notes[0].Pitch.PitchClass);
-        Assert.Equal(4, notes[0].Pitch.Octave);
-        Assert.Equal(PitchClass.C, notes[^1].Pitch.PitchClass);
-        Assert.Equal(5, notes[^1].Pitch.Octave);
+        score.AssertSequence(1)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.B, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.CSharp, SymbolicDuration.Quarter, octave: 5)
+            .Note(PitchClass.D, SymbolicDuration.Quarter, octave: 5)
+            .AndNoMore();
+    }
+
+    [Fact]
+    public async Task ParsingEScaleReverse_ResultsInExpectedScore()
+    {
+        var score = await ExtractScoreFromAudioUsingML(@"Scales\e-scale-reverse.wav");
+
+        score.AssertSequence(0)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 5)
+            .Note(PitchClass.DSharp, SymbolicDuration.Quarter, octave: 5)
+            .Note(PitchClass.CSharp, SymbolicDuration.Quarter, octave: 5)
+            .Note(PitchClass.B, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
+
+        score.AssertSequence(1)
+            .Note(PitchClass.A, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.GSharp, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.FSharp, SymbolicDuration.Quarter, octave: 4)
+            .Note(PitchClass.E, SymbolicDuration.Quarter, octave: 4)
+            .AndNoMore();
     }
 
     private async Task<NotationScore> ExtractScoreFromAudioUsingML(string testFile, AudioPipelineOptions? options = null)

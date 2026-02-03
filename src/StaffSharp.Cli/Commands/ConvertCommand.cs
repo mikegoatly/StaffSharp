@@ -45,7 +45,6 @@ internal static partial class ConvertCommand
     private static readonly Option<float?> minNoteLengthOption = new("--min-note-length") { Description = "Minimum note length in seconds (default: 0.05)" };
     private static readonly Option<float?> minGapSecondsOption = new("--min-gap-seconds") { Description = "Maximum gap duration in seconds to tolerate before ending a note (default: 0.05)" };
     private static readonly Option<float?> minVelocityOption = new("--min-velocity") { Description = "Minimum velocity threshold for onset detection (0.0-1.0, default: 0.1)" };
-    private static readonly Option<float?> minFrameForOnsetOption = new("--min-frame-for-onset") { Description = "Minimum frame probability required for onset validation (0.0-1.0, default: 0.3)" };
     private static readonly Option<bool> treatPolyphonyAsChordsOption = new("--treat-polyphony-as-chords")
     {
         DefaultValueFactory = (_) => true,
@@ -101,7 +100,6 @@ internal static partial class ConvertCommand
         command.Options.Add(minNoteLengthOption);
         command.Options.Add(minGapSecondsOption);
         command.Options.Add(minVelocityOption);
-        command.Options.Add(minFrameForOnsetOption);
         command.Options.Add(treatPolyphonyAsChordsOption);
         command.Options.Add(suppressHarmonicsOption);
         command.Options.Add(harmonicVelocityRatioOption);
@@ -359,7 +357,6 @@ internal static partial class ConvertCommand
                 parseResult.GetValue(minNoteLengthOption),
                 parseResult.GetValue(minGapSecondsOption),
                 parseResult.GetValue(minVelocityOption),
-                parseResult.GetValue(minFrameForOnsetOption),
                 parseResult.GetValue(treatPolyphonyAsChordsOption),
                 parseResult.GetValue(suppressHarmonicsOption),
                 parseResult.GetValue(harmonicVelocityRatioOption));

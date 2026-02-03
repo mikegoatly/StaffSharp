@@ -20,7 +20,6 @@ public sealed class MLNoteDetectorTests(ITestOutputHelper outputHelper)
         MinNoteLengthSeconds = 0.05f,
         MinGapSeconds = 0.05f,
         MinVelocity = 0.0f,          // Zero - accept any velocity
-        MinFrameForOnset = 0.0f,     // Zero - disable consensus check for synthetic audio
     };
 
     [Fact]

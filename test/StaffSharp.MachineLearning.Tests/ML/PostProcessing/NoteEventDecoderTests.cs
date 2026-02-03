@@ -17,7 +17,6 @@ public sealed class NoteEventDecoderTests
         MinNoteLengthSeconds = 0.05f,
         MinGapSeconds = 0.05f,
         MinVelocity = 0.1f,
-        MinFrameForOnset = 0.3f,
     };
 
     // Helper method to create test results with correct signature

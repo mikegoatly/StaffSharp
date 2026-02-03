@@ -15,7 +15,7 @@ namespace StaffSharp.Audio.Tests.IntegrationTests
 
             // We are expecting a score with 8 quarter notes: C4, D4, E4, F4, G4, A4, B4, C5 over two measures.
 
-            ScoreAssert.AssertSequence(score)
+            score.AssertSequence()
                 .Note(PitchClass.C, SymbolicDuration.Quarter)
                 .Note(PitchClass.D, SymbolicDuration.Quarter)
                 .Note(PitchClass.E, SymbolicDuration.Quarter)
@@ -25,7 +25,6 @@ namespace StaffSharp.Audio.Tests.IntegrationTests
                 .Note(PitchClass.B, SymbolicDuration.Quarter)
                 .Note(PitchClass.C, SymbolicDuration.Quarter, octave: 5)
                 .AndNoMore();
-
         }
 
         private async Task<NotationScore> ExtractScoreFromAudio(string testFile, AudioPipelineOptions? options = null)
