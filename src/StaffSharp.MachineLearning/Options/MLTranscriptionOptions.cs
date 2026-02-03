@@ -23,16 +23,6 @@ public sealed record MLTranscriptionOptions
     /// </summary>
     public MelSpectrogramOptions FeatureOptions { get; init; } = new();
 
-    /*
-     *   onset_thresh: 0.7805672483321652
-  offset_thresh: 0.8494771227136267
-  frame_thresh: 0.9495884991459451
-  min_velocity: 0.045312027317955195
-  min_duration: 0.031768928719288964
-  gap_tolerance: 0.05738326419809668
-  min_frame_for_onset: 0.12840639963156808
-    */
-
     /// <summary>
     /// Threshold for onset detection (0.0-1.0).
     /// Higher values = fewer false positives, more missed notes.
