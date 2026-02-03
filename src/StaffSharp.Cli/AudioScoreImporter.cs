@@ -46,7 +46,6 @@ internal sealed class AudioScoreImporter : IScoreImporter
         float? minNoteLength,
         float? minGapSeconds,
         float? minVelocity,
-        float? minFrameForOnset,
         bool treatPolyphonyAsChords,
         bool suppressHarmonics,
         float? harmonicVelocityRatio)
@@ -96,11 +95,6 @@ internal sealed class AudioScoreImporter : IScoreImporter
         if (minVelocity is not null)
         {
             _mlOptions = _mlOptions with { MinVelocity = minVelocity.GetValueOrDefault() };
-        }
-
-        if (minFrameForOnset is not null)
-        {
-            _mlOptions = _mlOptions with { MinFrameForOnset = minFrameForOnset.GetValueOrDefault() };
         }
     }
 

@@ -344,7 +344,7 @@ internal sealed class OnnxTranscriber : IMLTranscriber, IDisposable
             return new InferenceSession(_options.ModelPath, sessionOptions);
         }
 
-        return new InferenceSession(Path.Combine(AppContext.BaseDirectory, "Models", "model_v2_dynamic.onnx"), sessionOptions);
+        return new InferenceSession(Path.Combine(AppContext.BaseDirectory, "Models", "model_v3_dynamic.onnx"), sessionOptions);
     }
 
     /// <summary>
