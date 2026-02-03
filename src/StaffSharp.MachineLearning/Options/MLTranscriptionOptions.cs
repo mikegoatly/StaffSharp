@@ -57,7 +57,7 @@ public sealed record MLTranscriptionOptions
     /// Minimum velocity threshold for onset detection (0.0-1.0).
     /// Onsets with velocity below this are ignored (ghost note suppression).
     /// </summary>
-    public float MinVelocity { get; init; } = 0.045312f;
+    public float MinVelocity { get; init; } = 0.2f;
 
     /// <summary>
     /// Enable GPU acceleration if available.
