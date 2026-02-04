@@ -2,6 +2,8 @@ using StaffSharp;
 using StaffSharp.Core.Notation;
 using StaffSharp.Notation;
 using StaffSharp.Performance;
+using StaffSharp.TestHelpers;
+using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Core.Tests.Notation;
 
@@ -20,42 +22,22 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create events in measures 1, 2, and 3
-        var events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 1
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.D4,
-                onsetBeats: Rational.Create(4, 1),
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 2
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.E4,
-                onsetBeats: Rational.Create(8, 1),
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 3
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .WithDuration(4, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)     // Measure 1
+            .AddNoteAt(Rational.Create(4, 1), MidiNote.D4)  // Measure 2
+            .AddNoteAt(Rational.Create(8, 1), MidiNote.E4)  // Measure 3
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
 
         // Assert
         Assert.Single(result);
-        Assert.True(result.ContainsKey(1));
-
         var measures = result[1];
         Assert.Equal(3, measures.Count);
         Assert.Equal(1, measures[0].Number);
@@ -76,28 +58,14 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create events: one in 4/4 section, one in 3/4 section
-        var events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 1 (4/4)
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.D4,
-                onsetBeats: Rational.Create(8, 1),
-                durationBeats: Rational.Create(3, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 3 (first measure in 3/4)
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(4, 1))  // Measure 1 (4/4)
+            .AddNoteAt(Rational.Create(8, 1), MidiNote.D4, duration: Rational.Create(3, 1))  // Measure 3 (3/4)
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
@@ -105,8 +73,6 @@ public sealed class MeasurePartitionerTests
         // Assert
         Assert.Single(result);
         var measures = result[1];
-
-        // Should have measures 1 and 3 (measure 2 would be empty and might not be created)
         Assert.True(measures.Count >= 2);
         Assert.Equal(1, measures[0].Number);
     }
@@ -121,43 +87,28 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create a note that spans from measure 1 into measure 2
-        var events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(6, 1), // 6 beats = 1.5 measures
-                velocity: Velocity.MezzoForte), 1),
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(6, 1))  // 6 beats = 1.5 measures
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
 
         // Assert
-        Assert.Single(result);
         var measures = result[1];
-
         Assert.Equal(2, measures.Count);
 
-        // Measure 1 should have a note with TieMarkerType.Start
-        var measure1Events = measures[0].Events;
-        Assert.Single(measure1Events);
-        var note1 = Assert.IsType<NotationNote>(measure1Events[0]);
-        Assert.Equal(TieMarkerType.Start, note1.TieMarker?.Type);
+        measures[0].AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Whole, tie: TieMarkerType.Start)
+            .AndNoMore();
 
-        // Measure 2 should have a note with TieMarkerType.Stop
-        var measure2Events = measures[1].Events;
-        Assert.Single(measure2Events);
-        var note2 = Assert.IsType<NotationNote>(measure2Events[0]);
-        Assert.Equal(TieMarkerType.Stop, note2.TieMarker?.Type);
+        measures[1].AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Half, tie: TieMarkerType.Stop)
+            .AndNoMore();
     }
 
     [Fact]
@@ -170,30 +121,14 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create notes with a gap
-        var events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(2, 1), // 2 beats
-                velocity: Velocity.MezzoForte), 1),
-
-            // Gap from beat 2 to beat 3 (1 beat)
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.D4,
-                onsetBeats: Rational.Create(3, 1), // Starts at beat 3
-                durationBeats: Rational.Create(1, 1),
-                velocity: Velocity.MezzoForte), 1),
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(2, 1))  // 2 beats
+            .AddNoteAt(Rational.Create(3, 1), MidiNote.D4, duration: Rational.Create(1, 1))  // Gap from beat 2 to 3
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
@@ -201,15 +136,13 @@ public sealed class MeasurePartitionerTests
         // Assert
         Assert.Single(result);
         var measures = result[1];
+        Assert.Single(measures);
 
-        Assert.Single(measures); // Both notes in measure 1
-        var measure1Events = measures[0].Events;
-
-        // Should have: note, rest, note
-        Assert.Equal(3, measure1Events.Count);
-        Assert.IsType<NotationNote>(measure1Events[0]);
-        Assert.IsType<Rest>(measure1Events[1]);
-        Assert.IsType<NotationNote>(measure1Events[2]);
+        result[1].AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Half)
+            .Rest(SymbolicDuration.Quarter)
+            .Note(PitchClass.D, SymbolicDuration.Quarter)
+            .AndNoMore();
     }
 
     [Fact]
@@ -222,32 +155,20 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create events for two voices
-        var voice1Events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 1),
-        };
+        var voice1 = SymbolicNoteEventBuilder.Create()
+            .WithDuration(4, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)
+            .Build()
+            .AssignToVoice(1);
 
-        var voice2Events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.E4,
-                onsetBeats: Rational.Create(4, 1),
-                durationBeats: Rational.Create(4, 1),
-                velocity: Velocity.MezzoForte), 2),
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, voice1Events },
-            { 2, voice2Events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .WithDuration(4, 1)
+            .AddNoteAt(Rational.Create(4, 1), MidiNote.E4)
+            .Build()
+            .AssignToVoice(2)
+            .ToVoiceDictionary(otherAssignments: voice1);
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
@@ -268,7 +189,7 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
         var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>();
 
@@ -289,34 +210,16 @@ public sealed class MeasurePartitionerTests
         );
 
         var options = new NotationOptions();
-        var partitioner = new MeasurePartitioner(tempoMap, options);
+        var partitioner = new MeasurePartitioner(tempoMap);
 
-        // Create events across 3 measures in 3/4 time
-        var events = new List<VoiceAssignment>
-        {
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.C4,
-                onsetBeats: Rational.Zero,
-                durationBeats: Rational.Create(3, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 1 (beats 0-3)
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.D4,
-                onsetBeats: Rational.Create(3, 1),
-                durationBeats: Rational.Create(3, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 2 (beats 3-6)
-
-            new(new SymbolicNoteEvent(
-                pitch: MidiNote.E4,
-                onsetBeats: Rational.Create(6, 1),
-                durationBeats: Rational.Create(3, 1),
-                velocity: Velocity.MezzoForte), 1), // Measure 3 (beats 6-9)
-        };
-
-        var voiceAssignments = new Dictionary<int, List<VoiceAssignment>>
-        {
-            { 1, events }
-        };
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .WithDuration(3, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)                  // Measure 1
+            .AddNoteAt(Rational.Create(3, 1), MidiNote.D4)          // Measure 2
+            .AddNoteAt(Rational.Create(6, 1), MidiNote.E4)          // Measure 3
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
 
         // Act
         var result = partitioner.PartitionIntoMeasures(voiceAssignments);
@@ -324,10 +227,119 @@ public sealed class MeasurePartitionerTests
         // Assert
         Assert.Single(result);
         var measures = result[1];
-
         Assert.Equal(3, measures.Count);
         Assert.Equal(1, measures[0].Number);
         Assert.Equal(2, measures[1].Number);
         Assert.Equal(3, measures[2].Number);
+    }
+
+    [Fact]
+    public void PartitionIntoMeasures_SimultaneousNotesInSameVoice_CreatesChord()
+    {
+        // Arrange: 4/4 time
+        var tempoMap = new TempoMap(
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
+        );
+
+        var options = new NotationOptions();
+        var partitioner = new MeasurePartitioner(tempoMap);
+
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .WithDuration(2, 1)
+            .AddChord(MidiNote.C4, MidiNote.E4, MidiNote.G4)
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
+
+        // Act
+        var result = partitioner.PartitionIntoMeasures(voiceAssignments);
+
+        // Assert
+        result[1].AssertSequence()
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)
+            .AndNoMore();
+    }
+
+    [Fact]
+    public void PartitionIntoMeasures_OverlappingNotesStaggeredStarts_CreatesTemporalSegments()
+    {
+        // Arrange: 4/4 time, two notes in same voice with staggered starts
+        // C4: beats 0-4 (4 beats)
+        // E4: beats 2-4 (2 beats, starts while C4 is still playing)
+        // Expected: C4 split into two segments: solo (0-2) and chord (2-4)
+        var tempoMap = new TempoMap(
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
+        );
+
+        var partitioner = new MeasurePartitioner(tempoMap);
+
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(4, 1))  // C4
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.E4, duration: Rational.Create(2, 1))  // E4
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
+
+        // Act
+        var result = partitioner.PartitionIntoMeasures(voiceAssignments);
+
+        // Assert
+        Assert.Single(result);
+        var measures = result[1];
+        Assert.Single(measures);
+
+        var measure = measures[0];
+        Assert.Equal(2, measure.Events.Count);
+
+        measure.AssertSequence()
+            .Note(PitchClass.C, SymbolicDuration.Half) // Solo C4
+            .Chord([PitchClass.C, PitchClass.E], SymbolicDuration.Half) // C4+E4 chord
+            .AndNoMore();
+    }
+
+    [Fact]
+    public void PartitionIntoMeasures_SimultaneousStartDifferentDurations_TreatsAsPolyphonic()
+    {
+        // Arrange: 4/4 time
+        // Simulates left-hand chord (4 beats) + right-hand melody (1 beat) starting together
+        var tempoMap = new TempoMap(
+            [new(Rational.Zero, 120.0)],
+            [new(Rational.Zero, TimeSignature.CommonTime)]
+        );
+
+        var partitioner = new MeasurePartitioner(tempoMap);
+
+        var voiceAssignments = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C2, duration: Rational.Create(4, 1))  // Left hand bass
+            .AddNoteAt(Rational.Zero, MidiNote.E2, duration: Rational.Create(4, 1))  // Left hand
+            .AddNoteAt(Rational.Zero, MidiNote.G2, duration: Rational.Create(4, 1))  // Left hand
+            .AddNoteAt(Rational.Zero, MidiNote.C5, duration: Rational.Create(1, 1))  // Right hand melody
+            .Build()
+            .AssignToVoice(1)
+            .ToVoiceDictionary();
+
+        // Act
+        var result = partitioner.PartitionIntoMeasures(voiceAssignments);
+
+        // Assert
+        // Should create temporal segments representing the full duration:
+        // 1. All 4 notes together for 1 beat (until shortest note ends)
+        // 2. Remaining 3 notes continue for 3 more beats
+        // This preserves the left-hand chord's full 4-beat duration, avoiding the problem
+        // where the entire chord would be truncated to 1 beat if treated as a simple chord.
+        Assert.Single(result);
+        var measures = result[1];
+        Assert.Single(measures);
+
+        var measure = measures[0];
+
+        measure.AssertSequence()
+            // First segment: all 4 notes sound together for 1 beat
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G, PitchClass.C], SymbolicDuration.Quarter)
+            // Second segment: left-hand notes continue for remaining 3 beats
+            .Chord([PitchClass.C, PitchClass.E, PitchClass.G], new SymbolicDuration(NoteDurationBase.Half, dots: 1))
+            .AndNoMore();
     }
 }

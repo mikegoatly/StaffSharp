@@ -69,7 +69,7 @@ public sealed class NotationEngine : INotationEngine
             .ToDictionary(g => g.Key, g => g.ToList());
 
         // Partition into measures
-        var partitioner = new MeasurePartitioner(timeline.TempoMap, options);
+        var partitioner = new MeasurePartitioner(timeline.TempoMap);
         var voiceMeasures = partitioner.PartitionIntoMeasures(voiceGroups);
 
         // Build voices
@@ -109,7 +109,7 @@ public sealed class NotationEngine : INotationEngine
         bassAssignments = StaffSplitter.RenumberVoices(bassAssignments);
 
         // Create partitioner
-        var partitioner = new MeasurePartitioner(timeline.TempoMap, options);
+        var partitioner = new MeasurePartitioner(timeline.TempoMap);
 
         // Create treble staff (Staff 1)
         var trebleStaff = CreateStaffFromAssignments(

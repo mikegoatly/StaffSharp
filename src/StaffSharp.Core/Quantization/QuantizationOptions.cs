@@ -26,9 +26,17 @@ public record QuantizationOptions
     public Rational MinNoteDuration { get; init; } = Rational.Create(1, 8);
 
     /// <summary>
+    /// Gets or initializes the tolerance for aligning note onsets when grouping chords (in beats).
+    /// Notes starting within this tolerance and overlapping in time will be aligned to the same onset.
+    /// This is important for piano recordings where chord notes may not start at exactly the same time.
+    /// Default: 1/32 beat.
+    /// </summary>
+    public Rational OnsetAlignmentTolerance { get; init; } = Rational.Create(1, 32);
+
+    /// <summary>
     /// Validates the options.
     /// </summary>
-    /// <exception cref="ArgumentException">Thrown when any duration is non-positive.</exception>
+    /// <exception cref="ArgumentException">Thrown when any duration is non-positive or tolerance is negative.</exception>
     public void Validate()
     {
         if (QuantizationGrid <= Rational.Zero)
@@ -44,6 +52,11 @@ public record QuantizationOptions
         if (MinNoteDuration <= Rational.Zero)
         {
             throw new ArgumentException("Minimum note duration must be positive", nameof(MinNoteDuration));
+        }
+
+        if (OnsetAlignmentTolerance < Rational.Zero)
+        {
+            throw new ArgumentException("Onset alignment tolerance must be non-negative", nameof(OnsetAlignmentTolerance));
         }
     }
 }

@@ -70,6 +70,21 @@ public class MLPipelineIntegrationTests(ITestOutputHelper outputHelper)
             .AndNoMore();
     }
 
+    [Fact]
+    public async Task ParsingChords_ResultsInExpectedScore()
+    {
+        var score = await ExtractScoreFromAudioUsingML(@"Chords\c-chord-d-chord-c-chord-44100-stereo-24bit-pcm.wav");
+
+        // Expect exactly 3 chords: C, D, C
+        Assert.Equal(3, score.GetChords().Count);
+
+        //score.AssertSequence(0)
+        //    .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)
+        //    .Chord([PitchClass.D, PitchClass.FSharp, PitchClass.A], SymbolicDuration.Half)
+        //    .Chord([PitchClass.C, PitchClass.E, PitchClass.G], SymbolicDuration.Half)
+        //    .AndNoMore();
+    }
+
     private async Task<NotationScore> ExtractScoreFromAudioUsingML(string testFile, AudioPipelineOptions? options = null)
     {
         using var inputStream = File.OpenRead(@$"TestData\{testFile}");

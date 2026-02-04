@@ -1,6 +1,7 @@
 using StaffSharp;
 using StaffSharp.Core.Notation;
 using StaffSharp.Performance;
+using StaffSharp.TestHelpers.Builders;
 
 namespace StaffSharp.Core.Tests.Notation;
 
@@ -14,12 +15,12 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Sequential notes with ascending pitches should stay in voice 1
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.D4, Rational.Create(1, 1), Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Create(2, 1), Rational.Create(1, 1), Velocity.MezzoForte),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.D4)
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.E4)
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -34,12 +35,12 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Sequential notes with descending pitches should stay in voice 1
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.D4, Rational.Create(1, 1), Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Create(2, 1), Rational.Create(1, 1), Velocity.MezzoForte),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.E4)
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.D4)
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.C4)
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -54,11 +55,10 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Two notes that overlap in time with different pitches
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(2, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Create(1, 1), Rational.Create(2, 1), Velocity.MezzoForte),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(2, 1))
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.E4, duration: Rational.Create(2, 1))
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -76,12 +76,10 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: High, low, middle pattern - tests voice insertion
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.G4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte), // High
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte), // Low (overlaps)
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte), // Middle (overlaps)
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddChord(MidiNote.G4, MidiNote.C4, MidiNote.E4)  // All at onset 0, overlapping
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -109,13 +107,13 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Pattern with actual overlapping notes
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(4, 1), Velocity.MezzoForte), // Beats 0-4
-            new SymbolicNoteEvent(MidiNote.G4, Rational.Create(1, 1), Rational.Create(4, 1), Velocity.MezzoForte), // Beats 1-5, overlaps with C4
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Create(2, 1), Rational.Create(4, 1), Velocity.MezzoForte), // Beats 2-6, overlaps with C4 and G4
-            new SymbolicNoteEvent(MidiNote.A4, Rational.Create(3, 1), Rational.Create(4, 1), Velocity.MezzoForte), // Beats 3-7, overlaps with all previous
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(4, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)           // Beats 0-4
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.G4)   // Beats 1-5, overlaps with C4
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.E4)   // Beats 2-6, overlaps with C4 and G4
+            .AddNoteAt(Rational.Create(3, 1), MidiNote.A4)   // Beats 3-7, overlaps with all previous
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -134,10 +132,10 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Event with explicit voice hint
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte, voiceHint: 3),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithVoiceHint(3)
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(1, 1))
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -166,11 +164,11 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Same pitch, no overlap - should reuse voice
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Create(2, 1), Rational.Create(1, 1), Velocity.MezzoForte),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)
+            .AddNoteAt(Rational.Create(2, 1), MidiNote.C4)
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -186,11 +184,11 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Notes within an octave should reuse voice
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.Create(60 + 11), Rational.Create(1, 1), Rational.Create(1, 1), Velocity.MezzoForte), // 11 semitones up
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddNoteAt(Rational.Zero, MidiNote.C4)
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.Create(60 + 11))  // 11 semitones up
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -206,11 +204,10 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Notes more than an octave apart should create new voice when overlapping
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(2, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.Create(60 + 13), Rational.Create(1, 1), Rational.Create(1, 1), Velocity.MezzoForte), // 13 semitones up (beyond octave)
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .AddNoteAt(Rational.Zero, MidiNote.C4, duration: Rational.Create(2, 1))
+            .AddNoteAt(Rational.Create(1, 1), MidiNote.Create(60 + 13), duration: Rational.Create(1, 1))  // 13 semitones up (beyond octave)
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
@@ -228,12 +225,10 @@ public sealed class SimpleVoiceAssignerTests
     {
         // Arrange: Three simultaneous notes at different pitches
         var assigner = new SimpleVoiceAssigner();
-        var events = new List<IPerformanceEvent>
-        {
-            new SymbolicNoteEvent(MidiNote.E4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.G4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-            new SymbolicNoteEvent(MidiNote.C4, Rational.Zero, Rational.Create(1, 1), Velocity.MezzoForte),
-        };
+        var events = SymbolicNoteEventBuilder.Create()
+            .WithDuration(1, 1)
+            .AddChord(MidiNote.E4, MidiNote.G4, MidiNote.C4)
+            .Build();
 
         // Act
         var result = assigner.AssignVoices(events);
