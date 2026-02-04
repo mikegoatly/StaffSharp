@@ -55,6 +55,21 @@ public static class ScoreAssert
     }
 
     /// <summary>
+    /// Gets all chords from all measures, voices, and parts in the score.
+    /// </summary>
+    public static IReadOnlyList<Chord> GetChords(this NotationScore score)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+
+        return score.Parts
+            .SelectMany(p => p.Voices)
+            .SelectMany(v => v.Measures)
+            .SelectMany(m => m.Events)
+            .OfType<Chord>()
+            .ToList();
+    }
+
+    /// <summary>
     /// Gets only rests from a specific measure.
     /// </summary>
     public static IReadOnlyList<Rest> GetRests(
@@ -343,6 +358,18 @@ public static class ScoreAssert
     {
         var events = score.GetEvents(measureIndex, voiceIndex, partIndex);
         return new EventSequenceAssertion(events);
+    }
+
+    public static EventSequenceAssertion AssertSequence(
+        this IEnumerable<Measure> measures)
+    {
+        return new EventSequenceAssertion([.. measures.SelectMany(m => m.Events)]);
+    }
+
+    public static EventSequenceAssertion AssertSequence(
+        this Measure measure)
+    {
+        return new EventSequenceAssertion([.. measure.Events]);
     }
 }
 

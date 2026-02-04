@@ -10,6 +10,7 @@ public sealed class PolyphonicQuantizer : IPolyphonicQuantizer
 {
     private readonly Rational _quantizationGrid;
     private readonly Rational _minNoteDuration;
+    private readonly Rational _onsetAlignmentTolerance;
 
     public PolyphonicQuantizer(QuantizationOptions? options = null)
     {
@@ -18,6 +19,7 @@ public sealed class PolyphonicQuantizer : IPolyphonicQuantizer
 
         _quantizationGrid = options.QuantizationGrid;
         _minNoteDuration = options.MinNoteDuration;
+        _onsetAlignmentTolerance = options.OnsetAlignmentTolerance;
     }
 
     public (IReadOnlyList<QuantizedNoteEvent> Notes, TempoMap TempoMap) Quantize(
@@ -27,7 +29,10 @@ public sealed class PolyphonicQuantizer : IPolyphonicQuantizer
         ArgumentNullException.ThrowIfNull(notes);
         ArgumentNullException.ThrowIfNull(tempoMap);
 
-        if (notes.Count == 0) return (Array.Empty<QuantizedNoteEvent>(), tempoMap);
+        if (notes.Count == 0)
+        {
+            return (Array.Empty<QuantizedNoteEvent>(), tempoMap);
+        }
 
         var quantizedNotes = new List<QuantizedNoteEvent>(notes.Count);
         var subdivision = _quantizationGrid.Denominator;
@@ -75,6 +80,48 @@ public sealed class PolyphonicQuantizer : IPolyphonicQuantizer
             ));
         }
 
+        // Align onsets of overlapping notes within tolerance
+        if (_onsetAlignmentTolerance > Rational.Zero)
+        {
+            var groups = GroupOverlappingNotes(quantizedNotes, _onsetAlignmentTolerance);
+
+            foreach (var group in groups)
+            {
+                // Find earliest onset in group
+                var targetOnset = group.Min(n => n.OnsetBeats);
+
+                // Update all notes in group to align to earliest onset
+                for (int i = 0; i < group.Count; i++)
+                {
+                    var note = group[i];
+                    var onsetDelta = note.OnsetBeats - targetOnset;
+
+                    if (onsetDelta > Rational.Zero)
+                    {
+                        // Adjust onset and maintain original offset by extending duration
+                        var adjustedNote = new QuantizedNoteEvent(
+                            rawEvent: note.RawEvent,
+                            onsetBeats: targetOnset,
+                            durationBeats: note.DurationBeats + onsetDelta,
+                            quantizationMetadata: note.QuantizationMetadata,
+                            voiceHint: note.VoiceHint,
+                            articulation: note.Articulation
+                        );
+
+                        // Replace in the main list
+                        int originalIndex = quantizedNotes.IndexOf(note);
+                        if (originalIndex >= 0)
+                        {
+                            quantizedNotes[originalIndex] = adjustedNote;
+                        }
+
+                        // Update in the group for subsequent iterations
+                        group[i] = adjustedNote;
+                    }
+                }
+            }
+        }
+
         return (quantizedNotes, tempoMap);
     }
 
@@ -88,5 +135,76 @@ public sealed class PolyphonicQuantizer : IPolyphonicQuantizer
     {
         int gridIndex = (int)Math.Round(value / gridSize);
         return Rational.Create(gridIndex * grid.Numerator, grid.Denominator);
+    }
+
+    /// <summary>
+    /// Groups notes that start within tolerance and overlap in time.
+    /// This is used to align chord notes that may have slightly different onset times.
+    /// Only returns groups with overlapping notes - notes that do not overlap with any others are not grouped.
+    /// </summary>
+    /// <param name="notes">The quantized notes to group.</param>
+    /// <param name="tolerance">The maximum onset difference (in beats) for notes to be grouped.</param>
+    /// <returns>List of note groups where each group contains notes that should be aligned.</returns>
+    private static IEnumerable<List<QuantizedNoteEvent>> GroupOverlappingNotes(
+        List<QuantizedNoteEvent> notes,
+        Rational tolerance)
+    {
+        var assigned = new bool[notes.Count];
+
+        var group = new List<QuantizedNoteEvent>();
+
+        for (int i = 0; i < notes.Count; i++)
+        {
+            if (assigned[i])
+            {
+                continue;
+            }
+
+            assigned[i] = true;
+
+            // Start new group with note i
+            group.Add(notes[i]);
+
+            // Find all notes within tolerance that overlap with any note in group
+            bool addedAny;
+            do
+            {
+                addedAny = false;
+                // Starting from i+1 to avoid re-checking previous notes which are guaranteed to be assigned
+                for (int j = i + 1; j < notes.Count; j++)
+                {
+                    if (assigned[j])
+                    {
+                        continue;
+                    }
+
+                    // Check if j overlaps with any note in group and is within tolerance
+                    foreach (var groupNote in group)
+                    {
+                        var onsetDiff = notes[j].OnsetBeats - groupNote.OnsetBeats;
+                        var absDiff = Rational.Abs(onsetDiff);
+                        var overlaps = notes[j].OnsetBeats < groupNote.OffsetBeats &&
+                                       notes[j].OffsetBeats > groupNote.OnsetBeats;
+
+                        if (absDiff <= tolerance && overlaps)
+                        {
+                            group.Add(notes[j]);
+                            assigned[j] = true;
+                            addedAny = true;
+                            break;
+                        }
+                    }
+                }
+            } while (addedAny);
+
+            // Only yield groups with more than one note
+            if (group.Count > 1)
+            {
+                yield return group.ToList();
+            }
+
+            // Clear group for next iteration
+            group.Clear();
+        }
     }
 }

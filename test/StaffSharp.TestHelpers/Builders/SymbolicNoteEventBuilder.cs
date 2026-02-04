@@ -13,6 +13,7 @@ public sealed class SymbolicNoteEventBuilder
     private Rational _defaultDuration = Rational.Create(1, 4); // Quarter note
     private Velocity _defaultVelocity = Velocity.MezzoForte;
     private bool _autoAdvancePosition = true;
+    private int? _voiceHint;
 
     private SymbolicNoteEventBuilder() { }
 
@@ -20,6 +21,12 @@ public sealed class SymbolicNoteEventBuilder
     /// Creates a new symbolic note event builder.
     /// </summary>
     public static SymbolicNoteEventBuilder Create() => new();
+
+    public SymbolicNoteEventBuilder WithVoiceHint(int? voiceHint)
+    {
+        _voiceHint = voiceHint;
+        return this;
+    }
 
     /// <summary>
     /// Sets the default duration for subsequent notes.
@@ -101,7 +108,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNote(MidiNote pitch)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, _defaultDuration, _defaultVelocity));
+        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, _defaultDuration, _defaultVelocity, voiceHint: _voiceHint));
         
         if (_autoAdvancePosition)
         {
@@ -116,7 +123,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNote(MidiNote pitch, Rational duration)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, _defaultVelocity));
+        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, _defaultVelocity, voiceHint: _voiceHint));
         
         if (_autoAdvancePosition)
         {
@@ -131,7 +138,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNote(MidiNote pitch, Rational duration, Velocity velocity)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, velocity));
+        _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, velocity, voiceHint: _voiceHint));
         
         if (_autoAdvancePosition)
         {
@@ -146,7 +153,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNoteAt(Rational position, MidiNote pitch)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, position, _defaultDuration, _defaultVelocity));
+        _events.Add(new SymbolicNoteEvent(pitch, position, _defaultDuration, _defaultVelocity, voiceHint: _voiceHint));
         return this;
     }
 
@@ -155,7 +162,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNoteAt(Rational position, MidiNote pitch, Rational duration)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, position, duration, _defaultVelocity));
+        _events.Add(new SymbolicNoteEvent(pitch, position, duration, _defaultVelocity, voiceHint: _voiceHint));
         return this;
     }
 
@@ -164,7 +171,7 @@ public sealed class SymbolicNoteEventBuilder
     /// </summary>
     public SymbolicNoteEventBuilder AddNoteAt(Rational position, MidiNote pitch, Rational duration, Velocity velocity)
     {
-        _events.Add(new SymbolicNoteEvent(pitch, position, duration, velocity));
+        _events.Add(new SymbolicNoteEvent(pitch, position, duration, velocity, voiceHint: _voiceHint));
         return this;
     }
 
@@ -175,7 +182,7 @@ public sealed class SymbolicNoteEventBuilder
     {
         foreach (var pitch in pitches)
         {
-            _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, _defaultDuration, _defaultVelocity));
+            _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, _defaultDuration, _defaultVelocity, voiceHint: _voiceHint));
         }
         
         if (_autoAdvancePosition)
@@ -193,7 +200,7 @@ public sealed class SymbolicNoteEventBuilder
     {
         foreach (var pitch in pitches)
         {
-            _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, _defaultVelocity));
+            _events.Add(new SymbolicNoteEvent(pitch, _currentPosition, duration, _defaultVelocity, voiceHint: _voiceHint));
         }
         
         if (_autoAdvancePosition)
@@ -207,9 +214,9 @@ public sealed class SymbolicNoteEventBuilder
     /// <summary>
     /// Builds the list of performance events.
     /// </summary>
-    public IList<IPerformanceEvent> Build()
+    public IReadOnlyList<IPerformanceEvent> Build()
     {
-        return new List<IPerformanceEvent>(_events);
+        return [.. _events];
     }
 
     // Convenience static methods for common patterns
@@ -217,7 +224,7 @@ public sealed class SymbolicNoteEventBuilder
     /// <summary>
     /// Creates a single note event (convenience method).
     /// </summary>
-    public static IList<IPerformanceEvent> SingleNote(MidiNote pitch, Rational? duration = null, Velocity? velocity = null)
+    public static IReadOnlyList<IPerformanceEvent> SingleNote(MidiNote pitch, Rational? duration = null, Velocity? velocity = null)
     {
         var builder = Create();
         var dur = duration ?? Rational.Create(1, 4);
@@ -228,7 +235,7 @@ public sealed class SymbolicNoteEventBuilder
     /// <summary>
     /// Creates a sequence of notes with automatic positioning (convenience method).
     /// </summary>
-    public static IList<IPerformanceEvent> Sequence(params MidiNote[] pitches)
+    public static IReadOnlyList<IPerformanceEvent> Sequence(params MidiNote[] pitches)
     {
         var builder = Create();
         foreach (var pitch in pitches)
@@ -241,7 +248,7 @@ public sealed class SymbolicNoteEventBuilder
     /// <summary>
     /// Creates a chord (convenience method).
     /// </summary>
-    public static IList<IPerformanceEvent> Chord(params MidiNote[] pitches)
+    public static IReadOnlyList<IPerformanceEvent> Chord(params MidiNote[] pitches)
     {
         return Create().AddChord(pitches).Build();
     }

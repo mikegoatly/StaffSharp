@@ -187,6 +187,11 @@ public readonly record struct Rational : IComparable<Rational>, IComparable
         throw new ArgumentException("Object is not a Rational.", nameof(obj));
     }
 
+    public static Rational Abs(Rational value)
+    {
+        return value >= Zero ? value : Zero - value;
+    }
+
     public static bool operator <(Rational left, Rational right)
     {
         return left.CompareTo(right) < 0;
