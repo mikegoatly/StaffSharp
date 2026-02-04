@@ -20,6 +20,11 @@ namespace StaffSharp.Demo.Android
         private static MainActivity? _instance;
         private static Action<bool>? _permissionCallback;
 
+        public MainActivity()
+        {
+            Services.Audio.AudioService.Instance = new AndroidAudioService();
+        }
+
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             return base.CustomizeAppBuilder(builder)
@@ -30,8 +35,6 @@ namespace StaffSharp.Demo.Android
         {
             base.OnCreate(savedInstanceState);
             _instance = this;
-
-            Services.Audio.AudioService.Instance = new AndroidAudioService();
 
             // Set up permission callbacks for the shared code
             Services.PermissionHelper.CheckRecordAudioPermission = CheckRecordAudioPermission;

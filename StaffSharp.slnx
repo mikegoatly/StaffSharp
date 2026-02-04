@@ -31,7 +31,6 @@
   <Folder Name="/tools/">
     <File Path="tools/.editorconfig" />
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.Android/StaffSharp.Demo.Android.csproj" Id="be264ba1-6df5-4887-b362-e93fc4309bd7">
-      <Build Project="false" />
       <Deploy Solution="Debug|*" />
     </Project>
     <Project Path="tools/StaffSharp.Demo/StaffSharp.Demo.Browser/StaffSharp.Demo.Browser.csproj" Id="4947a212-ba59-4e06-968d-ffe99d407f42" />
